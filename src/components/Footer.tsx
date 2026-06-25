@@ -8,7 +8,7 @@ export default function Footer() {
           {/* Brand */}
           <div className="sm:col-span-2 lg:col-span-1">
             <div className="mb-4">
-              <ForcomLogo className="h-8 w-auto" />
+              <ForcomLogo className="h-10 w-auto" />
             </div>
             <p className="text-sm text-forcom-gray leading-relaxed max-w-xs">
               Tecnología que entiende su negocio. Soluciones de hardware empresarial para punto de venta y retail.

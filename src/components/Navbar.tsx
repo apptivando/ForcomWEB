@@ -54,7 +54,7 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-6 lg:px-8 flex items-center justify-between h-16 lg:h-20">
         {/* Logo */}
         <a href="#" className="group flex-shrink-0">
-          <ForcomLogo className="h-8 lg:h-9 w-auto group-hover:opacity-90 transition-opacity" />
+          <ForcomLogo className="h-10 lg:h-12 w-auto group-hover:opacity-90 transition-opacity" priority />
         </a>
 
         {/* Desktop nav */}
