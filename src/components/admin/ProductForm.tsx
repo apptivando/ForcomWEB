@@ -11,6 +11,7 @@ type Section = { label: string; id: string };
 const EMPTY_SPECS = ["", "", "", ""];
 const EMPTY_VIDEOS = ["", ""];
 
+
 export default function ProductForm({
   product,
   sections,

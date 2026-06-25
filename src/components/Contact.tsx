@@ -2,7 +2,16 @@
 
 import { useState, type FormEvent } from "react";
 
-export default function Contact() {
+interface ContactInfo {
+  email: string;
+  phone: string;
+  schedule: string;
+}
+
+export default function Contact({ info }: { info?: ContactInfo }) {
+  const email = info?.email ?? "ventas@forcom.com.ar";
+  const phone = info?.phone ?? "+54 11 xxxx-xxxx";
+  const schedule = info?.schedule ?? "Lun — Vie, 9:00 a 18:00";
   const [status, setStatus] = useState<"idle" | "sending" | "success" | "error">("idle");
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
@@ -65,7 +74,7 @@ export default function Contact() {
                 </div>
                 <div>
                   <p className="font-display font-semibold text-xs tracking-[0.15em] uppercase text-forcom-gray mb-0.5">Email</p>
-                  <p className="text-white">ventas@forcom.com.ar</p>
+                  <p className="text-white">{email}</p>
                 </div>
               </div>
               <div className="flex items-center gap-4">
@@ -76,7 +85,7 @@ export default function Contact() {
                 </div>
                 <div>
                   <p className="font-display font-semibold text-xs tracking-[0.15em] uppercase text-forcom-gray mb-0.5">Teléfono</p>
-                  <p className="text-white">+54 11 xxxx-xxxx</p>
+                  <p className="text-white">{phone}</p>
                 </div>
               </div>
               <div className="flex items-center gap-4">
@@ -87,7 +96,7 @@ export default function Contact() {
                 </div>
                 <div>
                   <p className="font-display font-semibold text-xs tracking-[0.15em] uppercase text-forcom-gray mb-0.5">Horario</p>
-                  <p className="text-white">Lun — Vie, 9:00 a 18:00</p>
+                  <p className="text-white">{schedule}</p>
                 </div>
               </div>
             </div>

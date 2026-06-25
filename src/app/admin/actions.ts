@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import type { HeroContent, HeroSlide, Product } from "@/lib/types";
+import type { HeroContent, HeroSlide, Product, CompanyInfo } from "@/lib/types";
 
 async function requireAuth() {
   const supabase = await createClient();
@@ -188,4 +188,17 @@ export async function deleteMessage(id: string) {
   if (error) throw new Error(error.message);
   revalidatePath("/admin/crm");
   revalidatePath("/admin/dashboard");
+}
+
+// ─── Company Info ─────────────────────────────────────────────────────────────
+
+export async function updateCompanyInfo(data: Omit<CompanyInfo, "id" | "updated_at">) {
+  const supabase = await requireAuth();
+  const { error } = await supabase
+    .from("company_info")
+    .update({ ...data, updated_at: new Date().toISOString() })
+    .eq("id", 1);
+  if (error) throw new Error(error.message);
+  revalidatePath("/");
+  revalidatePath("/admin/empresa");
 }
