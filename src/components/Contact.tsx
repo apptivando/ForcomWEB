@@ -56,7 +56,7 @@ export default function Contact({ info }: { info?: ContactInfo }) {
               </span>
             </div>
             <h2 className="font-display font-extrabold text-4xl sm:text-5xl lg:text-6xl tracking-tight text-white mb-6 red-line">
-              Consultá por
+              Consulte por
               <br />
               su solución
             </h2>
