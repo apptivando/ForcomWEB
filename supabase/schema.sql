@@ -124,14 +124,17 @@ INSERT INTO storage.buckets (id, name, public)
 VALUES ('product-images', 'product-images', true)
 ON CONFLICT (id) DO NOTHING;
 
-CREATE POLICY IF NOT EXISTS "Public read product images"
+DROP POLICY IF EXISTS "Public read product images" ON storage.objects;
+CREATE POLICY "Public read product images"
   ON storage.objects FOR SELECT
   USING (bucket_id = 'product-images');
 
-CREATE POLICY IF NOT EXISTS "Auth upload product images"
+DROP POLICY IF EXISTS "Auth upload product images" ON storage.objects;
+CREATE POLICY "Auth upload product images"
   ON storage.objects FOR INSERT
   WITH CHECK (bucket_id = 'product-images' AND auth.uid() IS NOT NULL);
 
-CREATE POLICY IF NOT EXISTS "Auth delete product images"
+DROP POLICY IF EXISTS "Auth delete product images" ON storage.objects;
+CREATE POLICY "Auth delete product images"
   ON storage.objects FOR DELETE
   USING (bucket_id = 'product-images' AND auth.uid() IS NOT NULL);
