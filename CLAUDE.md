@@ -8,7 +8,7 @@ Sitio web B2B de presentación y generación de leads para FORCOM, distribuidor 
 
 **Stack:** Next.js (App Router) · React 19 · TypeScript · Tailwind CSS 4  
 **Fuentes:** Barlow Condensed (display/headings) + DM Sans (body)  
-**Dominio previsto:** forcom.com.ar
+**Dominio:** forcom.tech (en producción)
 
 ## Decisión de plataforma
 
@@ -61,6 +61,24 @@ npm run dev
 # → http://localhost:3000
 ```
 
+## Deploy e infraestructura
+
+- **Repo:** github.com/apptivando/ForcomWEB
+- **Ramas:** `main` (producción) · `develop` (previews)
+- **Vercel:** proyecto `forcom-web` bajo equipo `apptivando` (plan Hobby)
+- **Dominios:** `www.forcom.tech` → Production · `dev.forcom.tech` → develop
+- **DNS:** gestionado en Donweb. Registros de mail (mx1, mail, autoconfig, autodiscover) son de un servicio de correo externo — no tocar.
+- **Variables de entorno en Vercel:** `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`. Pendiente: `RESEND_API_KEY` cuando se configure Resend.
+
+### Gotcha crítico — Vercel Framework Preset
+El proyecto debe tener **Framework Preset = "Next.js"** en Settings → Build and Deployment. Si queda en "Other", Vercel no encuentra el output de Next.js y sirve 404 en todas las rutas.
+
+### Gotcha — middleware de Supabase
+El archivo de proxy para auth del admin está en `src/lib/supabase/middleware-proxy.ts`. NO nombrarlo `middleware.ts` ni ponerlo en la raíz de `src/` — Next.js lo levantaría como middleware global y causaría comportamiento inesperado. Si se necesita middleware real, crear `src/middleware.ts` que importe desde `middleware-proxy.ts`.
+
+### Gotcha — Supabase server client
+El `setAll` en `src/lib/supabase/server.ts` tiene try-catch porque Next.js App Router no permite setear cookies desde Server Components. Sin el try-catch, la página falla silenciosamente en producción.
+
 ## Estado actual (junio 2026)
 
 ### Hecho
@@ -70,16 +88,17 @@ npm run dev
 - Responsive mobile/tablet/desktop
 - Navbar con touch targets de 44px (links y botón CTA)
 - Formulario de contacto con validación frontend
+- Admin panel con CRM, gestión de productos y hero slides (Supabase)
+- Deploy en Vercel funcionando en forcom.tech
 
 ### Pendiente para MVP
 - Imágenes reales de los 15 productos (todos son placeholders)
-- Backend del formulario (`/api/contact` + servicio de email — Brevo o Resend)
-- Rutas dinámicas para detalle de producto (`/productos/[categoria]/[modelo]`)
+- Backend del formulario (`/api/contact` + Resend — la ruta existe, falta `RESEND_API_KEY`)
 - WhatsApp FAB con número real (+54 11 XXXX-XXXX)
 - Analytics (GA4)
 - SEO: sitemap.xml, robots.txt, schema markup (Product JSON-LD)
 - Favicon con logo FORCOM real
-- Deploy en Vercel + configurar dominio forcom.com.ar
+- Validar DNS de dev.forcom.tech en Vercel (quedó en "Invalid Configuration")
 
 ### Pendiente post-MVP
 - Blog `/blog`
