@@ -8,7 +8,7 @@ Sitio web B2B de presentación y generación de leads para FORCOM, distribuidor 
 
 **Stack:** Next.js (App Router) · React 19 · TypeScript · Tailwind CSS 4  
 **Fuentes:** Barlow Condensed (display/headings) + DM Sans (body)  
-**Dominio previsto:** forcom.com.ar
+**Dominio:** forcom.tech (en producción)
 
 ## Decisión de plataforma
 
@@ -27,31 +27,75 @@ Se comenzó con un plan en WordPress (ver `../PLANCMS.md`) pero se migró a Next
 --gray-light:  #B0B0B0   (texto links nav, subtítulos)
 ```
 
-Border-radius: `rounded-sm` (2px) en todo el sitio — look industrial, no bubbly.
+Border-radius: `rounded-sm` (2px) en todo el sitio — look industrial, no bubbly.  
+Sin librerías de animación — todo CSS + IntersectionObserver nativo.  
+Sin librerías de UI (no shadcn, no MUI) — componentes propios con Tailwind.
 
 ## Estructura de componentes
 
 ```
 src/
 ├── app/
-│   ├── layout.tsx        — metadata, fuentes Google, favicon
-│   ├── page.tsx          — composición de secciones
-│   └── globals.css       — variables CSS, animaciones, clases utilitarias
-└── components/
-    ├── Navbar.tsx         — nav fijo, scroll effect, menú mobile
-    ├── Hero.tsx           — headline, CTAs, POS placeholder, trust bar
-    ├── ProductCategories.tsx — 6 category cards con hover
-    ├── ProductCards.tsx   — 15 productos hardcodeados en 7 grupos
-    ├── WhyForcom.tsx      — 6 diferenciadores en grid 3x2
-    ├── Industries.tsx     — 6 industrias verticales
-    ├── Contact.tsx        — formulario con estado local (no envía aún)
-    ├── Footer.tsx         — links, copyright dinámico
-    └── ScrollReveal.tsx   — IntersectionObserver para reveal on scroll
+│   ├── layout.tsx            — metadata, fuentes Google, favicon
+│   ├── page.tsx              — composición de secciones (server component)
+│   ├── globals.css           — variables CSS, animaciones, clases utilitarias
+│   └── admin/
+│       ├── actions.ts        — server actions: hero, productos, CRM
+│       └── (panel)/          — rutas protegidas del admin
+│           ├── dashboard/    — stats
+│           ├── hero/         — editor de slides del hero carousel
+│           ├── productos/    — CRUD de productos
+│           ├── empresa/      — datos de contacto (WhatsApp, email, etc.)
+│           └── crm/          — bandeja de mensajes de contacto
+├── components/
+│   ├── Navbar.tsx            — nav fijo, scroll effect, menú mobile
+│   ├── HeroCarousel.tsx      — carousel hero con slides dinámicos desde DB
+│   ├── ProductCategories.tsx — 6 category cards con hover
+│   ├── ProductCards.tsx      — grid de productos (DB) + trigger del modal
+│   ├── ProductSpecsModal.tsx — drawer lateral: carrusel, specs, videos, archivos
+│   ├── WhyForcom.tsx         — 6 diferenciadores en grid 3x2
+│   ├── Industries.tsx        — 6 industrias verticales
+│   ├── Contact.tsx           — formulario con validación (datos desde company_info)
+│   ├── WhatsAppFAB.tsx       — botón flotante WhatsApp (número desde DB)
+│   ├── Footer.tsx            — links, copyright dinámico
+│   ├── ForcomLogo.tsx        — logo PNG via next/image (NO volver a SVG — el ® desaparecía)
+│   ├── ScrollReveal.tsx      — IntersectionObserver para reveal on scroll
+│   └── admin/
+│       ├── ProductForm.tsx   — formulario CRUD de producto (incluye ImageGalleryEditor)
+│       ├── ImageGalleryEditor.tsx — upload a Supabase Storage + galería drag-to-reorder
+│       ├── ProductsTable.tsx
+│       ├── HeroEditor.tsx
+│       ├── CRMInbox.tsx
+│       └── AdminSidebar.tsx
+└── lib/
+    ├── types.ts              — Product, ProductFile, HeroSlide, CompanyInfo, ContactMessage
+    └── supabase/
+        ├── client.ts         — createBrowserClient (para componentes cliente)
+        └── server.ts         — createServerClient con try-catch en setAll (requerido en prod)
 ```
 
-## Datos hardcodeados
+## Base de datos (Supabase PostgreSQL)
 
-Todos los productos, categorías e industrias viven en arrays dentro de los componentes. Para agregar un producto hay que editar `ProductCards.tsx`. No hay CMS ni base de datos todavía.
+### Tablas principales
+
+**`products`** — catálogo de productos
+- Campos base: `id`, `model`, `category`, `section`, `section_id`, `badge`, `image_url`, `specs TEXT[]`, `active`, `order_index`
+- Campos del modal (agregados jun-2026): `images TEXT[]` (galería, hasta 5), `videos TEXT[]` (hasta 2), `description TEXT`, `full_specs TEXT` (markdown con tablas), `files JSONB` (array de `{name, url, type}`)
+- `image_url` se auto-popula con `images[0]` al guardar desde el admin
+
+**`hero_content`** — configuración estática del hero (fila única id=1)
+
+**`hero_slides`** — slides dinámicos del carousel hero
+
+**`company_info`** — fila única (id=1): `whatsapp`, `email`, `phone`, `schedule` — fuente de verdad para datos de contacto
+
+**`contact_messages`** — CRM: mensajes del formulario de contacto
+
+### Storage
+
+**Bucket `product-images`** (público) — imágenes subidas desde el admin.  
+Políticas: SELECT público, INSERT/DELETE solo autenticados.  
+Path de archivos: `products/{timestamp}-{slug}.{ext}`
 
 ## Para correr el proyecto
 
@@ -61,41 +105,53 @@ npm run dev
 # → http://localhost:3000
 ```
 
+## Deploy e infraestructura
+
+- **Repo:** github.com/apptivando/ForcomWEB
+- **Ramas:** `main` (producción) · `develop` (previews)
+- **Vercel:** proyecto `forcom-web` bajo equipo `apptivando`
+- **Dominios:** `www.forcom.tech` → main · `dev.forcom.tech` → develop
+- **DNS:** gestionado en Donweb. Registros de mail (mx1, mail, autoconfig, autodiscover) son de correo externo — no tocar.
+- **Variables en Vercel:** `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`. Pendiente: `RESEND_API_KEY`.
+
+### Gotchas críticos
+
+- **Framework Preset en Vercel** debe ser "Next.js" (no "Other") — si queda en Other, 404 en todas las rutas.
+- **`src/lib/supabase/server.ts`** tiene try-catch en `setAll` — requerido porque App Router no permite setear cookies desde Server Components; sin él falla en producción.
+- **Auth middleware** está en `src/lib/supabase/middleware-proxy.ts`. NO nombrarlo `middleware.ts` ni ponerlo en raíz de `src/`.
+- **Logo** usa `next/image` con PNG (`/images/brand/forcom-logo.png`). No volver a SVG con texto — el ® desaparecía y perdía calidad.
+- **HeroCarousel usa `h-screen` (no `min-h-screen`)** — con `min-h-screen` la sección se alargaba en algunos slides y la navegación quedaba fuera del viewport. La navegación está posicionada `absolute bottom-6` para que siempre sea visible. No volver a flujo normal ni a `min-h-screen`.
+
 ## Estado actual (junio 2026)
 
 ### Hecho
-- Homepage completa con 8 secciones
-- Sistema de diseño dark theme industrial coherente
-- Animaciones scroll reveal + hover states
+- Homepage completa con 8 secciones, dark theme industrial, animaciones scroll reveal
 - Responsive mobile/tablet/desktop
-- Navbar con touch targets de 44px (links y botón CTA)
-- Formulario de contacto con validación frontend
+- Admin panel completo: CRM, productos, hero slides, info empresa
+- Supabase: productos, hero, CRM y datos de empresa desde DB
+- WhatsApp FAB con número dinámico desde `company_info`
+- Modal lateral "Ver especificaciones" (`ProductSpecsModal.tsx`): carrusel de imágenes, descripción, tabla de specs (parser de markdown), videos y archivos descargables
+- Upload de imágenes al admin: `ImageGalleryEditor` sube a Supabase Storage, galería visual con drag-to-reorder, hasta 5 fotos por producto
+- Formulario admin de producto con galería, videos, descripción, specs completas y archivos descargables
+- Deploy en Vercel funcionando en forcom.tech
 
 ### Pendiente para MVP
-- Imágenes reales de los 15 productos (todos son placeholders)
-- Backend del formulario (`/api/contact` + servicio de email — Brevo o Resend)
-- Rutas dinámicas para detalle de producto (`/productos/[categoria]/[modelo]`)
-- WhatsApp FAB con número real (+54 11 XXXX-XXXX)
+- Cargar imágenes reales y specs de los 15 productos en el admin
+- Backend del formulario de contacto (`RESEND_API_KEY` pendiente de configurar en Vercel)
+- **Actualizar número de WhatsApp real** en `/admin/empresa` (actualmente placeholder)
 - Analytics (GA4)
 - SEO: sitemap.xml, robots.txt, schema markup (Product JSON-LD)
-- Favicon con logo FORCOM real
-- Deploy en Vercel + configurar dominio forcom.com.ar
+- Validar DNS de dev.forcom.tech en Vercel (quedó en "Invalid Configuration")
 
 ### Pendiente post-MVP
 - Blog `/blog`
 - Páginas de soluciones por industria `/soluciones/[industria]`
 - Sistema de cotización / carrito
 - Testimonios y logos de clientes
-
-## Convenciones
-
-- Todos los componentes tienen `"use client"` (site interactivo)
-- Clases Tailwind 4 — algunas sintaxis difieren de v3, leer docs en `node_modules/next/dist/docs/`
-- Colores custom via CSS variables en `globals.css`, Tailwind los expone como `text-forcom-red`, `bg-forcom-card`, etc.
-- Sin librerías de animación — todo CSS + IntersectionObserver nativo
-- El scroll reveal usa la clase `.reveal` que se activa con `.visible` via JS
+- Eliminación de imágenes del bucket al quitar foto de galería en el admin
 
 ## Artefactos generados
 
-- `../FORCOM_preview.html` — preview standalone del sitio (no requiere servidor, abrí en el navegador para compartir con el cliente)
+- `../FORCOM_preview.html` — preview standalone del sitio
 - `../design-audit/` — screenshots del design review con gstack
+- `../FORCOM_Catalogo_1Q_2026.md` — catálogo de productos con specs y tablas (fuente para poblar el campo `full_specs` de cada producto)
