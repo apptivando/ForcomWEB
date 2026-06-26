@@ -5,7 +5,7 @@ import type { CompanyInfo } from "@/lib/types";
 const DEFAULT_INFO: CompanyInfo = {
   id: 1,
   whatsapp: "5491100000000",
-  email: "ventas@forcom.com.ar",
+  email: "ventas@forcom.tech",
   phone: "+54 11 xxxx-xxxx",
   schedule: "Lun — Vie, 9:00 a 18:00",
   updated_at: new Date().toISOString(),

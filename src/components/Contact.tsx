@@ -9,7 +9,7 @@ interface ContactInfo {
 }
 
 export default function Contact({ info }: { info?: ContactInfo }) {
-  const email = info?.email ?? "ventas@forcom.com.ar";
+  const email = info?.email ?? "ventas@forcom.tech";
   const phone = info?.phone ?? "+54 11 xxxx-xxxx";
   const schedule = info?.schedule ?? "Lun — Vie, 9:00 a 18:00";
   const [status, setStatus] = useState<"idle" | "sending" | "success" | "error">("idle");

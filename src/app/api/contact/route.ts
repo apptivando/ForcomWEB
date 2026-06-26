@@ -40,18 +40,33 @@ export async function POST(request: Request) {
     try {
       const { Resend } = await import("resend");
       const resend = new Resend(process.env.RESEND_API_KEY);
+      const from = `FORCOM Web <${process.env.RESEND_FROM_EMAIL ?? "noreply@forcom.tech"}>`;
+
       await resend.emails.send({
-        from: `FORCOM Web <${process.env.RESEND_FROM_EMAIL ?? "noreply@forcom.com.ar"}>`,
-        to: process.env.RESEND_TO_EMAIL ?? "ventas@forcom.com.ar",
+        from,
+        to: process.env.RESEND_TO_EMAIL ?? "ventas@forcom.tech",
         subject: `Nuevo lead: ${name} — ${company ?? "sin empresa"}`,
         html: `
-          <h2>Nuevo mensaje desde forcom.com.ar</h2>
+          <h2>Nuevo mensaje desde forcom.tech</h2>
           <p><strong>Nombre:</strong> ${name}</p>
           <p><strong>Empresa:</strong> ${company ?? "—"}</p>
           <p><strong>Email:</strong> ${email}</p>
           <p><strong>Industria:</strong> ${industry ?? "—"}</p>
           <hr/>
           <p>${message.replace(/\n/g, "<br/>")}</p>
+        `,
+      });
+
+      await resend.emails.send({
+        from,
+        to: email,
+        subject: "Recibimos tu consulta — FORCOM",
+        html: `
+          <p>Hola ${name},</p>
+          <p>Gracias por contactarte con FORCOM. Recibimos tu mensaje y nos pondremos en contacto a la brevedad.</p>
+          <hr/>
+          <p style="color:#888;font-size:13px;">Este es un mensaje automático, por favor no respondas a este correo.<br/>
+          Para consultas urgentes escribinos a <a href="mailto:ventas@forcom.tech">ventas@forcom.tech</a></p>
         `,
       });
     } catch (emailError) {

@@ -136,12 +136,12 @@ npm run dev
 - Deploy en Vercel funcionando en forcom.tech
 
 ### Pendiente para MVP
-- Cargar imágenes reales y specs de los 15 productos en el admin
+- Cargar fotos, descripción, specs y documentos de los 20 productos en el admin (ver `../TAREAS_PENDIENTES.md`)
 - Backend del formulario de contacto (`RESEND_API_KEY` pendiente de configurar en Vercel)
 - **Actualizar número de WhatsApp real** en `/admin/empresa` (actualmente placeholder)
 - Analytics (GA4)
-- SEO: sitemap.xml, robots.txt, schema markup (Product JSON-LD)
-- Validar DNS de dev.forcom.tech en Vercel (quedó en "Invalid Configuration")
+- SEO: sitemap.xml (`app/sitemap.ts`), robots.txt (`app/robots.ts`), schema markup Product JSON-LD
+- Validar DNS de dev.forcom.tech en Vercel (estado: "Invalid Configuration")
 
 ### Pendiente post-MVP
 - Blog `/blog`
@@ -149,9 +149,12 @@ npm run dev
 - Sistema de cotización / carrito
 - Testimonios y logos de clientes
 - Eliminación de imágenes del bucket al quitar foto de galería en el admin
+- Páginas de producto individuales con URL propia (para SEO)
+- Google Business Profile
 
 ## Artefactos generados
 
 - `../FORCOM_preview.html` — preview standalone del sitio
 - `../design-audit/` — screenshots del design review con gstack
-- `../FORCOM_Catalogo_1Q_2026.md` — catálogo de productos con specs y tablas (fuente para poblar el campo `full_specs` de cada producto)
+- `../FORCOM_Catalogo_1Q_2026.md` — catálogo de 20 productos con specs y tablas (fuente para poblar `full_specs` en el admin)
+- `../TAREAS_PENDIENTES.md` — listado completo de 95 tareas pendientes (MVP + post-MVP + contenido por producto), listo para importar a Notion
