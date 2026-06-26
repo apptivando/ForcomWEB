@@ -59,6 +59,15 @@ export interface HeroSlide {
   updated_at: string;
 }
 
+export interface CompanyInfo {
+  id: number;
+  whatsapp: string;
+  email: string;
+  phone: string;
+  schedule: string;
+  updated_at: string;
+}
+
 export interface ContactMessage {
   id: string;
   name: string;

@@ -2,7 +2,16 @@
 
 import { useState, type FormEvent } from "react";
 
-export default function Contact() {
+interface ContactInfo {
+  email: string;
+  phone: string;
+  schedule: string;
+}
+
+export default function Contact({ info }: { info?: ContactInfo }) {
+  const email = info?.email ?? "ventas@forcom.tech";
+  const phone = info?.phone ?? "+54 11 xxxx-xxxx";
+  const schedule = info?.schedule ?? "Lun — Vie, 9:00 a 18:00";
   const [status, setStatus] = useState<"idle" | "sending" | "success" | "error">("idle");
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
@@ -47,7 +56,7 @@ export default function Contact() {
               </span>
             </div>
             <h2 className="font-display font-extrabold text-4xl sm:text-5xl lg:text-6xl tracking-tight text-white mb-6 red-line">
-              Consultá por
+              Consulte por
               <br />
               su solución
             </h2>
@@ -65,7 +74,7 @@ export default function Contact() {
                 </div>
                 <div>
                   <p className="font-display font-semibold text-xs tracking-[0.15em] uppercase text-forcom-gray mb-0.5">Email</p>
-                  <p className="text-white">ventas@forcom.com.ar</p>
+                  <p className="text-white">{email}</p>
                 </div>
               </div>
               <div className="flex items-center gap-4">
@@ -76,7 +85,7 @@ export default function Contact() {
                 </div>
                 <div>
                   <p className="font-display font-semibold text-xs tracking-[0.15em] uppercase text-forcom-gray mb-0.5">Teléfono</p>
-                  <p className="text-white">+54 11 xxxx-xxxx</p>
+                  <p className="text-white">{phone}</p>
                 </div>
               </div>
               <div className="flex items-center gap-4">
@@ -87,7 +96,7 @@ export default function Contact() {
                 </div>
                 <div>
                   <p className="font-display font-semibold text-xs tracking-[0.15em] uppercase text-forcom-gray mb-0.5">Horario</p>
-                  <p className="text-white">Lun — Vie, 9:00 a 18:00</p>
+                  <p className="text-white">{schedule}</p>
                 </div>
               </div>
             </div>

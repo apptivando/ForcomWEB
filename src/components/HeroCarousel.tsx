@@ -131,7 +131,7 @@ export default function HeroCarousel({ slides: dbSlides }: { slides?: HeroSlide[
 
   return (
     <section
-      className="relative min-h-screen flex items-center overflow-hidden bg-forcom-black grid-bg"
+      className="relative h-screen flex items-center overflow-hidden bg-forcom-black grid-bg"
       onMouseEnter={pause}
       onMouseLeave={resume}
     >
@@ -143,7 +143,8 @@ export default function HeroCarousel({ slides: dbSlides }: { slides?: HeroSlide[
         <div className="absolute top-1/2 right-1/4 w-1 h-32 bg-gradient-to-b from-forcom-red/20 to-transparent" />
       </div>
 
-      <div className="relative z-10 max-w-7xl mx-auto px-6 lg:px-8 w-full pt-24 pb-20 lg:pt-36">
+      {/* Main content — centered vertically, bottom-padded to clear the nav bar */}
+      <div className="relative z-10 max-w-7xl mx-auto px-6 lg:px-8 w-full pt-24 pb-16 lg:pt-36">
         <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
 
           {/* Left — Text */}
@@ -192,7 +193,7 @@ export default function HeroCarousel({ slides: dbSlides }: { slides?: HeroSlide[
               </a>
             </div>
 
-            <div className="mt-14 flex flex-wrap items-center gap-x-6 gap-y-2 text-forcom-gray text-sm">
+            <div className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-2 text-forcom-gray text-sm">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 bg-green-500 rounded-full" />
                 <span>Soporte técnico local</span>
@@ -230,9 +231,11 @@ export default function HeroCarousel({ slides: dbSlides }: { slides?: HeroSlide[
             </div>
           )}
         </div>
+      </div>
 
-        {/* Navigation */}
-        <div className="flex items-center gap-3 mt-14">
+      {/* Navigation — absolutely pinned to bottom so it's always visible */}
+      <div className="absolute bottom-6 left-0 right-0 z-10">
+        <div className="max-w-7xl mx-auto px-6 lg:px-8 flex items-center gap-3">
           {slides.map((_, i) => (
             <button
               key={i}

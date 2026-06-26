@@ -7,13 +7,15 @@ import Industries from "@/components/Industries";
 import Contact from "@/components/Contact";
 import Footer from "@/components/Footer";
 import ScrollReveal from "@/components/ScrollReveal";
+import WhatsAppFAB from "@/components/WhatsAppFAB";
 
 export default async function Home() {
   const supabase = await createClient();
 
-  const [{ data: heroSlides }, { data: products }] = await Promise.all([
+  const [{ data: heroSlides }, { data: products }, { data: companyInfo }] = await Promise.all([
     supabase.from("hero_slides").select("*").eq("active", true).order("order_index"),
     supabase.from("products").select("*").eq("active", true).order("order_index"),
+    supabase.from("company_info").select("*").eq("id", 1).single(),
   ]);
 
   return (
@@ -25,9 +27,10 @@ export default async function Home() {
         <ProductCards products={products} />
         <WhyForcom />
         <Industries />
-        <Contact />
+        <Contact info={companyInfo ?? undefined} />
       </main>
       <Footer />
+      <WhatsAppFAB number={companyInfo?.whatsapp} />
     </>
   );
 }
