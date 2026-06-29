@@ -133,11 +133,12 @@ npm run dev
 - Modal lateral "Ver especificaciones" (`ProductSpecsModal.tsx`): carrusel de imágenes, descripción, tabla de specs (parser de markdown), videos y archivos descargables
 - Upload de imágenes al admin: `ImageGalleryEditor` sube a Supabase Storage, galería visual con drag-to-reorder, hasta 5 fotos por producto
 - Formulario admin de producto con galería, videos, descripción, specs completas y archivos descargables
+- Formulario de contacto activo: guarda en CRM + notificación interna + auto-reply al cliente vía Resend
+- `description` y `full_specs` de los 18 productos cargados desde `../FORCOM_Catalogo_1Q_2026.md` vía script de migración
 - Deploy en Vercel funcionando en forcom.tech
 
 ### Pendiente para MVP
-- Cargar fotos, descripción, specs y documentos de los 20 productos en el admin (ver `../TAREAS_PENDIENTES.md`)
-- Backend del formulario de contacto (`RESEND_API_KEY` pendiente de configurar en Vercel)
+- Cargar **fotos** de los productos en el admin (specs y descripción ya están cargadas)
 - **Actualizar número de WhatsApp real** en `/admin/empresa` (actualmente placeholder)
 - Analytics (GA4)
 - SEO: sitemap.xml (`app/sitemap.ts`), robots.txt (`app/robots.ts`), schema markup Product JSON-LD
@@ -152,9 +153,22 @@ npm run dev
 - Páginas de producto individuales con URL propia (para SEO)
 - Google Business Profile
 
+## Scripts utilitarios
+
+```
+scripts/
+├── fetch-products.mjs   — lista id, model, section, category de todos los productos en Supabase
+└── import-catalog.mjs   — importa description y full_specs desde FORCOM_Catalogo_1Q_2026.md
+                           Requiere SUPABASE_SERVICE_KEY en .env.local (service_role key, bypasea RLS)
+                           Dry-run: node scripts/import-catalog.mjs
+                           Carga:   node scripts/import-catalog.mjs --update
+```
+
+La `SUPABASE_SERVICE_KEY` solo va en `.env.local` — nunca a Vercel ni al cliente.
+
 ## Artefactos generados
 
 - `../FORCOM_preview.html` — preview standalone del sitio
 - `../design-audit/` — screenshots del design review con gstack
-- `../FORCOM_Catalogo_1Q_2026.md` — catálogo de 20 productos con specs y tablas (fuente para poblar `full_specs` en el admin)
+- `../FORCOM_Catalogo_1Q_2026.md` — catálogo de 20 productos con specs y tablas
 - `../TAREAS_PENDIENTES.md` — listado completo de 95 tareas pendientes (MVP + post-MVP + contenido por producto), listo para importar a Notion
