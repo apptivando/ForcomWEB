@@ -18,8 +18,37 @@ export default async function Home() {
     supabase.from("company_info").select("*").eq("id", 1).single(),
   ]);
 
+  const productListJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name: "Catálogo de productos FORCOM",
+    description: "Hardware POS y tecnología retail para comercios en Argentina",
+    itemListElement: (products ?? []).map((p, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      item: {
+        "@type": "Product",
+        name: p.model,
+        category: p.category,
+        description: p.description ?? undefined,
+        image: p.image_url ?? undefined,
+        brand: { "@type": "Brand", name: "FORCOM" },
+        offers: {
+          "@type": "Offer",
+          availability: "https://schema.org/InStock",
+          priceCurrency: "ARS",
+          seller: { "@type": "Organization", name: "FORCOM" },
+        },
+      },
+    })),
+  };
+
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(productListJsonLd) }}
+      />
       <ScrollReveal />
       <Navbar />
       <main>
