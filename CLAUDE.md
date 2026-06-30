@@ -121,12 +121,13 @@ npm run dev
 - **Auth middleware** está en `src/lib/supabase/middleware-proxy.ts`. NO nombrarlo `middleware.ts` ni ponerlo en raíz de `src/`.
 - **Logo** usa `next/image` con PNG (`/images/brand/forcom-logo.png`). No volver a SVG con texto — el ® desaparecía y perdía calidad.
 - **HeroCarousel usa `h-screen` (no `min-h-screen`)** — con `min-h-screen` la sección se alargaba en algunos slides y la navegación quedaba fuera del viewport. La navegación está posicionada `absolute bottom-6` para que siempre sea visible. No volver a flujo normal ni a `min-h-screen`.
+- **Hero mobile layout (30/06/2026)** — `section` usa `items-start md:items-center`: en mobile el contenido arranca justo bajo la navbar (elimina el dead space superior), en desktop queda centrado verticalmente. Imagen: `w-80 h-80` fijo en mobile, `md:w-full md:h-auto md:aspect-square` en desktop. Las decoraciones (esquinas rojas, borde rotado, badge de producto) son visibles en todos los tamaños — no agregar `hidden md:block` a esos elementos. Trust badges: `flex justify-center sm:justify-start text-xs sm:text-sm` (visibles en mobile, centrados). Scroll indicator `sm:hidden` al fondo del texto. Título: `text-center sm:text-left`.
 
 ## Estado actual (junio 2026)
 
 ### Hecho
 - Homepage completa con 8 secciones, dark theme industrial, animaciones scroll reveal
-- Responsive mobile/tablet/desktop
+- Responsive mobile/tablet/desktop — Hero con imagen visible en mobile, decoraciones y trust badges presentes en todos los tamaños
 - Admin panel completo: CRM, productos, hero slides, info empresa
 - Supabase: productos, hero, CRM y datos de empresa desde DB
 - WhatsApp FAB con número dinámico desde `company_info`
