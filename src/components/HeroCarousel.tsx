@@ -131,7 +131,7 @@ export default function HeroCarousel({ slides: dbSlides }: { slides?: HeroSlide[
 
   return (
     <section
-      className="relative h-screen flex items-center overflow-hidden bg-forcom-black grid-bg"
+      className="relative h-screen flex items-start md:items-center overflow-hidden bg-forcom-black grid-bg"
       onMouseEnter={pause}
       onMouseLeave={resume}
     >
@@ -144,41 +144,39 @@ export default function HeroCarousel({ slides: dbSlides }: { slides?: HeroSlide[
       </div>
 
       {/* Main content — centered vertically, bottom-padded to clear the nav bar */}
-      <div className="relative z-10 max-w-7xl mx-auto px-6 lg:px-8 w-full pt-24 pb-16 lg:pt-36">
-        <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+      <div className="relative z-10 max-w-7xl mx-auto px-6 lg:px-8 w-full pt-20 md:pt-24 lg:pt-36 pb-16">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-12 lg:gap-16 items-center">
 
           {/* Left — Text */}
           <div
-            className="max-w-xl"
+            className="order-2 md:order-1 max-w-xl"
             style={{
               opacity: visible ? 1 : 0,
               transform: visible ? "translateY(0)" : "translateY(20px)",
               transition: `opacity ${FADE_DURATION}ms ease-in-out, transform ${FADE_DURATION}ms ease-in-out`,
             }}
           >
-            <div className="flex items-center gap-3 mb-6">
+            <div className="hidden sm:flex items-center gap-3 mb-4 md:mb-6">
               <div className="w-8 h-[2px] bg-forcom-red flex-shrink-0" />
               <span className="font-display font-semibold text-xs tracking-[0.3em] uppercase text-forcom-red">
                 {slide.badge_text}
               </span>
             </div>
 
-            <h1 className="font-display font-extrabold text-5xl sm:text-6xl lg:text-7xl leading-[0.95] tracking-tight text-white mb-6">
-              {slide.headline_line1}
-              <br />
-              {slide.headline_line2}
-              <br />
-              <span className="text-forcom-red">{slide.headline_accent}</span>
+            <h1 className="font-display font-extrabold text-3xl sm:text-4xl md:text-5xl lg:text-7xl leading-[0.95] tracking-tight text-white mt-3 mb-4 sm:mt-0 md:mb-6 text-center sm:text-left">
+              <span className="sm:block">{slide.headline_line1}{" "}</span>
+              <span className="sm:block">{slide.headline_line2}{" "}</span>
+              <span className="sm:block text-forcom-red">{slide.headline_accent}</span>
             </h1>
 
-            <p className="text-forcom-gray-light text-lg lg:text-xl leading-relaxed mb-10 max-w-md">
+            <p className="hidden sm:block text-forcom-gray-light text-base md:text-lg lg:text-xl leading-relaxed mb-5 md:mb-10 max-w-md">
               {slide.subheadline}
             </p>
 
-            <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex flex-col sm:flex-row gap-3 md:gap-4">
               <a
                 href={ctaHref}
-                className="inline-flex items-center justify-center px-8 py-4 bg-forcom-red text-white font-display font-bold text-sm tracking-widest uppercase rounded-sm hover:bg-forcom-red-dark transition-colors group"
+                className="inline-flex items-center justify-center px-5 py-3 md:px-8 md:py-4 bg-forcom-red text-white font-display font-bold text-sm tracking-widest uppercase rounded-sm hover:bg-forcom-red-dark transition-colors group"
               >
                 {slide.cta_label}
                 <svg className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
@@ -187,43 +185,54 @@ export default function HeroCarousel({ slides: dbSlides }: { slides?: HeroSlide[
               </a>
               <a
                 href="#contacto"
-                className="inline-flex items-center justify-center px-8 py-4 border border-forcom-border text-white font-display font-semibold text-sm tracking-widest uppercase rounded-sm hover:border-forcom-red hover:text-forcom-red transition-colors"
+                className="inline-flex items-center justify-center px-5 py-3 md:px-8 md:py-4 border border-forcom-border text-white font-display font-semibold text-sm tracking-widest uppercase rounded-sm hover:border-forcom-red hover:text-forcom-red transition-colors"
               >
                 Contactar ventas
               </a>
             </div>
 
-            <div className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-2 text-forcom-gray text-sm">
+            <div className="mt-5 flex flex-wrap items-center justify-center sm:justify-start gap-x-4 gap-y-2 text-forcom-gray text-xs sm:text-sm md:mt-6">
               <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-green-500 rounded-full" />
+                <div className="w-2 h-2 bg-green-500 rounded-full flex-shrink-0" />
                 <span>Soporte técnico local</span>
               </div>
-              <div className="w-px h-4 bg-forcom-border hidden sm:block" />
+              <div className="w-px h-3 bg-forcom-border hidden sm:block" />
               <span>Garantía directa</span>
-              <div className="w-px h-4 bg-forcom-border hidden sm:block" />
+              <div className="w-px h-3 bg-forcom-border hidden sm:block" />
               <span>Envío a todo el país</span>
             </div>
+
+            <a
+              href="#productos"
+              className="sm:hidden mt-6 flex flex-col items-center gap-1.5 text-forcom-gray/50 hover:text-forcom-gray transition-colors"
+              aria-label="Ver productos"
+            >
+              <span className="font-display text-[10px] tracking-[0.25em] uppercase">Ver productos</span>
+              <svg className="w-4 h-4 animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </a>
           </div>
 
           {/* Right — Product image */}
           {slide.image_url && (
             <div
-              className="hidden lg:flex items-center justify-center"
+              className="order-1 md:order-2 flex items-center justify-center"
               style={{
                 opacity: visible ? 1 : 0,
                 transform: visible ? "scale(1)" : "scale(0.97)",
                 transition: `opacity ${FADE_DURATION}ms ease-in-out, transform ${FADE_DURATION}ms ease-in-out`,
               }}
             >
-              <div className="relative w-full max-w-lg aspect-square">
+              <div className="relative w-80 h-80 md:w-full md:h-auto md:max-w-lg md:aspect-square mx-auto">
                 <div className="absolute inset-0 border border-forcom-border/40 rounded-sm rotate-3" />
-                <div className="absolute inset-4 bg-gradient-to-br from-forcom-card to-forcom-dark rounded-sm border border-forcom-border/60 overflow-hidden flex items-center justify-center p-8">
+                <div className="absolute inset-2 md:inset-4 bg-gradient-to-br from-forcom-card to-forcom-dark rounded-sm border border-forcom-border/60 overflow-hidden flex items-center justify-center p-4 md:p-8">
                   <img src={slide.image_url} alt={slide.image_alt} className="w-full h-full object-contain drop-shadow-2xl" />
                 </div>
                 <div className="absolute -top-2 -left-2 w-6 h-6 border-t-2 border-l-2 border-forcom-red" />
                 <div className="absolute -bottom-2 -right-2 w-6 h-6 border-b-2 border-r-2 border-forcom-red" />
                 {slide.image_tag && (
-                  <div className="absolute top-8 -right-3 px-3 py-1.5 bg-forcom-red/10 border border-forcom-red/30 rounded-sm text-xs font-display font-semibold text-forcom-red tracking-wider whitespace-nowrap">
+                  <div className="absolute top-6 -right-3 px-3 py-1.5 bg-forcom-red/10 border border-forcom-red/30 rounded-sm text-xs font-display font-semibold text-forcom-red tracking-wider whitespace-nowrap">
                     {slide.image_tag}
                   </div>
                 )}
