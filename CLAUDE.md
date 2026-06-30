@@ -137,12 +137,13 @@ npm run dev
 - Formulario de contacto activo: guarda en CRM + notificación interna + auto-reply al cliente vía Resend
 - `description` y `full_specs` de los 18 productos cargados desde `../FORCOM_Catalogo_1Q_2026.md` vía script de migración
 - Deploy en Vercel funcionando en forcom.tech
+- **GA4** activo en producción (`G-RG61BCBYT0`) via `NEXT_PUBLIC_GA_ID` + `GoogleAnalytics.tsx` (next/script afterInteractive)
+- **SEO completo (30/06/2026):** `app/sitemap.ts` (genera `/sitemap.xml`), `app/robots.ts`, JSON-LD `Organization` en layout.tsx, JSON-LD `ItemList` de productos en page.tsx, Open Graph tags
+- **Google Search Console** verificado (etiqueta HTML) + sitemap enviado y correcto (1 página)
+- **Número de WhatsApp real** cargado en `/admin/empresa`
 
 ### Pendiente para MVP
 - Cargar **fotos** de los productos en el admin (specs y descripción ya están cargadas)
-- **Actualizar número de WhatsApp real** en `/admin/empresa` (actualmente placeholder)
-- Analytics (GA4)
-- SEO: sitemap.xml (`app/sitemap.ts`), robots.txt (`app/robots.ts`), schema markup Product JSON-LD
 - Validar DNS de dev.forcom.tech en Vercel (estado: "Invalid Configuration")
 
 ### Pendiente post-MVP
