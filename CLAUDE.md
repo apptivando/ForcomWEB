@@ -141,10 +141,12 @@ npm run dev
 - **SEO completo (30/06/2026):** `app/sitemap.ts` (genera `/sitemap.xml`), `app/robots.ts`, JSON-LD `Organization` en layout.tsx, JSON-LD `ItemList` de productos en page.tsx, Open Graph tags
 - **Google Search Console** verificado (etiqueta HTML) + sitemap enviado y correcto (1 página)
 - **Número de WhatsApp real** cargado en `/admin/empresa`
+- **Fotos de los 18 productos cargadas (03/07/2026)** vía `scripts/bulk-upload-images.js`, a partir de `../FORCOM 800x600/` (carpetas por producto con hasta 5 fotos c/u, provistas por el cliente).
+- **DNS de dev.forcom.tech validado en Vercel.**
+- **Producto "T5 Smart-POS" renombrado a "A5 Smart-POS"** (mismo id `aa681863`) — las fotos reales del equipo estaban en la carpeta `POS A5`, no en `POS T5 doble` (esta última quedó sin mapear, era de una variante de doble pantalla no cargada en la DB). Fotos del A5 cargadas (08/07/2026) vía `bulk-upload-images.js "POS A5" --commit` (agregado soporte de filtro por carpeta al script).
 
 ### Pendiente para MVP
-- Cargar **fotos** de los productos en el admin (specs y descripción ya están cargadas)
-- Validar DNS de dev.forcom.tech en Vercel (estado: "Invalid Configuration")
+_(ninguno — bloque MVP técnico completo)_
 
 ### Pendiente post-MVP
 - Blog `/blog`
@@ -159,11 +161,26 @@ npm run dev
 
 ```
 scripts/
-├── fetch-products.mjs   — lista id, model, section, category de todos los productos en Supabase
-└── import-catalog.mjs   — importa description y full_specs desde FORCOM_Catalogo_1Q_2026.md
-                           Requiere SUPABASE_SERVICE_KEY en .env.local (service_role key, bypasea RLS)
-                           Dry-run: node scripts/import-catalog.mjs
-                           Carga:   node scripts/import-catalog.mjs --update
+├── fetch-products.mjs      — lista id, model, section, category de todos los productos en Supabase
+├── import-catalog.mjs      — importa description y full_specs desde FORCOM_Catalogo_1Q_2026.md
+│                             Requiere SUPABASE_SERVICE_KEY en .env.local (service_role key, bypasea RLS)
+│                             Dry-run: node scripts/import-catalog.mjs
+│                             Carga:   node scripts/import-catalog.mjs --update
+└── bulk-upload-images.js   — carga masiva de fotos: lee carpetas en `../FORCOM 800x600/<carpeta>`,
+                              mapea carpeta→producto por un diccionario FOLDER_TO_MODEL hardcodeado
+                              en el script, sube hasta 5 fotos (primeras en orden alfabético) a Storage
+                              con paths `products/{slug-modelo}-{01..05}.png` (sufijo numérico, no el
+                              nombre original — varios archivos de origen difieren solo en espacios/puntos
+                              finales y colisionaban en el mismo path al pasarlos por slugify).
+                              Actualiza `images` + `image_url` del producto (reemplaza, no agrega).
+                              Corre todas las carpetas mapeadas por default; acepta un nombre de
+                              carpeta como argumento posicional para limitar a una sola (útil para
+                              recargar un producto puntual sin re-subir el resto).
+                              Dry-run:        node scripts/bulk-upload-images.js
+                              Dry-run 1 carpeta: node scripts/bulk-upload-images.js "POS A5"
+                              Carga:           node scripts/bulk-upload-images.js --commit
+                              Carga 1 carpeta: node scripts/bulk-upload-images.js "POS A5" --commit
+                              Si llegan carpetas nuevas de fotos, agregar sus entradas a FOLDER_TO_MODEL.
 ```
 
 La `SUPABASE_SERVICE_KEY` solo va en `.env.local` — nunca a Vercel ni al cliente.
