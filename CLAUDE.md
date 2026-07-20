@@ -10,6 +10,20 @@ Sitio web B2B de presentación y generación de leads para FORCOM, distribuidor 
 **Fuentes:** Barlow Condensed (display/headings) + DM Sans (body)  
 **Dominio:** forcom.tech (en producción)
 
+## Reglas de trabajo
+
+### Cómo armar un plan
+
+Todo plan que le presente al usuario debe tener esta estructura, en este orden:
+
+1. **Cómo funcionaría** — explicar en términos simples el funcionamiento resultante, sin jerga de implementación.
+2. **Tareas del usuario** — qué tiene que hacer el usuario (ej. crear o modificar tablas/políticas en Supabase, cargar variables de entorno, crear cuentas de terceros), como pasos concretos y accionables.
+3. **Tareas propias** — qué voy a hacer yo; acá sí mostrar los cambios de archivos y código (diffs, snippets, nombres de archivo).
+
+### Al terminar una tarea
+
+Verificar que el build salga limpio (`npm run build`) antes de dar la tarea por terminada. Si el build sale limpio, hacer push: a `develop` si esa rama existe en el repo, si no, directo a `main`.
+
 ## Decisión de plataforma
 
 Se comenzó con un plan en WordPress (ver `../PLANCMS.md`) pero se migró a Next.js. El PLANCMS.md es un documento desactualizado — ignorarlo.
@@ -51,8 +65,8 @@ src/
 │   ├── Navbar.tsx            — nav fijo, scroll effect, menú mobile
 │   ├── HeroCarousel.tsx      — carousel hero con slides dinámicos desde DB
 │   ├── ProductCategories.tsx — 6 category cards con hover
-│   ├── ProductCards.tsx      — grid de productos (DB) + trigger del modal
-│   ├── ProductSpecsModal.tsx — drawer lateral: carrusel, specs, videos, archivos
+│   ├── ProductCards.tsx      — grid de productos (DB), cada card linkea a /productos/[slug]
+│   ├── ProductDetails.tsx    — carrusel, specs (parser markdown), videos, archivos — usado en /productos/[slug]
 │   ├── WhyForcom.tsx         — 6 diferenciadores en grid 3x2
 │   ├── Industries.tsx        — 6 industrias verticales
 │   ├── Contact.tsx           — formulario con validación (datos desde company_info)
@@ -131,7 +145,7 @@ npm run dev
 - Admin panel completo: CRM, productos, hero slides, info empresa
 - Supabase: productos, hero, CRM y datos de empresa desde DB
 - WhatsApp FAB con número dinámico desde `company_info`
-- Modal lateral "Ver especificaciones" (`ProductSpecsModal.tsx`): carrusel de imágenes, descripción, tabla de specs (parser de markdown), videos y archivos descargables
+- Páginas de producto individuales con URL propia (20/07/2026): `/productos/[slug]` (server component) con metadata (title/description/OG), JSON-LD `Product`, breadcrumb, CTA WhatsApp con mensaje precargado y "Productos relacionados". El contenido de specs (carrusel de imágenes, descripción, tabla de specs vía parser de markdown, videos, archivos descargables) vive en `ProductDetails.tsx`, compartido — reemplaza al antiguo modal `ProductSpecsModal.tsx` (eliminado). El slug se genera automáticamente desde el modelo en `upsertProduct` (`admin/actions.ts`), con sufijo `-2`, `-3`... si hay choque. **Pendiente:** correr en Supabase la migración de la columna `slug` (al final de `supabase/schema.sql`) antes de que estas páginas sirvan datos reales — sin eso, `products.slug` no existe todavía en la DB de producción.
 - Upload de imágenes al admin: `ImageGalleryEditor` sube a Supabase Storage, galería visual con drag-to-reorder, hasta 5 fotos por producto
 - Formulario admin de producto con galería, videos, descripción, specs completas y archivos descargables
 - Formulario de contacto activo: guarda en CRM + notificación interna + auto-reply al cliente vía Resend
@@ -154,7 +168,6 @@ _(ninguno — bloque MVP técnico completo)_
 - Sistema de cotización / carrito
 - Testimonios y logos de clientes
 - Eliminación de imágenes del bucket al quitar foto de galería en el admin
-- Páginas de producto individuales con URL propia (para SEO)
 - Google Business Profile
 
 ## Scripts utilitarios

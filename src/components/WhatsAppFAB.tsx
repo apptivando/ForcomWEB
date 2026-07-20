@@ -1,6 +1,7 @@
 "use client";
 
-const DEFAULT_NUMBER = "5491100000000";
+export const DEFAULT_WHATSAPP_NUMBER = "5491100000000";
+const DEFAULT_NUMBER = DEFAULT_WHATSAPP_NUMBER;
 const WHATSAPP_MESSAGE = "Hola, me gustaría consultar sobre sus productos FORCOM.";
 
 export default function WhatsAppFAB({ number }: { number?: string }) {

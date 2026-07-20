@@ -22,6 +22,7 @@ export interface ProductFile {
 
 export interface Product {
   id: string;
+  slug: string;
   model: string;
   category: string;
   section: string;

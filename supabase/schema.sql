@@ -138,3 +138,17 @@ DROP POLICY IF EXISTS "Auth delete product images" ON storage.objects;
 CREATE POLICY "Auth delete product images"
   ON storage.objects FOR DELETE
   USING (bucket_id = 'product-images' AND auth.uid() IS NOT NULL);
+
+-- ============================================================
+-- Migración: slug para páginas de producto individuales (URL propia)
+-- Ejecutar en Supabase Dashboard > SQL Editor
+-- ============================================================
+
+ALTER TABLE products ADD COLUMN IF NOT EXISTS slug TEXT;
+
+UPDATE products SET slug = lower(
+  regexp_replace(regexp_replace(trim(model), '[^a-zA-Z0-9]+', '-', 'g'), '(^-|-$)', '', 'g')
+) WHERE slug IS NULL;
+
+ALTER TABLE products ALTER COLUMN slug SET NOT NULL;
+ALTER TABLE products ADD CONSTRAINT products_slug_unique UNIQUE (slug);

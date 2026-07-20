@@ -105,10 +105,38 @@ export async function reorderHeroSlides(items: Array<{ id: string; order_index: 
 
 // ─── Productos ───────────────────────────────────────────────────────────────
 
+function slugify(text: string): string {
+  return text
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+}
+
+async function uniqueSlug(
+  supabase: Awaited<ReturnType<typeof requireAuth>>,
+  model: string,
+  excludeId?: string
+): Promise<string> {
+  const base = slugify(model);
+  let slug = base;
+  let suffix = 2;
+  for (;;) {
+    let query = supabase.from("products").select("id").eq("slug", slug);
+    if (excludeId) query = query.neq("id", excludeId);
+    const { data: existing } = await query.maybeSingle();
+    if (!existing) return slug;
+    slug = `${base}-${suffix}`;
+    suffix++;
+  }
+}
+
 export async function upsertProduct(data: Partial<Product> & { model: string }) {
   const supabase = await requireAuth();
+  const slug = await uniqueSlug(supabase, data.model, data.id);
   const payload = {
     model: data.model,
+    slug,
     category: data.category ?? "",
     section: data.section ?? "",
     section_id: data.section_id ?? "",
