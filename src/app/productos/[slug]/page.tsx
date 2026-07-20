@@ -6,6 +6,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import WhatsAppFAB, { DEFAULT_WHATSAPP_NUMBER } from "@/components/WhatsAppFAB";
 import ProductDetails from "@/components/ProductDetails";
+import ProductGallery from "@/components/ProductGallery";
 import type { Product } from "@/lib/types";
 
 const BASE_URL = "https://www.forcom.tech";
@@ -75,6 +76,9 @@ export default async function ProductPage({
       .limit(4),
   ]);
 
+  const galleryImages = (product.images ?? []).filter(Boolean);
+  const allImages = galleryImages.length > 0 ? galleryImages : product.image_url ? [product.image_url] : [];
+
   const whatsappNumber = companyInfo?.whatsapp || DEFAULT_WHATSAPP_NUMBER;
   const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
     `Hola, me interesa el ${product.model}. ¿Podrían enviarme más información?`
@@ -117,11 +121,10 @@ export default async function ProductPage({
             <span className="text-white">{product.model}</span>
           </nav>
 
-          <div className="grid lg:grid-cols-[1fr,1fr] gap-10 lg:gap-16">
-            {/* Left: images + specs (ProductDetails) */}
-            <ProductDetails product={product} />
+          {/* Top: gallery + título/specs/CTA */}
+          <div className="grid lg:grid-cols-2 gap-10 lg:gap-16">
+            <ProductGallery images={allImages} alt={product.model} />
 
-            {/* Right: header + CTAs */}
             <div>
               <p className="font-display font-semibold text-xs tracking-[0.2em] uppercase text-forcom-red mb-2">
                 {product.category}
@@ -158,6 +161,11 @@ export default async function ProductPage({
                 </Link>
               </div>
             </div>
+          </div>
+
+          {/* Debajo: descripción, specs técnicas, videos y documentos — una sola columna */}
+          <div className="mt-16 lg:mt-20 max-w-3xl">
+            <ProductDetails product={product} />
           </div>
 
           {/* Related products */}
