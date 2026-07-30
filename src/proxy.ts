@@ -1,6 +1,13 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+// Next.js 16 renombró "Middleware" a "Proxy" — el archivo tiene que estar
+// acá (raíz de src/, nombre exacto proxy.ts) para que el framework lo
+// reconozca. Antes vivía en lib/supabase/middleware-proxy.ts, que nunca
+// se ejecutaba (era código muerto): /admin/* solo estaba protegido por
+// el chequeo de sesión en admin/(panel)/layout.tsx, que no corre para
+// rutas reescritas con rewrites() en next.config.ts (como /admin/crm,
+// proxeada al CRM de WhatsApp) — con eso quedaban sin gate de login.
 export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
 

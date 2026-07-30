@@ -16,7 +16,11 @@ FORCOM está reemplazando el CRM interno (`contact_messages` + `/admin/crm` + `C
 
 - **Plan maestro** (todas las tracks, checklist): `C:\Users\guill\.claude\plans\puedes-investigar-este-repositorio-peaceful-whistle.md`
 - **Repo y contexto técnico del CRM:** `c:\Apptivando\wacrm` (repo `apptivando/ForcomCRM`), ver su `CLAUDE.md`
-- **Estado:** el CRM ya está desplegado y probado de punta a punta con un canal de WhatsApp de pruebas (no el oficial de Meta todavía). Lo que falta de este lado (forcom-web) — Track C del plan — es: (1) agregar el rewrite `/admin/crm/*` → el deploy del CRM en `next.config.ts`, (2) agregar teléfono opcional a `Contact.tsx` y que `/api/contact/route.ts` avise al CRM cuando hay teléfono, (3) retirar `CRMInbox.tsx` y la ruta `/admin/crm` actual una vez que el proxy esté andando.
+- **Estado:** el CRM ya está desplegado y probado de punta a punta con un canal de WhatsApp de pruebas (no el oficial de Meta todavía).
+  - ✅ **Proxy `/admin/crm/*` → el deploy del CRM**, en `next.config.ts` (`rewrites()`, fase `beforeFiles` — tiene que ganarle a la página propia `/admin/crm` que todavía existe). URL del deploy configurable por `WACRM_DEPLOYMENT_URL` (default `https://forcom-crm.vercel.app`).
+  - ✅ **De paso se corrigió un bug de seguridad no relacionado**: el auth gate de `/admin/*` vivía en un archivo (`middleware-proxy.ts`) que nunca se ejecutaba — ver "Gotchas críticos". Sin corregirlo, el proxy nuevo hubiera quedado sin protección de login.
+  - ⬜ Agregar teléfono opcional a `Contact.tsx` y que `/api/contact/route.ts` avise al CRM cuando hay teléfono (necesita generar antes una API key en wacrm).
+  - ⬜ Retirar `CRMInbox.tsx` y la ruta `/admin/crm` actual (el `page.tsx` propio) una vez confirmado que el proxy anda bien en producción.
 
 ## Reglas de trabajo
 
@@ -57,6 +61,7 @@ Sin librerías de UI (no shadcn, no MUI) — componentes propios con Tailwind.
 
 ```
 src/
+├── proxy.ts                  — auth gate de /admin/* (ver Gotchas críticos)
 ├── app/
 │   ├── layout.tsx            — metadata, fuentes Google, favicon
 │   ├── page.tsx              — composición de secciones (server component)
@@ -134,13 +139,13 @@ npm run dev
 - **Vercel:** proyecto `forcom-web` bajo equipo `apptivando`
 - **Dominios:** `www.forcom.tech` → main · `dev.forcom.tech` → develop
 - **DNS:** gestionado en Donweb. Registros de mail (mx1, mail, autoconfig, autodiscover) son de correo externo — no tocar.
-- **Variables en Vercel:** `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `RESEND_API_KEY`, `RESEND_FROM_EMAIL` (`noreply@forcom.tech`), `RESEND_TO_EMAIL` (`ventas@forcom.tech`).
+- **Variables en Vercel:** `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `RESEND_API_KEY`, `RESEND_FROM_EMAIL` (`noreply@forcom.tech`), `RESEND_TO_EMAIL` (`ventas@forcom.tech`). Nueva, agregada 30/07/2026 para el proxy del CRM: `WACRM_DEPLOYMENT_URL` (opcional — sin ella usa el default `https://forcom-crm.vercel.app`, hardcodeado en `next.config.ts`; **falta cargarla en Vercel todavía**, hoy solo corrió en local).
 
 ### Gotchas críticos
 
 - **Framework Preset en Vercel** debe ser "Next.js" (no "Other") — si queda en Other, 404 en todas las rutas.
 - **`src/lib/supabase/server.ts`** tiene try-catch en `setAll` — requerido porque App Router no permite setear cookies desde Server Components; sin él falla en producción.
-- **Auth middleware** está en `src/lib/supabase/middleware-proxy.ts`. NO nombrarlo `middleware.ts` ni ponerlo en raíz de `src/`.
+- **El "middleware" de Next.js se llama "Proxy" desde la v16, y el archivo TIENE que llamarse `proxy.ts` en la raíz de `src/`** (`src/proxy.ts`) — es la única ubicación que reconoce el framework. Antes vivía en `src/lib/supabase/middleware-proxy.ts`, que **nunca se ejecutaba** (código muerto, nada lo importaba) — `/admin/*` solo estaba protegido por el chequeo de sesión en `admin/(panel)/layout.tsx`, que no corre para rutas reescritas con `rewrites()` (ver más abajo, el proxy del CRM de WhatsApp). Corregido el 30/07/2026. Si se agrega lógica nueva de auth/redirects a nivel de toda la app, va acá, no en un archivo con otro nombre.
 - **Logo** usa `next/image` con PNG (`/images/brand/forcom-logo.png`). No volver a SVG con texto — el ® desaparecía y perdía calidad.
 - **HeroCarousel usa `h-screen` (no `min-h-screen`)** — con `min-h-screen` la sección se alargaba en algunos slides y la navegación quedaba fuera del viewport. La navegación está posicionada `absolute bottom-6` para que siempre sea visible. No volver a flujo normal ni a `min-h-screen`.
 - **Hero mobile layout (30/06/2026)** — `section` usa `items-start md:items-center`: en mobile el contenido arranca justo bajo la navbar (elimina el dead space superior), en desktop queda centrado verticalmente. Imagen: `w-80 h-80` fijo en mobile, `md:w-full md:h-auto md:aspect-square` en desktop. Las decoraciones (esquinas rojas, borde rotado, badge de producto) son visibles en todos los tamaños — no agregar `hidden md:block` a esos elementos. Trust badges: `flex justify-center sm:justify-start text-xs sm:text-sm` (visibles en mobile, centrados). Scroll indicator `sm:hidden` al fondo del texto. Título: `text-center sm:text-left`.
