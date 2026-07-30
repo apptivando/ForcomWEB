@@ -1,6 +1,35 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
+/**
+ * Normaliza un teléfono argentino a E.164 con el "9" de celular
+ * (+549<área><número>), el formato que espera la API de WhatsApp.
+ * Heurística best-effort — no hay forma determinística de saber dónde
+ * termina el código de área sin una lista completa, así que cubre los
+ * formatos más comunes (con/sin +54, con/sin 0 nacional, con/sin 15
+ * local) y devuelve null si el resultado no tiene una longitud
+ * razonable. Un fallo acá no bloquea el envío del formulario — solo
+ * significa que no se crea la conversación de WhatsApp.
+ */
+function normalizeArgentinePhone(raw: string): string | null {
+  let d = raw.replace(/[^\d]/g, "");
+  if (!d) return null;
+
+  if (d.startsWith("54")) d = d.slice(2);
+  if (d.startsWith("9")) d = d.slice(1);
+  if (d.startsWith("0")) d = d.slice(1);
+
+  // "15" de celular local pegado después del código de área (ej. "011 15-1234-5678"
+  // ya despojado de 0/54/9 arriba queda "111512345678") — lo saca si encaja
+  // con área de 2-4 dígitos + 15 + número de 6-8 dígitos.
+  const withLocalPrefix = d.match(/^(\d{2,4})15(\d{6,8})$/);
+  if (withLocalPrefix) d = withLocalPrefix[1] + withLocalPrefix[2];
+
+  const e164 = `549${d}`;
+  if (e164.length < 12 || e164.length > 14) return null;
+  return `+${e164}`;
+}
+
 export async function POST(request: Request) {
   let body: unknown;
   try {
@@ -9,7 +38,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Payload inválido" }, { status: 400 });
   }
 
-  const { name, company, email, industry, message } = body as Record<string, string>;
+  const { name, company, email, phone, industry, message } = body as Record<string, string>;
 
   if (!name?.trim() || !email?.trim() || !message?.trim()) {
     return NextResponse.json({ error: "Faltan campos obligatorios" }, { status: 400 });
@@ -20,11 +49,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Email inválido" }, { status: 400 });
   }
 
+  const normalizedPhone = phone?.trim() ? normalizeArgentinePhone(phone) : null;
+
   const supabase = await createClient();
   const { error } = await supabase.from("contact_messages").insert({
     name: name.trim(),
     company: company?.trim() || null,
     email: email.trim().toLowerCase(),
+    phone: normalizedPhone,
     industry: industry || null,
     message: message.trim(),
     status: "nuevo",
@@ -51,6 +83,7 @@ export async function POST(request: Request) {
           <p><strong>Nombre:</strong> ${name}</p>
           <p><strong>Empresa:</strong> ${company ?? "—"}</p>
           <p><strong>Email:</strong> ${email}</p>
+          <p><strong>Teléfono:</strong> ${normalizedPhone ?? "—"}</p>
           <p><strong>Industria:</strong> ${industry ?? "—"}</p>
           <hr/>
           <p>${message.replace(/\n/g, "<br/>")}</p>
@@ -71,6 +104,42 @@ export async function POST(request: Request) {
       });
     } catch (emailError) {
       console.error("resend error (non-fatal):", emailError);
+    }
+  }
+
+  // Avisar al CRM de WhatsApp (opcional — solo si dejó teléfono y las
+  // variables de entorno están configuradas). No bloqueante: si wacrm
+  // está caído o falla, el lead ya quedó guardado arriba y el usuario
+  // igual ve éxito.
+  if (normalizedPhone && process.env.WACRM_API_URL && process.env.WACRM_API_KEY) {
+    try {
+      const headers = {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.WACRM_API_KEY}`,
+      };
+
+      await fetch(`${process.env.WACRM_API_URL}/api/v1/contacts`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          phone: normalizedPhone,
+          name: name.trim(),
+        }),
+      });
+
+      const industryLabel = industry ? `\nIndustria: ${industry}` : "";
+      const companyLabel = company?.trim() ? `\nEmpresa: ${company.trim()}` : "";
+      await fetch(`${process.env.WACRM_API_URL}/api/v1/messages`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          to: normalizedPhone,
+          type: "text",
+          text: `Nuevo lead desde forcom.tech${companyLabel}${industryLabel}\n\n${message.trim()}`,
+        }),
+      });
+    } catch (wacrmError) {
+      console.error("wacrm notify error (non-fatal):", wacrmError);
     }
   }
 

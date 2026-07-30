@@ -74,6 +74,7 @@ export interface ContactMessage {
   name: string;
   company: string | null;
   email: string;
+  phone: string | null;
   industry: string | null;
   message: string;
   status: "nuevo" | "leido" | "contactado";

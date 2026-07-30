@@ -23,6 +23,7 @@ export default function Contact({ info }: { info?: ContactInfo }) {
       name: (form.elements.namedItem("name") as HTMLInputElement).value,
       company: (form.elements.namedItem("company") as HTMLInputElement).value,
       email: (form.elements.namedItem("email") as HTMLInputElement).value,
+      phone: (form.elements.namedItem("phone") as HTMLInputElement).value,
       industry: (form.elements.namedItem("industry") as HTMLSelectElement).value,
       message: (form.elements.namedItem("message") as HTMLTextAreaElement).value,
     };
@@ -136,6 +137,14 @@ export default function Contact({ info }: { info?: ContactInfo }) {
                       Email
                     </label>
                     <input id="contact-email" name="email" type="email" required className="w-full bg-forcom-black border border-forcom-border rounded-sm px-4 py-3 text-white placeholder:text-forcom-gray/50 focus:border-forcom-red focus:outline-none transition-colors" placeholder="nombre@empresa.com" />
+                  </div>
+
+                  <div>
+                    <label htmlFor="contact-phone" className="block font-display font-semibold text-xs tracking-[0.15em] uppercase text-forcom-gray mb-2">
+                      Teléfono (WhatsApp) <span className="normal-case text-forcom-gray/60">— opcional</span>
+                    </label>
+                    <input id="contact-phone" name="phone" type="tel" className="w-full bg-forcom-black border border-forcom-border rounded-sm px-4 py-3 text-white placeholder:text-forcom-gray/50 focus:border-forcom-red focus:outline-none transition-colors" placeholder="+54 9 11 xxxx-xxxx" />
+                    <p className="text-xs text-forcom-gray mt-1.5">Si lo dejás, te podemos contactar directo por WhatsApp.</p>
                   </div>
 
                   <div>

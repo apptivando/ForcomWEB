@@ -19,8 +19,9 @@ FORCOM está reemplazando el CRM interno (`contact_messages` + `/admin/crm` + `C
 - **Estado:** el CRM ya está desplegado y probado de punta a punta con un canal de WhatsApp de pruebas (no el oficial de Meta todavía).
   - ✅ **Proxy `/admin/crm/*` → el deploy del CRM**, en `next.config.ts` (`rewrites()`, fase `beforeFiles` — tiene que ganarle a la página propia `/admin/crm` que todavía existe). URL del deploy configurable por `WACRM_DEPLOYMENT_URL` (default `https://forcom-crm.vercel.app`).
   - ✅ **De paso se corrigió un bug de seguridad no relacionado**: el auth gate de `/admin/*` vivía en un archivo (`middleware-proxy.ts`) que nunca se ejecutaba — ver "Gotchas críticos". Sin corregirlo, el proxy nuevo hubiera quedado sin protección de login.
-  - ⬜ Agregar teléfono opcional a `Contact.tsx` y que `/api/contact/route.ts` avise al CRM cuando hay teléfono (necesita generar antes una API key en wacrm).
+  - ✅ **Teléfono opcional en `Contact.tsx`** + columna `contact_messages.phone` (migración corrida en Supabase) + `/api/contact/route.ts` normaliza a E.164 argentino (`+549<área><número>`, heurística best-effort en `normalizeArgentinePhone`, ver el archivo — no bloquea el envío si no puede normalizar) y avisa a wacrm con `POST /api/v1/contacts` + `POST /api/v1/messages` cuando hay teléfono válido. Probado de punta a punta: contacto + mensaje aparecen en wacrm. **Ojo:** wacrm guarda los teléfonos SIN el `+` inicial (ej. `5491122339988`) aunque se los mandemos con `+` — no filtrar por igualdad exacta con `+` incluido al consultar `contacts.phone` directo en Supabase.
   - ⬜ Retirar `CRMInbox.tsx` y la ruta `/admin/crm` actual (el `page.tsx` propio) una vez confirmado que el proxy anda bien en producción.
+  - **Nuevas variables en `.env.local` (faltan en Vercel todavía):** `WACRM_API_URL` (`https://forcom-crm.vercel.app/admin/crm`), `WACRM_API_KEY` (key con scopes `contacts:write`+`messages:send`, generada directo en la tabla `api_keys` de wacrm — ver `c:\Apptivando\wacrm\CLAUDE.md` si hay que generar otra).
 
 ## Reglas de trabajo
 
@@ -139,7 +140,7 @@ npm run dev
 - **Vercel:** proyecto `forcom-web` bajo equipo `apptivando`
 - **Dominios:** `www.forcom.tech` → main · `dev.forcom.tech` → develop
 - **DNS:** gestionado en Donweb. Registros de mail (mx1, mail, autoconfig, autodiscover) son de correo externo — no tocar.
-- **Variables en Vercel:** `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `RESEND_API_KEY`, `RESEND_FROM_EMAIL` (`noreply@forcom.tech`), `RESEND_TO_EMAIL` (`ventas@forcom.tech`). Nueva, agregada 30/07/2026 para el proxy del CRM: `WACRM_DEPLOYMENT_URL` (opcional — sin ella usa el default `https://forcom-crm.vercel.app`, hardcodeado en `next.config.ts`; **falta cargarla en Vercel todavía**, hoy solo corrió en local).
+- **Variables en Vercel:** `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `RESEND_API_KEY`, `RESEND_FROM_EMAIL` (`noreply@forcom.tech`), `RESEND_TO_EMAIL` (`ventas@forcom.tech`). Nuevas, agregadas 30/07/2026 para el CRM — **faltan cargarlas en Vercel todavía**, hoy solo corrieron en local: `WACRM_DEPLOYMENT_URL` (opcional, default `https://forcom-crm.vercel.app` hardcodeado en `next.config.ts`), `WACRM_API_URL` (`https://forcom-crm.vercel.app/admin/crm`), `WACRM_API_KEY`.
 
 ### Gotchas críticos
 
@@ -149,6 +150,7 @@ npm run dev
 - **Logo** usa `next/image` con PNG (`/images/brand/forcom-logo.png`). No volver a SVG con texto — el ® desaparecía y perdía calidad.
 - **HeroCarousel usa `h-screen` (no `min-h-screen`)** — con `min-h-screen` la sección se alargaba en algunos slides y la navegación quedaba fuera del viewport. La navegación está posicionada `absolute bottom-6` para que siempre sea visible. No volver a flujo normal ni a `min-h-screen`.
 - **Hero mobile layout (30/06/2026)** — `section` usa `items-start md:items-center`: en mobile el contenido arranca justo bajo la navbar (elimina el dead space superior), en desktop queda centrado verticalmente. Imagen: `w-80 h-80` fijo en mobile, `md:w-full md:h-auto md:aspect-square` en desktop. Las decoraciones (esquinas rojas, borde rotado, badge de producto) son visibles en todos los tamaños — no agregar `hidden md:block` a esos elementos. Trust badges: `flex justify-center sm:justify-start text-xs sm:text-sm` (visibles en mobile, centrados). Scroll indicator `sm:hidden` al fondo del texto. Título: `text-center sm:text-left`.
+- **Variables de entorno nuevas no se recargan solas en `next dev`** — hay que matar el proceso viejo y arrancar uno nuevo (`.env.local` se lee una sola vez, al arrancar). Si hay más de un `next dev` corriendo (pasó el 30/07/2026 — un proceso viejo quedó vivo en el puerto 3000 y el nuevo cayó al 3001, pero curl seguía pegándole al viejo sin darse cuenta), las pruebas van a ir contra el proceso equivocado sin ningún error visible. Confirmar con `netstat`/`tasklist` que solo hay un proceso antes de probar algo que dependa de env vars recién agregadas.
 
 ## Estado actual (junio 2026)
 

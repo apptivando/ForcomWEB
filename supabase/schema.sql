@@ -57,6 +57,13 @@ CREATE TABLE IF NOT EXISTS contact_messages (
 );
 
 -- ============================================================
+-- Migración: teléfono opcional (30/07/2026) — usado para crear la
+-- conversación de WhatsApp en el CRM cuando el lead lo deja cargado.
+-- Ejecutar en Supabase Dashboard > SQL Editor si la tabla ya existe.
+-- ============================================================
+ALTER TABLE contact_messages ADD COLUMN IF NOT EXISTS phone TEXT;
+
+-- ============================================================
 -- Row Level Security
 -- ============================================================
 
