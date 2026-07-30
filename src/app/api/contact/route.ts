@@ -15,15 +15,25 @@ function normalizeArgentinePhone(raw: string): string | null {
   let d = raw.replace(/[^\d]/g, "");
   if (!d) return null;
 
-  if (d.startsWith("54")) d = d.slice(2);
+  // Si ya venía con código de país, el número está en formato
+  // internacional limpio — no hay ningún "15" de discado local que
+  // sacar. Importante distinguirlo: un número ya limpio puede tener
+  // un "15" formado por pura coincidencia en el borde entre área y
+  // número (ej. área 351 + número que arranca en 5 → "...351 5..."
+  // arma un "15" ahí que NO es el prefijo local, y sacarlo igual
+  // rompe el número).
+  const hadCountryCode = d.startsWith("54");
+  if (hadCountryCode) d = d.slice(2);
   if (d.startsWith("9")) d = d.slice(1);
   if (d.startsWith("0")) d = d.slice(1);
 
   // "15" de celular local pegado después del código de área (ej. "011 15-1234-5678"
-  // ya despojado de 0/54/9 arriba queda "111512345678") — lo saca si encaja
-  // con área de 2-4 dígitos + 15 + número de 6-8 dígitos.
-  const withLocalPrefix = d.match(/^(\d{2,4})15(\d{6,8})$/);
-  if (withLocalPrefix) d = withLocalPrefix[1] + withLocalPrefix[2];
+  // ya despojado de 0 arriba queda "111512345678") — solo aplica a
+  // números escritos en formato local, sin +54.
+  if (!hadCountryCode) {
+    const withLocalPrefix = d.match(/^(\d{2,4})15(\d{6,8})$/);
+    if (withLocalPrefix) d = withLocalPrefix[1] + withLocalPrefix[2];
+  }
 
   const e164 = `549${d}`;
   if (e164.length < 12 || e164.length > 14) return null;
