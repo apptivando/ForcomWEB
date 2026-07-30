@@ -10,6 +10,14 @@ Sitio web B2B de presentación y generación de leads para FORCOM, distribuidor 
 **Fuentes:** Barlow Condensed (display/headings) + DM Sans (body)  
 **Dominio:** forcom.tech (en producción)
 
+## CRM de WhatsApp (proyecto en curso, iniciado 30/07/2026)
+
+FORCOM está reemplazando el CRM interno (`contact_messages` + `/admin/crm` + `CRMInbox.tsx`, ver abajo) por un fork de [wacrm](https://github.com/ArnasDon/wacrm), desplegado como app independiente y accedido desde `forcom.tech/admin/crm` vía reverse proxy — no vive en este repo.
+
+- **Plan maestro** (todas las tracks, checklist): `C:\Users\guill\.claude\plans\puedes-investigar-este-repositorio-peaceful-whistle.md`
+- **Repo y contexto técnico del CRM:** `c:\Apptivando\wacrm` (repo `apptivando/ForcomCRM`), ver su `CLAUDE.md`
+- **Estado:** el CRM ya está desplegado y probado de punta a punta con un canal de WhatsApp de pruebas (no el oficial de Meta todavía). Lo que falta de este lado (forcom-web) — Track C del plan — es: (1) agregar el rewrite `/admin/crm/*` → el deploy del CRM en `next.config.ts`, (2) agregar teléfono opcional a `Contact.tsx` y que `/api/contact/route.ts` avise al CRM cuando hay teléfono, (3) retirar `CRMInbox.tsx` y la ruta `/admin/crm` actual una vez que el proxy esté andando.
+
 ## Reglas de trabajo
 
 ### Cómo armar un plan
