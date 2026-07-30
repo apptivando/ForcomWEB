@@ -128,7 +128,7 @@ export async function POST(request: Request) {
         Authorization: `Bearer ${process.env.WACRM_API_KEY}`,
       };
 
-      await fetch(`${process.env.WACRM_API_URL}/api/v1/contacts`, {
+      const contactRes = await fetch(`${process.env.WACRM_API_URL}/api/v1/contacts`, {
         method: "POST",
         headers,
         body: JSON.stringify({
@@ -136,10 +136,17 @@ export async function POST(request: Request) {
           name: name.trim(),
         }),
       });
+      if (!contactRes.ok) {
+        console.error(
+          "wacrm contacts API error (non-fatal):",
+          contactRes.status,
+          await contactRes.text().catch(() => "")
+        );
+      }
 
       const industryLabel = industry ? `\nIndustria: ${industry}` : "";
       const companyLabel = company?.trim() ? `\nEmpresa: ${company.trim()}` : "";
-      await fetch(`${process.env.WACRM_API_URL}/api/v1/messages`, {
+      const messageRes = await fetch(`${process.env.WACRM_API_URL}/api/v1/messages`, {
         method: "POST",
         headers,
         body: JSON.stringify({
@@ -148,6 +155,13 @@ export async function POST(request: Request) {
           text: `Nuevo lead desde forcom.tech${companyLabel}${industryLabel}\n\n${message.trim()}`,
         }),
       });
+      if (!messageRes.ok) {
+        console.error(
+          "wacrm messages API error (non-fatal):",
+          messageRes.status,
+          await messageRes.text().catch(() => "")
+        );
+      }
     } catch (wacrmError) {
       console.error("wacrm notify error (non-fatal):", wacrmError);
     }
