@@ -141,7 +141,13 @@ npm run dev
 - **Vercel:** proyecto `forcom-web` bajo equipo `apptivando`
 - **Dominios:** `www.forcom.tech` → main · `dev.forcom.tech` → develop
 - **DNS:** gestionado en Donweb. Registros de mail (mx1, mail, autoconfig, autodiscover) son de correo externo — no tocar.
-- **Variables en Vercel:** `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `RESEND_API_KEY`, `RESEND_FROM_EMAIL` (`noreply@forcom.tech`), `RESEND_TO_EMAIL` (`ventas@forcom.tech`). Nuevas, agregadas 30/07/2026 para el CRM — **faltan cargarlas en Vercel todavía**, hoy solo corrieron en local: `WACRM_DEPLOYMENT_URL` (opcional, default `https://forcom-crm.vercel.app` hardcodeado en `next.config.ts`), `WACRM_API_URL` (`https://forcom-crm.vercel.app/admin/crm`), `WACRM_API_KEY`.
+  - **Ojo: la zona DNS que muestra Vercel para `forcom.tech` es decorativa.** Los nameservers reales son de Donweb (`ns1/ns2.donweb.com`), así que el comodín `*` que aparece en `vercel dns ls` **no se aplica** — cada subdominio nuevo necesita su registro creado a mano en Donweb.
+- **Variables en Vercel:** `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `RESEND_API_KEY`, `RESEND_FROM_EMAIL` (`noreply@forcom.tech`), `RESEND_TO_EMAIL` (`ventas@forcom.tech`), `WACRM_DEPLOYMENT_URL`, `WACRM_API_URL`, `WACRM_API_KEY` — todas cargadas.
+- **`WACRM_DEPLOYMENT_URL` está partida por entorno (31/07/2026)**, para que el `dev` de la web consuma el `dev` del CRM y no el de producción:
+  - **Production** → `https://forcom-crm.vercel.app` (rama `main` del CRM). Es de tipo *sensitive*, o sea que Vercel no la deja leer de vuelta ni por `env pull` — si hay que verificarla, se reescribe con el valor conocido, no se intenta leer.
+  - **Preview, acotada a la rama `develop`** → `https://crm-dev.forcom.tech` (rama `develop` del CRM). Cualquier otra rama de preview se queda sin la variable y cae al default hardcodeado de `next.config.ts`, que apunta a producción del CRM.
+  - **Se lee en `next.config.ts`, o sea en tiempo de build:** cambiarla en Vercel no hace nada hasta que se redespliega. Si tocás esta variable, redesplegá.
+- **`crm-dev.forcom.tech` es del proyecto `forcom-crm`, no de este.** Está asignado a la rama `develop` de ese repo. Funciona como destino del proxy porque la protección de deploys del CRM está en `all_except_custom_domains`: un dominio propio queda fuera del login SSO de Vercel, mientras que el alias `forcom-crm-git-develop-*.vercel.app` sí está protegido y **no** sirve como destino del proxy.
 
 ### Gotchas críticos
 
