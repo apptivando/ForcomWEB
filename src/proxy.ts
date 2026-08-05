@@ -38,12 +38,31 @@ export async function proxy(request: NextRequest) {
 
   const path = request.nextUrl.pathname;
   const isLoginPage = path === "/admin/login";
+  const isJoinPage = path.startsWith("/admin/join");
   const isAdminRoute = path.startsWith("/admin");
+  const isPublicAdminRoute = isLoginPage || isJoinPage;
 
-  if (isAdminRoute && !isLoginPage && !user) {
+  if (isAdminRoute && !isPublicAdminRoute && !user) {
     const url = request.nextUrl.clone();
     url.pathname = "/admin/login";
     return NextResponse.redirect(url);
+  }
+
+  // Sesión válida no alcanza — tiene que estar en admin_members (fase 1
+  // del Track E, 01/08/2026). Un usuario de Supabase Auth sin fila acá
+  // (ej. alguien que se registró por su cuenta, no invitado) no entra.
+  if (isAdminRoute && !isPublicAdminRoute && user) {
+    const { data: member } = await supabase
+      .from("admin_members")
+      .select("role")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (!member) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/admin/login";
+      url.searchParams.set("error", "no-autorizado");
+      return NextResponse.redirect(url);
+    }
   }
 
   if (isLoginPage && user) {

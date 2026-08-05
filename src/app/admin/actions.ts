@@ -1,7 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { requireRole, type AdminRole } from "@/lib/auth/roles";
 import type { HeroContent, HeroSlide, Product, CompanyInfo } from "@/lib/types";
 
 async function requireAuth() {
@@ -11,6 +14,13 @@ async function requireAuth() {
   } = await supabase.auth.getUser();
   if (!user) throw new Error("No autorizado");
   return supabase;
+}
+
+async function siteOrigin() {
+  const h = await headers();
+  const host = h.get("host");
+  const proto = h.get("x-forwarded-proto") ?? "https";
+  return `${proto}://${host}`;
 }
 
 // ─── Hero ────────────────────────────────────────────────────────────────────
@@ -229,4 +239,98 @@ export async function updateCompanyInfo(data: Omit<CompanyInfo, "id" | "updated_
   if (error) throw new Error(error.message);
   revalidatePath("/");
   revalidatePath("/admin/empresa");
+}
+
+// ─── Miembros del admin (Track E, fase 1) ─────────────────────────────────────
+
+export async function inviteMember(email: string, role: AdminRole) {
+  const supabase = await requireAuth();
+  const { data: { user } } = await supabase.auth.getUser();
+  await requireRole(supabase, "admin");
+
+  const normalizedEmail = email.trim().toLowerCase();
+
+  const { error: inviteErr } = await supabase.from("admin_invitations").insert({
+    email: normalizedEmail,
+    role,
+    invited_by: user!.id,
+  });
+  if (inviteErr) throw new Error(inviteErr.message);
+
+  const origin = await siteOrigin();
+  const admin = createAdminClient();
+  const { error: sendErr } = await admin.auth.admin.inviteUserByEmail(normalizedEmail, {
+    redirectTo: `${origin}/admin/join`,
+  });
+  if (sendErr) throw new Error(`Invitación guardada pero el email falló: ${sendErr.message}`);
+
+  revalidatePath("/admin/miembros");
+}
+
+export async function cancelInvitation(id: string) {
+  const supabase = await requireAuth();
+  await requireRole(supabase, "admin");
+  const { error } = await supabase.from("admin_invitations").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+  revalidatePath("/admin/miembros");
+}
+
+export async function updateMemberRole(userId: string, role: AdminRole) {
+  const supabase = await requireAuth();
+  await requireRole(supabase, "admin");
+  const { error } = await supabase
+    .from("admin_members")
+    .update({ role, updated_at: new Date().toISOString() })
+    .eq("user_id", userId);
+  if (error) throw new Error(error.message);
+  revalidatePath("/admin/miembros");
+}
+
+export async function removeMember(userId: string) {
+  const supabase = await requireAuth();
+  const { data: { user } } = await supabase.auth.getUser();
+  await requireRole(supabase, "admin");
+  if (user!.id === userId) throw new Error("No podés quitarte a vos mismo.");
+  const { error } = await supabase.from("admin_members").delete().eq("user_id", userId);
+  if (error) throw new Error(error.message);
+  revalidatePath("/admin/miembros");
+}
+
+/**
+ * Completa la invitación: llamado desde /admin/join una vez que el
+ * usuario invitado ya está autenticado (Supabase procesó el link del
+ * mail) y eligió su contraseña. Busca la invitación pendiente por
+ * email, crea la fila en admin_members con el rol que le asignaron, y
+ * marca la invitación como aceptada.
+ */
+export async function acceptInvitation() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user?.email) throw new Error("No autorizado");
+
+  const { data: invitation, error: findErr } = await supabase
+    .from("admin_invitations")
+    .select("id, role, expires_at, accepted_at")
+    .eq("email", user.email.toLowerCase())
+    .is("accepted_at", null)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (findErr) throw new Error(findErr.message);
+  if (!invitation) throw new Error("No hay una invitación pendiente para este email.");
+  if (new Date(invitation.expires_at) < new Date()) {
+    throw new Error("La invitación venció — pedile a un admin que te invite de nuevo.");
+  }
+
+  const admin = createAdminClient();
+  const { error: memberErr } = await admin.from("admin_members").insert({
+    user_id: user.id,
+    role: invitation.role,
+  });
+  if (memberErr) throw new Error(memberErr.message);
+
+  await admin
+    .from("admin_invitations")
+    .update({ accepted_at: new Date().toISOString() })
+    .eq("id", invitation.id);
 }

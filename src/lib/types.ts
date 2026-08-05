@@ -69,6 +69,24 @@ export interface CompanyInfo {
   updated_at: string;
 }
 
+export interface AdminMember {
+  user_id: string;
+  role: "owner" | "admin" | "agent";
+  full_name: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AdminInvitation {
+  id: string;
+  email: string;
+  role: "owner" | "admin" | "agent";
+  invited_by: string | null;
+  accepted_at: string | null;
+  expires_at: string;
+  created_at: string;
+}
+
 export interface ContactMessage {
   id: string;
   name: string;
