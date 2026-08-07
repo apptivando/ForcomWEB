@@ -20,33 +20,29 @@ export async function POST(req: NextRequest) {
   const event: string = body.event;
   const instance: string = body.instance;
 
-  // TEMP (07/08/2026): log crudo para ver la forma real de los eventos
-  // de Evolution antes de sacar esto — ver plan Track E.
-  console.log("[evolution webhook] recibido:", JSON.stringify({ event, instance, data: body.data }));
+  // El evento llega como "messages.upsert" (minúscula, con punto) —
+  // no "MESSAGES_UPSERT" como en la doc/el registro del webhook.
+  // Normalizamos para no depender de qué formato use Evolution.
+  const normalizedEvent = event?.toUpperCase().replace(/\./g, "_");
 
   if (instance !== process.env.EVOLUTION_INSTANCE) {
     // Evento de otra instancia del mismo server Evolution — no es nuestro.
-    console.log(`[evolution webhook] instancia distinta ("${instance}" !== "${process.env.EVOLUTION_INSTANCE}"), descartado`);
     return NextResponse.json({ ok: true });
   }
 
-  if (event !== "MESSAGES_UPSERT") {
+  if (normalizedEvent !== "MESSAGES_UPSERT") {
     // TODO: CONNECTION_UPDATE (estado open/close de la instancia) si
     // se quiere mostrar el estado de conexión en el panel.
-    console.log(`[evolution webhook] evento "${event}" no es MESSAGES_UPSERT, descartado`);
     return NextResponse.json({ ok: true });
   }
 
   const data = body.data;
-  if (data?.key?.fromMe) {
-    console.log("[evolution webhook] fromMe=true, descartado (eco propio)");
-    return NextResponse.json({ ok: true });
-  }
-  const jid: string = data?.key?.remoteJid ?? "";
-  if (!jid || jid.endsWith("@g.us")) {
-    console.log(`[evolution webhook] jid vacío o grupo ("${jid}"), descartado`);
-    return NextResponse.json({ ok: true });
-  }
+  if (data?.key?.fromMe) return NextResponse.json({ ok: true }); // eco de lo que mandamos nosotros
+  // remoteJidAlt suele traer el número real cuando WhatsApp direcciona
+  // por LID (addressingMode: "lid") — preferirlo cuando esté presente
+  // (misma lección que en wacrm/Baileys).
+  const jid: string = data?.key?.remoteJidAlt || data?.key?.remoteJid || "";
+  if (!jid || jid.endsWith("@g.us")) return NextResponse.json({ ok: true }); // ignorar grupos
 
   const phone = jid.split("@")[0];
   const waMessageId: string | undefined = data.key.id;
