@@ -102,7 +102,7 @@ export default function WhyForcom() {
           </div>
           <div className="flex items-end">
             <p className="text-forcom-gray-light text-lg leading-relaxed max-w-md">
-              No somos un revendedor genérico. Somos su socio tecnológico: seleccionamos, probamos y respaldamos cada equipo que lleva nuestra marca.
+              FORCOM fabrica el hardware que vende. Por eso podemos adaptar cada equipo a lo que su operación necesita, sostener repuestos en el tiempo y dar garantía directa, sin depender de una marca ajena.
             </p>
           </div>
         </div>
