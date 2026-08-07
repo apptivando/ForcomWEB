@@ -4,7 +4,9 @@
 
 ## Qué es esto
 
-Sitio web B2B de presentación y generación de leads para FORCOM, distribuidor de hardware POS en Argentina. Catálogo de 15 productos en 6 categorías (Smart POS, Mini PC, Impresoras, Lectores, Verificadores, Accesorios). Target: supermercados, restaurantes, farmacias, logística, estaciones de servicio, hotelería.
+Sitio web B2B de presentación y generación de leads para FORCOM, fabricante de hardware POS en Argentina. Catálogo de 15 productos en 6 categorías (Smart POS, Mini PC, Impresoras, Lectores, Verificadores, Accesorios). Target: supermercados, restaurantes, farmacias, logística, estaciones de servicio, hotelería.
+
+**Posicionamiento (definido por el cliente, 06/08/2026): FORCOM es fábrica, no revendedor ni distribuidor.** Ningún texto del sitio debe describirla como revendedora, distribuidora o importadora. El argumento a usar es el que habilita fabricar: adaptar el equipo a la operación del cliente, sostener repuestos en el tiempo y dar garantía directa sin depender de una marca ajena. Aplica también a metadata, JSON-LD y textos del admin.
 
 **Stack:** Next.js (App Router) · React 19 · TypeScript · Tailwind CSS 4  
 **Fuentes:** Barlow Condensed (display/headings) + DM Sans (body)  
@@ -12,7 +14,19 @@ Sitio web B2B de presentación y generación de leads para FORCOM, distribuidor 
 
 ## CRM de WhatsApp (proyecto en curso, iniciado 30/07/2026)
 
-FORCOM está reemplazando el CRM interno (`contact_messages` + `/admin/crm` + `CRMInbox.tsx`, ver abajo) por un fork de [wacrm](https://github.com/ArnasDon/wacrm), desplegado como app independiente y accedido desde `forcom.tech/admin/crm` vía reverse proxy — no vive en este repo.
+> ## ⚠️ CAMBIO DE RUMBO (06/08/2026): el fork de wacrm se discontinúa
+>
+> **El CRM de WhatsApp se construye dentro de este repo (Track E), no como app separada.** Motivo: unificación — un solo deploy, una sola base, un solo login. El fork de wacrm (`apptivando/ForcomCRM`, proyecto de Vercel `forcom-crm`) **no se migra a la cuenta nueva de Vercel y se apaga**.
+>
+> Lo que sigue vigente de esta sección es el contexto histórico y las lecciones (sobre todo `normalizeArgentinePhone`). Lo que **ya no** aplica: el proxy `/admin/crm/*`, las variables `WACRM_*`, y el dominio `crm-dev.forcom.tech`.
+>
+> **Estado del Track E:** fase 1 (roles y miembros) y fase 2 (tablas `crm_contacts` / `crm_conversations` / `crm_messages` + adaptador `src/lib/evolution.ts` + webhook `/api/whatsapp/evolution`) commiteadas. Falta la UI del inbox, cablear las variables `EVOLUTION_*` y reapuntar el formulario de contacto de wacrm a las tablas `crm_*`.
+>
+> **Conexión a WhatsApp: Evolution API self-hosted** (WSL, detrás de Cloudflare Tunnel), no Baileys ni Meta directo.
+>
+> **Checklist del apagado y de la migración de Vercel:** `../MIGRACION_VERCEL.md`, Track 1A.
+
+Contexto histórico: FORCOM iba a reemplazar el CRM interno (`contact_messages` + `/admin/crm` + `CRMInbox.tsx`, ver abajo) por un fork de [wacrm](https://github.com/ArnasDon/wacrm), desplegado como app independiente y accedido desde `forcom.tech/admin/crm` vía reverse proxy — no vive en este repo.
 
 - **Plan maestro** (todas las tracks, checklist): `C:\Users\guill\.claude\plans\puedes-investigar-este-repositorio-peaceful-whistle.md`
 - **Repo y contexto técnico del CRM:** `c:\Apptivando\wacrm` (repo `apptivando/ForcomCRM`), ver su `CLAUDE.md`
@@ -138,11 +152,14 @@ npm run dev
 
 - **Repo:** github.com/apptivando/ForcomWEB
 - **Ramas:** `main` (producción) · `develop` (previews)
+  - **`develop` está muy adelante de `main` mientras dure el Track E** (CRM propio + Evolution API, a medio terminar y con variables `EVOLUTION_*` sin cablear en Vercel). Si hay que llevar un arreglo puntual a producción, **cherry-pick a `main`, no merge de `develop` entero** — un merge desplegaría el Track E incompleto. Así se hizo con el copy de fabricante el 06/08/2026 (`b225b73` en develop → `9567183` en main). Cuando el Track E cierre, las ramas se reconcilian con un merge normal.
 - **Vercel:** proyecto `forcom-web` bajo equipo `apptivando`
+  - ⚠️ **Se perdió el acceso a esa cuenta de Vercel (06/08/2026).** Todo se está recreando en el scope nuevo `apptivando1`. Checklist: `../MIGRACION_VERCEL.md`. Hasta que se complete, el proyecto viejo sigue sirviendo `forcom.tech` y sigue buildeando en cada push (la GitHub App es una sola para las dos cuentas).
 - **Dominios:** `www.forcom.tech` → main · `dev.forcom.tech` → develop
 - **DNS:** gestionado en Donweb. Registros de mail (mx1, mail, autoconfig, autodiscover) son de correo externo — no tocar.
   - **Ojo: la zona DNS que muestra Vercel para `forcom.tech` es decorativa.** Los nameservers reales son de Donweb (`ns1/ns2.donweb.com`), así que el comodín `*` que aparece en `vercel dns ls` **no se aplica** — cada subdominio nuevo necesita su registro creado a mano en Donweb.
-- **Variables en Vercel:** `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `RESEND_API_KEY`, `RESEND_FROM_EMAIL` (`noreply@forcom.tech`), `RESEND_TO_EMAIL` (`ventas@forcom.tech`), `WACRM_DEPLOYMENT_URL`, `WACRM_API_URL`, `WACRM_API_KEY` — todas cargadas.
+- **Variables en Vercel:** `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `RESEND_API_KEY`, `RESEND_FROM_EMAIL` (`noreply@forcom.tech`), `RESEND_TO_EMAIL` (`ventas@forcom.tech`), `NEXT_PUBLIC_GA_ID`. Las `WACRM_*` quedan obsoletas al apagar el fork de wacrm (06/08/2026).
+- **`SUPABASE_SERVICE_KEY` ahora SÍ va a Vercel.** Cambió con el Track E: la usan `admin/actions.ts`, `/admin/miembros` y el webhook de Evolution (`src/lib/supabase/admin.ts` → `createAdminClient()`). Cargarla como *sensitive*. Lo que sigue valiendo es que **nunca** se expone al cliente (nada de prefijo `NEXT_PUBLIC_`).
 - **`WACRM_DEPLOYMENT_URL` está partida por entorno (31/07/2026)**, para que el `dev` de la web consuma el `dev` del CRM y no el de producción:
   - **Production** → `https://forcom-crm.vercel.app` (rama `main` del CRM). Es de tipo *sensitive*, o sea que Vercel no la deja leer de vuelta ni por `env pull` — si hay que verificarla, se reescribe con el valor conocido, no se intenta leer.
   - **Preview, acotada a la rama `develop`** → `https://crm-dev.forcom.tech` (rama `develop` del CRM). Cualquier otra rama de preview se queda sin la variable y cae al default hardcodeado de `next.config.ts`, que apunta a producción del CRM.
@@ -173,6 +190,7 @@ npm run dev
 - Formulario de contacto activo: guarda en CRM + notificación interna + auto-reply al cliente vía Resend
 - `description` y `full_specs` de los 18 productos cargados desde `../FORCOM_Catalogo_1Q_2026.md` vía script de migración
 - Deploy en Vercel funcionando en forcom.tech
+- **Copy de fabricante (06/08/2026):** el subtítulo de "Por qué FORCOM" (`WhyForcom.tsx`) y la `description` del JSON-LD `Organization` (`layout.tsx`) decían "revendedor genérico" / "Distribuidor de hardware POS". Reemplazados por el texto de fábrica (ver "Posicionamiento" arriba). También actualizado en `../FORCOM_preview.html`, que está fuera del repo y por lo tanto no versionado.
 - **GA4** activo en producción (`G-RG61BCBYT0`) via `NEXT_PUBLIC_GA_ID` + `GoogleAnalytics.tsx` (next/script afterInteractive)
 - **SEO completo (30/06/2026):** `app/sitemap.ts` (genera `/sitemap.xml`), `app/robots.ts`, JSON-LD `Organization` en layout.tsx, JSON-LD `ItemList` de productos en page.tsx, Open Graph tags
 - **Google Search Console** verificado (etiqueta HTML) + sitemap enviado y correcto (1 página)
@@ -218,7 +236,7 @@ scripts/
                               Si llegan carpetas nuevas de fotos, agregar sus entradas a FOLDER_TO_MODEL.
 ```
 
-La `SUPABASE_SERVICE_KEY` solo va en `.env.local` — nunca a Vercel ni al cliente.
+La `SUPABASE_SERVICE_KEY` la usan estos scripts y, desde el Track E, también el server de la app (ver "Deploy e infraestructura"). Nunca se expone al cliente.
 
 ## Artefactos generados
 
