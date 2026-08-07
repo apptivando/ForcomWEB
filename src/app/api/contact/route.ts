@@ -3,14 +3,16 @@ import { createClient } from "@/lib/supabase/server";
 
 /**
  * Normaliza un teléfono argentino a E.164 con el "9" de celular
- * (+549<área><número>), el formato que espera la API de WhatsApp.
+ * (+549<área><número>), el formato que espera WhatsApp — es el mismo
+ * que usa `crm_contacts.phone` del CRM propio (Track E), así que el
+ * número queda listo para cuando ese inbox lo consuma.
  * Heurística best-effort — no hay forma determinística de saber dónde
  * termina el código de área sin una lista completa, así que cubre el
  * formato más común en Argentina (área + número directo, con o sin
  * +54, con o sin el 0 nacional) y devuelve null si el resultado no
  * tiene una longitud razonable. Un fallo acá no bloquea el envío del
- * formulario — solo significa que no se crea la conversación de
- * WhatsApp.
+ * formulario — solo significa que el lead queda guardado sin teléfono
+ * normalizado.
  *
  * NO intenta detectar/sacar el viejo prefijo local "15" (ej. "011
  * 15-1234-5678") — se probó y el "15" aparece tan seguido por pura
@@ -108,56 +110,6 @@ export async function POST(request: Request) {
       });
     } catch (emailError) {
       console.error("resend error (non-fatal):", emailError);
-    }
-  }
-
-  // Avisar al CRM de WhatsApp (opcional — solo si dejó teléfono y las
-  // variables de entorno están configuradas). No bloqueante: si wacrm
-  // está caído o falla, el lead ya quedó guardado arriba y el usuario
-  // igual ve éxito.
-  if (normalizedPhone && process.env.WACRM_API_URL && process.env.WACRM_API_KEY) {
-    try {
-      const headers = {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.WACRM_API_KEY}`,
-      };
-
-      const contactRes = await fetch(`${process.env.WACRM_API_URL}/api/v1/contacts`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          phone: normalizedPhone,
-          name: name.trim(),
-        }),
-      });
-      if (!contactRes.ok) {
-        console.error(
-          "wacrm contacts API error (non-fatal):",
-          contactRes.status,
-          await contactRes.text().catch(() => "")
-        );
-      }
-
-      const industryLabel = industry ? `\nIndustria: ${industry}` : "";
-      const companyLabel = company?.trim() ? `\nEmpresa: ${company.trim()}` : "";
-      const messageRes = await fetch(`${process.env.WACRM_API_URL}/api/v1/messages`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          to: normalizedPhone,
-          type: "text",
-          text: `Nuevo lead desde forcom.tech${companyLabel}${industryLabel}\n\n${message.trim()}`,
-        }),
-      });
-      if (!messageRes.ok) {
-        console.error(
-          "wacrm messages API error (non-fatal):",
-          messageRes.status,
-          await messageRes.text().catch(() => "")
-        );
-      }
-    } catch (wacrmError) {
-      console.error("wacrm notify error (non-fatal):", wacrmError);
     }
   }
 
