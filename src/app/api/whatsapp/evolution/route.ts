@@ -20,21 +20,33 @@ export async function POST(req: NextRequest) {
   const event: string = body.event;
   const instance: string = body.instance;
 
+  // TEMP (07/08/2026): log crudo para ver la forma real de los eventos
+  // de Evolution antes de sacar esto — ver plan Track E.
+  console.log("[evolution webhook] recibido:", JSON.stringify({ event, instance, data: body.data }));
+
   if (instance !== process.env.EVOLUTION_INSTANCE) {
     // Evento de otra instancia del mismo server Evolution — no es nuestro.
+    console.log(`[evolution webhook] instancia distinta ("${instance}" !== "${process.env.EVOLUTION_INSTANCE}"), descartado`);
     return NextResponse.json({ ok: true });
   }
 
   if (event !== "MESSAGES_UPSERT") {
     // TODO: CONNECTION_UPDATE (estado open/close de la instancia) si
     // se quiere mostrar el estado de conexión en el panel.
+    console.log(`[evolution webhook] evento "${event}" no es MESSAGES_UPSERT, descartado`);
     return NextResponse.json({ ok: true });
   }
 
   const data = body.data;
-  if (data?.key?.fromMe) return NextResponse.json({ ok: true }); // eco de lo que mandamos nosotros
+  if (data?.key?.fromMe) {
+    console.log("[evolution webhook] fromMe=true, descartado (eco propio)");
+    return NextResponse.json({ ok: true });
+  }
   const jid: string = data?.key?.remoteJid ?? "";
-  if (!jid || jid.endsWith("@g.us")) return NextResponse.json({ ok: true }); // ignorar grupos
+  if (!jid || jid.endsWith("@g.us")) {
+    console.log(`[evolution webhook] jid vacío o grupo ("${jid}"), descartado`);
+    return NextResponse.json({ ok: true });
+  }
 
   const phone = jid.split("@")[0];
   const waMessageId: string | undefined = data.key.id;
