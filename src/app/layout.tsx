@@ -64,7 +64,7 @@ const organizationJsonLd = {
   url: "https://www.forcom.tech",
   logo: "https://www.forcom.tech/images/brand/forcom-logo.png",
   description:
-    "Distribuidor de hardware POS y tecnología retail para comercios y empresas en Argentina.",
+    "Fabricante de hardware POS y tecnología retail para comercios y empresas en Argentina.",
   areaServed: "AR",
   contactPoint: {
     "@type": "ContactPoint",
