@@ -87,6 +87,40 @@ export interface AdminInvitation {
   created_at: string;
 }
 
+export interface CrmContact {
+  id: string;
+  phone: string;
+  name: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CrmConversation {
+  id: string;
+  contact_id: string;
+  status: "open" | "closed";
+  last_message_text: string | null;
+  last_message_at: string | null;
+  ai_autoreply_disabled: boolean;
+  assigned_member_id: string | null;
+  created_at: string;
+  updated_at: string;
+  contact: CrmContact;
+}
+
+export interface CrmMessage {
+  id: string;
+  conversation_id: string;
+  direction: "in" | "out";
+  content_type: string;
+  content_text: string | null;
+  media_url: string | null;
+  wa_message_id: string | null;
+  ai_generated: boolean;
+  sender_member_id: string | null;
+  created_at: string;
+}
+
 export interface ContactMessage {
   id: string;
   name: string;

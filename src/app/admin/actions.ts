@@ -5,7 +5,15 @@ import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireRole, type AdminRole } from "@/lib/auth/roles";
-import type { HeroContent, HeroSlide, Product, CompanyInfo } from "@/lib/types";
+import { sendText } from "@/lib/evolution";
+import type {
+  HeroContent,
+  HeroSlide,
+  Product,
+  CompanyInfo,
+  CrmConversation,
+  CrmMessage,
+} from "@/lib/types";
 
 async function requireAuth() {
   const supabase = await createClient();
@@ -333,4 +341,68 @@ export async function acceptInvitation() {
     .from("admin_invitations")
     .update({ accepted_at: new Date().toISOString() })
     .eq("id", invitation.id);
+}
+
+// ─── Bandeja de WhatsApp (Track E, fase 3) ────────────────────────────────────
+
+export async function listConversations(): Promise<CrmConversation[]> {
+  const supabase = await requireAuth();
+  const { data, error } = await supabase
+    .from("crm_conversations")
+    .select("*, contact:crm_contacts(*)")
+    .order("last_message_at", { ascending: false, nullsFirst: false });
+  if (error) throw new Error(error.message);
+  return (data ?? []) as unknown as CrmConversation[];
+}
+
+export async function getConversationMessages(conversationId: string): Promise<CrmMessage[]> {
+  const supabase = await requireAuth();
+  const { data, error } = await supabase
+    .from("crm_messages")
+    .select("*")
+    .eq("conversation_id", conversationId)
+    .order("created_at", { ascending: true });
+  if (error) throw new Error(error.message);
+  return (data ?? []) as CrmMessage[];
+}
+
+export async function sendCrmReply(conversationId: string, text: string): Promise<void> {
+  const supabase = await requireAuth();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  const { data: conversation, error: convErr } = await supabase
+    .from("crm_conversations")
+    .select("*, contact:crm_contacts(*)")
+    .eq("id", conversationId)
+    .single();
+  if (convErr || !conversation) throw new Error("Conversación no encontrada");
+
+  // Evolution primero — si falla, no queda un mensaje "fantasma" guardado
+  // como si hubiera salido.
+  let waMessageId: string | undefined;
+  try {
+    const result = await sendText(conversation.contact.phone, text);
+    waMessageId = result?.key?.id;
+  } catch (err) {
+    throw new Error(
+      `No se pudo enviar por WhatsApp: ${err instanceof Error ? err.message : "error desconocido"}`
+    );
+  }
+
+  const { error: msgErr } = await supabase.from("crm_messages").insert({
+    conversation_id: conversationId,
+    direction: "out",
+    content_type: "text",
+    content_text: text,
+    wa_message_id: waMessageId ?? null,
+    sender_member_id: user!.id,
+  });
+  if (msgErr) throw new Error(msgErr.message);
+
+  await supabase
+    .from("crm_conversations")
+    .update({ last_message_text: text, last_message_at: new Date().toISOString() })
+    .eq("id", conversationId);
+
+  revalidatePath("/admin/inbox");
 }
