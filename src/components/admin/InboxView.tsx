@@ -1,8 +1,13 @@
 "use client";
 
 import { useState, useTransition, useEffect, useRef } from "react";
-import { getConversationMessages, sendCrmReply } from "@/app/admin/actions";
-import type { CrmConversation, CrmMessage } from "@/lib/types";
+import {
+  getConversationMessages,
+  sendCrmReply,
+  createQuickReply,
+  deleteQuickReply,
+} from "@/app/admin/actions";
+import type { CrmConversation, CrmMessage, QuickReply } from "@/lib/types";
 
 function formatTime(iso: string | null): string {
   if (!iso) return "";
@@ -16,8 +21,10 @@ function formatTime(iso: string | null): string {
 
 export default function InboxView({
   initialConversations,
+  initialQuickReplies,
 }: {
   initialConversations: CrmConversation[];
+  initialQuickReplies: QuickReply[];
 }) {
   const [conversations] = useState(initialConversations);
   const [selectedId, setSelectedId] = useState<string | null>(
@@ -30,6 +37,12 @@ export default function InboxView({
   const [error, setError] = useState("");
   const [, startTransition] = useTransition();
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const [quickReplies, setQuickReplies] = useState(initialQuickReplies);
+  const [showQuickReplies, setShowQuickReplies] = useState(false);
+  const [showNewQuickReply, setShowNewQuickReply] = useState(false);
+  const [newQrTitle, setNewQrTitle] = useState("");
+  const [newQrBody, setNewQrBody] = useState("");
 
   const selected = conversations.find((c) => c.id === selectedId) ?? null;
 
@@ -80,6 +93,41 @@ export default function InboxView({
         setError(err instanceof Error ? err.message : "Error al enviar.");
       } finally {
         setSending(false);
+      }
+    });
+  }
+
+  function pickQuickReply(body: string) {
+    setDraft(body);
+    setShowQuickReplies(false);
+  }
+
+  function handleCreateQuickReply(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newQrTitle.trim() || !newQrBody.trim()) return;
+    startTransition(async () => {
+      try {
+        await createQuickReply(newQrTitle, newQrBody);
+        setQuickReplies((prev) => [
+          ...prev,
+          { id: crypto.randomUUID(), title: newQrTitle.trim(), body: newQrBody.trim(), created_by: null, created_at: new Date().toISOString() },
+        ]);
+        setNewQrTitle("");
+        setNewQrBody("");
+        setShowNewQuickReply(false);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Error al guardar la respuesta rápida.");
+      }
+    });
+  }
+
+  function handleDeleteQuickReply(id: string) {
+    startTransition(async () => {
+      try {
+        await deleteQuickReply(id);
+        setQuickReplies((prev) => prev.filter((q) => q.id !== id));
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Error al borrar.");
       }
     });
   }
@@ -168,7 +216,87 @@ export default function InboxView({
                   {error}
                 </p>
               )}
+
+              {showQuickReplies && (
+                <div className="mb-3 bg-[#141416] border border-[#2A2A2E] rounded-sm p-3 max-h-48 overflow-y-auto">
+                  {quickReplies.length === 0 && !showNewQuickReply && (
+                    <p className="text-xs text-[#8A8A8A] px-2 py-1">Todavía no hay respuestas rápidas.</p>
+                  )}
+                  {quickReplies.map((qr) => (
+                    <div key={qr.id} className="flex items-center justify-between gap-2 px-2 py-1.5 rounded-sm hover:bg-[#1A1A1E]">
+                      <button
+                        type="button"
+                        onClick={() => pickQuickReply(qr.body)}
+                        className="flex-1 text-left"
+                      >
+                        <p className="text-xs font-display font-semibold text-white">{qr.title}</p>
+                        <p className="text-[11px] text-[#8A8A8A] truncate">{qr.body}</p>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteQuickReply(qr.id)}
+                        className="text-[#8A8A8A] hover:text-[#E8231A] text-xs shrink-0"
+                      >
+                        Borrar
+                      </button>
+                    </div>
+                  ))}
+
+                  {showNewQuickReply ? (
+                    <div className="mt-2 pt-2 border-t border-[#2A2A2E] space-y-2">
+                      <input
+                        value={newQrTitle}
+                        onChange={(e) => setNewQrTitle(e.target.value)}
+                        placeholder="Título (ej. Horario)"
+                        className="w-full bg-[#0D0D0F] border border-[#2A2A2E] rounded-sm px-3 py-2 text-xs text-white focus:border-[#E8231A] focus:outline-none"
+                      />
+                      <textarea
+                        value={newQrBody}
+                        onChange={(e) => setNewQrBody(e.target.value)}
+                        placeholder="Texto del mensaje"
+                        rows={2}
+                        className="w-full bg-[#0D0D0F] border border-[#2A2A2E] rounded-sm px-3 py-2 text-xs text-white focus:border-[#E8231A] focus:outline-none resize-none"
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={handleCreateQuickReply}
+                          className="px-3 py-1.5 bg-[#E8231A] text-white text-xs font-display font-bold rounded-sm hover:bg-[#C41D16]"
+                        >
+                          Guardar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setShowNewQuickReply(false)}
+                          className="px-3 py-1.5 text-xs text-[#8A8A8A] hover:text-white"
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setShowNewQuickReply(true)}
+                      className="w-full text-left px-2 py-1.5 mt-1 text-xs text-[#E8231A] hover:bg-[#1A1A1E] rounded-sm"
+                    >
+                      + Agregar respuesta rápida
+                    </button>
+                  )}
+                </div>
+              )}
+
               <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowQuickReplies((v) => !v)}
+                  className="px-3 py-3 border border-[#2A2A2E] rounded-sm text-[#8A8A8A] hover:text-white hover:border-[#E8231A]/40 transition-colors shrink-0"
+                  title="Respuestas rápidas"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+                  </svg>
+                </button>
                 <input
                   value={draft}
                   onChange={(e) => setDraft(e.target.value)}

@@ -316,3 +316,24 @@ DROP POLICY IF EXISTS "Members can manage crm_messages" ON crm_messages;
 CREATE POLICY "Members can manage crm_messages" ON crm_messages FOR ALL
   USING (public.current_admin_role() IS NOT NULL)
   WITH CHECK (public.current_admin_role() IS NOT NULL);
+
+-- ============================================================
+-- Migración: respuestas rápidas (12/08/2026)
+-- Ejecutar en Supabase Dashboard > SQL Editor
+-- Fase 3 del Track E (cierre) — ver supabase/sql-changes/003_quick_replies.sql
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS quick_replies (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title       TEXT NOT NULL,
+  body        TEXT NOT NULL,
+  created_by  UUID REFERENCES admin_members(user_id) ON DELETE SET NULL,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE quick_replies ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Members can manage quick_replies" ON quick_replies;
+CREATE POLICY "Members can manage quick_replies" ON quick_replies FOR ALL
+  USING (public.current_admin_role() IS NOT NULL)
+  WITH CHECK (public.current_admin_role() IS NOT NULL);

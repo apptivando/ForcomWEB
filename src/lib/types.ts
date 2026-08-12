@@ -121,6 +121,14 @@ export interface CrmMessage {
   created_at: string;
 }
 
+export interface QuickReply {
+  id: string;
+  title: string;
+  body: string;
+  created_by: string | null;
+  created_at: string;
+}
+
 export interface ContactMessage {
   id: string;
   name: string;

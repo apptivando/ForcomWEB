@@ -1,8 +1,11 @@
-import { listConversations } from "@/app/admin/actions";
+import { listConversations, listQuickReplies } from "@/app/admin/actions";
 import InboxView from "@/components/admin/InboxView";
 
 export default async function InboxPage() {
-  const conversations = await listConversations();
+  const [conversations, quickReplies] = await Promise.all([
+    listConversations(),
+    listQuickReplies(),
+  ]);
 
   return (
     <div className="h-full flex flex-col">
@@ -15,7 +18,7 @@ export default async function InboxPage() {
         </p>
       </div>
       <div className="flex-1 min-h-0">
-        <InboxView initialConversations={conversations} />
+        <InboxView initialConversations={conversations} initialQuickReplies={quickReplies} />
       </div>
     </div>
   );

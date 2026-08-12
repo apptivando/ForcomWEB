@@ -13,6 +13,7 @@ import type {
   CompanyInfo,
   CrmConversation,
   CrmMessage,
+  QuickReply,
 } from "@/lib/types";
 
 async function requireAuth() {
@@ -404,5 +405,32 @@ export async function sendCrmReply(conversationId: string, text: string): Promis
     .update({ last_message_text: text, last_message_at: new Date().toISOString() })
     .eq("id", conversationId);
 
+  revalidatePath("/admin/inbox");
+}
+
+export async function listQuickReplies(): Promise<QuickReply[]> {
+  const supabase = await requireAuth();
+  const { data, error } = await supabase
+    .from("quick_replies")
+    .select("*")
+    .order("created_at", { ascending: true });
+  if (error) throw new Error(error.message);
+  return (data ?? []) as QuickReply[];
+}
+
+export async function createQuickReply(title: string, body: string): Promise<void> {
+  const supabase = await requireAuth();
+  const { data: { user } } = await supabase.auth.getUser();
+  const { error } = await supabase
+    .from("quick_replies")
+    .insert({ title: title.trim(), body: body.trim(), created_by: user!.id });
+  if (error) throw new Error(error.message);
+  revalidatePath("/admin/inbox");
+}
+
+export async function deleteQuickReply(id: string): Promise<void> {
+  const supabase = await requireAuth();
+  const { error } = await supabase.from("quick_replies").delete().eq("id", id);
+  if (error) throw new Error(error.message);
   revalidatePath("/admin/inbox");
 }
