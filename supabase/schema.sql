@@ -410,6 +410,8 @@ CREATE POLICY "Members can manage ai_knowledge_chunks" ON ai_knowledge_chunks FO
   USING (public.current_admin_role() IS NOT NULL)
   WITH CHECK (public.current_admin_role() IS NOT NULL);
 
+-- NOTA: la versión de abajo ya incluye el fix de 005 (OR en vez de AND
+-- entre palabras) — ver supabase/sql-changes/005_fix_knowledge_search_or.sql.
 CREATE OR REPLACE FUNCTION public.match_ai_knowledge_fts(
   p_query       text,
   p_match_count integer
@@ -417,9 +419,13 @@ CREATE OR REPLACE FUNCTION public.match_ai_knowledge_fts(
 RETURNS TABLE (id uuid, content text, rank real) AS $$
   SELECT c.id,
          c.content,
-         ts_rank(c.fts, plainto_tsquery('public.spanish_unaccent', p_query)) AS rank
-  FROM ai_knowledge_chunks c
-  WHERE c.fts @@ plainto_tsquery('public.spanish_unaccent', p_query)
+         ts_rank(c.fts, q.query) AS rank
+  FROM ai_knowledge_chunks c,
+       (SELECT regexp_replace(
+          plainto_tsquery('public.spanish_unaccent', p_query)::text,
+          ' & ', ' | ', 'g'
+        )::tsquery AS query) q
+  WHERE c.fts @@ q.query
   ORDER BY rank DESC
   LIMIT GREATEST(p_match_count, 0);
 $$ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public;
