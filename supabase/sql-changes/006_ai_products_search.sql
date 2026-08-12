@@ -12,21 +12,15 @@
 -- no existe en `products` — nunca se mostró precio en la web
 -- tampoco), así que no cambia la regla de "no inventar precios" del
 -- system prompt.
+--
+-- v2 (corrige el intento anterior): Postgres rechaza una columna
+-- GENERATED cuando la expresión combina varias columnas +
+-- array_to_string — no puede probar que sea "immutable". Con solo 18
+-- productos no hace falta columna precalculada ni índice: la función
+-- arma el tsvector al vuelo, en cada consulta, contra las columnas
+-- reales. Es una tabla chica y esto no es un hot path (se llama una
+-- vez por mensaje entrante de WhatsApp).
 -- ============================================================
-
-ALTER TABLE products ADD COLUMN IF NOT EXISTS fts tsvector
-  GENERATED ALWAYS AS (
-    to_tsvector(
-      'public.spanish_unaccent',
-      coalesce(model, '') || ' ' ||
-      coalesce(category, '') || ' ' ||
-      coalesce(description, '') || ' ' ||
-      coalesce(full_specs, '') || ' ' ||
-      coalesce(array_to_string(specs, ' '), '')
-    )
-  ) STORED;
-
-CREATE INDEX IF NOT EXISTS products_fts_idx ON products USING gin (fts);
 
 CREATE OR REPLACE FUNCTION public.match_products_fts(
   p_query       text,
@@ -38,14 +32,31 @@ RETURNS TABLE (id uuid, content text, rank real) AS $$
            coalesce(' (' || p.category || ')', '') || E'\n' ||
            coalesce(p.description || E'\n', '') ||
            coalesce(array_to_string(p.specs, E'\n'), '') AS content,
-         ts_rank(p.fts, q.query) AS rank
+         ts_rank(
+           to_tsvector(
+             'public.spanish_unaccent',
+             coalesce(p.model, '') || ' ' ||
+             coalesce(p.category, '') || ' ' ||
+             coalesce(p.description, '') || ' ' ||
+             coalesce(p.full_specs, '') || ' ' ||
+             coalesce(array_to_string(p.specs, ' '), '')
+           ),
+           q.query
+         ) AS rank
   FROM products p,
        (SELECT regexp_replace(
           plainto_tsquery('public.spanish_unaccent', p_query)::text,
           ' & ', ' | ', 'g'
         )::tsquery AS query) q
   WHERE p.active = true
-    AND p.fts @@ q.query
+    AND to_tsvector(
+          'public.spanish_unaccent',
+          coalesce(p.model, '') || ' ' ||
+          coalesce(p.category, '') || ' ' ||
+          coalesce(p.description, '') || ' ' ||
+          coalesce(p.full_specs, '') || ' ' ||
+          coalesce(array_to_string(p.specs, ' '), '')
+        ) @@ q.query
   ORDER BY rank DESC
   LIMIT GREATEST(p_match_count, 0);
 $$ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public;

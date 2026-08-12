@@ -441,20 +441,10 @@ ALTER TABLE crm_conversations ADD COLUMN IF NOT EXISTS ai_reply_count INTEGER NO
 -- Ver supabase/sql-changes/006_ai_products_search.sql
 -- ============================================================
 
-ALTER TABLE products ADD COLUMN IF NOT EXISTS fts tsvector
-  GENERATED ALWAYS AS (
-    to_tsvector(
-      'public.spanish_unaccent',
-      coalesce(model, '') || ' ' ||
-      coalesce(category, '') || ' ' ||
-      coalesce(description, '') || ' ' ||
-      coalesce(full_specs, '') || ' ' ||
-      coalesce(array_to_string(specs, ' '), '')
-    )
-  ) STORED;
-
-CREATE INDEX IF NOT EXISTS products_fts_idx ON products USING gin (fts);
-
+-- Sin columna generada ni índice: Postgres no acepta una expresión que
+-- combina varias columnas + array_to_string como "immutable" (ver
+-- nota en 006_ai_products_search.sql). Con 18 productos alcanza con
+-- calcular el tsvector al vuelo dentro de la función.
 CREATE OR REPLACE FUNCTION public.match_products_fts(
   p_query       text,
   p_match_count integer
@@ -465,14 +455,31 @@ RETURNS TABLE (id uuid, content text, rank real) AS $$
            coalesce(' (' || p.category || ')', '') || E'\n' ||
            coalesce(p.description || E'\n', '') ||
            coalesce(array_to_string(p.specs, E'\n'), '') AS content,
-         ts_rank(p.fts, q.query) AS rank
+         ts_rank(
+           to_tsvector(
+             'public.spanish_unaccent',
+             coalesce(p.model, '') || ' ' ||
+             coalesce(p.category, '') || ' ' ||
+             coalesce(p.description, '') || ' ' ||
+             coalesce(p.full_specs, '') || ' ' ||
+             coalesce(array_to_string(p.specs, ' '), '')
+           ),
+           q.query
+         ) AS rank
   FROM products p,
        (SELECT regexp_replace(
           plainto_tsquery('public.spanish_unaccent', p_query)::text,
           ' & ', ' | ', 'g'
         )::tsquery AS query) q
   WHERE p.active = true
-    AND p.fts @@ q.query
+    AND to_tsvector(
+          'public.spanish_unaccent',
+          coalesce(p.model, '') || ' ' ||
+          coalesce(p.category, '') || ' ' ||
+          coalesce(p.description, '') || ' ' ||
+          coalesce(p.full_specs, '') || ' ' ||
+          coalesce(array_to_string(p.specs, ' '), '')
+        ) @@ q.query
   ORDER BY rank DESC
   LIMIT GREATEST(p_match_count, 0);
 $$ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public;
