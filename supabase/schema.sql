@@ -434,3 +434,48 @@ REVOKE ALL ON FUNCTION public.match_ai_knowledge_fts(text, integer) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.match_ai_knowledge_fts(text, integer) TO authenticated, service_role;
 
 ALTER TABLE crm_conversations ADD COLUMN IF NOT EXISTS ai_reply_count INTEGER NOT NULL DEFAULT 0;
+
+-- ============================================================
+-- Migración: el asistente de IA busca en el catálogo de productos (12/08/2026)
+-- Ejecutar en Supabase Dashboard > SQL Editor
+-- Ver supabase/sql-changes/006_ai_products_search.sql
+-- ============================================================
+
+ALTER TABLE products ADD COLUMN IF NOT EXISTS fts tsvector
+  GENERATED ALWAYS AS (
+    to_tsvector(
+      'public.spanish_unaccent',
+      coalesce(model, '') || ' ' ||
+      coalesce(category, '') || ' ' ||
+      coalesce(description, '') || ' ' ||
+      coalesce(full_specs, '') || ' ' ||
+      coalesce(array_to_string(specs, ' '), '')
+    )
+  ) STORED;
+
+CREATE INDEX IF NOT EXISTS products_fts_idx ON products USING gin (fts);
+
+CREATE OR REPLACE FUNCTION public.match_products_fts(
+  p_query       text,
+  p_match_count integer
+)
+RETURNS TABLE (id uuid, content text, rank real) AS $$
+  SELECT p.id,
+         'Producto: ' || p.model ||
+           coalesce(' (' || p.category || ')', '') || E'\n' ||
+           coalesce(p.description || E'\n', '') ||
+           coalesce(array_to_string(p.specs, E'\n'), '') AS content,
+         ts_rank(p.fts, q.query) AS rank
+  FROM products p,
+       (SELECT regexp_replace(
+          plainto_tsquery('public.spanish_unaccent', p_query)::text,
+          ' & ', ' | ', 'g'
+        )::tsquery AS query) q
+  WHERE p.active = true
+    AND p.fts @@ q.query
+  ORDER BY rank DESC
+  LIMIT GREATEST(p_match_count, 0);
+$$ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public;
+
+REVOKE ALL ON FUNCTION public.match_products_fts(text, integer) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.match_products_fts(text, integer) TO authenticated, service_role;

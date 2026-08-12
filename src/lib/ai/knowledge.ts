@@ -4,6 +4,7 @@ import { chunkText } from "./chunk";
 interface MatchRow {
   id: string;
   content: string;
+  rank: number;
 }
 
 /**
@@ -31,9 +32,12 @@ export async function ingestDocument(
 }
 
 /**
- * Trae hasta `k` fragmentos relevantes a `queryText` vía búsqueda de
- * texto completo en español. Best-effort: cualquier falla degrada a
- * `[]` en vez de tirar (no debe romper el auto-reply).
+ * Trae hasta `k` fragmentos relevantes a `queryText`, combinando la
+ * base de conocimiento cargada a mano (FAQs) y el catálogo de
+ * productos real — una sola fuente de verdad para productos, no se
+ * duplica contenido en documentos aparte que se desactualizarían.
+ * Best-effort: cualquier falla degrada a `[]` en vez de tirar (no debe
+ * romper el auto-reply).
  */
 export async function retrieveKnowledge(
   db: SupabaseClient,
@@ -43,14 +47,21 @@ export async function retrieveKnowledge(
   const query = queryText.trim();
   if (!query || k <= 0) return [];
 
-  try {
-    const { data, error } = await db.rpc("match_ai_knowledge_fts", {
-      p_query: query,
-      p_match_count: k,
-    });
-    if (error || !Array.isArray(data)) return [];
-    return (data as MatchRow[]).map((r) => r.content);
-  } catch {
-    return [];
+  const [faqResult, productsResult] = await Promise.allSettled([
+    db.rpc("match_ai_knowledge_fts", { p_query: query, p_match_count: k }),
+    db.rpc("match_products_fts", { p_query: query, p_match_count: k }),
+  ]);
+
+  const rows: MatchRow[] = [];
+  if (faqResult.status === "fulfilled" && Array.isArray(faqResult.value.data)) {
+    rows.push(...(faqResult.value.data as MatchRow[]));
   }
+  if (productsResult.status === "fulfilled" && Array.isArray(productsResult.value.data)) {
+    rows.push(...(productsResult.value.data as MatchRow[]));
+  }
+
+  return rows
+    .sort((a, b) => b.rank - a.rank)
+    .slice(0, k)
+    .map((r) => r.content);
 }
