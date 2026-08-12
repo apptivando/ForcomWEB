@@ -12,14 +12,23 @@ interface AiConfigRow {
   system_prompt: string;
 }
 
-const DISAMBIGUATION_RULE =
+const CONVERSATION_RULES =
+  "Estás escribiendo por WhatsApp, no un documento. Reglas de formato: " +
+  "WhatsApp NO interpreta Markdown de verdad — nunca uses '##' para " +
+  "títulos, '**doble asterisco**' para negrita, ni '---' como separador " +
+  "(al cliente le va a aparecer eso tal cual, como texto suelto). Si " +
+  "necesitás resaltar algo, usá *un solo asterisco* (negrita real de " +
+  "WhatsApp) o _guión bajo_ (itálica). Mensajes cortos y conversacionales, " +
+  "como los escribiría una persona — no listas exhaustivas ni bloques " +
+  "largos de texto.\n\n" +
   "Si la pregunta es genérica y en el mapa del catálogo hay más de un " +
   "producto de la misma sección que podría aplicar (ej. \"impresora " +
-  "térmica\" cuando la sección tiene varios modelos), NO recomiendes uno " +
-  "al azar — primero preguntá qué necesita el cliente para acotar " +
-  "(uso, volumen, tickets vs. etiquetas, etc.), y recién ahí sugerí el " +
+  "térmica\" cuando la sección tiene varios modelos), NO vuelques el " +
+  "catálogo ni nombres los modelos todavía — respondé con una sola " +
+  "pregunta corta para acotar (uso, volumen, tickets vs. etiquetas, " +
+  "etc.) y esperá la respuesta del cliente antes de recomendar un " +
   "modelo puntual. Si la pregunta ya es específica (nombra un modelo o " +
-  "un uso claro), respondé directo.";
+  "un uso claro), respondé directo, sin preguntar de más.";
 
 /**
  * Arma el prompt (instrucciones + mapa del catálogo + info de
@@ -43,7 +52,7 @@ export async function generateAssistantReply(
     config.system_prompt,
     catalogIndex && `Mapa del catálogo (todo lo que existe, por sección — para el detalle completo de un modelo puntual usá la información de referencia si está más abajo):\n${catalogIndex}`,
     knowledge.length && `Información de referencia:\n${knowledge.join("\n\n---\n\n")}`,
-    DISAMBIGUATION_RULE,
+    CONVERSATION_RULES,
   ]
     .filter(Boolean)
     .join("\n\n");
