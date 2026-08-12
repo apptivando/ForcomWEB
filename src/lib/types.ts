@@ -121,6 +121,23 @@ export interface CrmMessage {
   created_at: string;
 }
 
+export interface AiConfig {
+  provider: "anthropic" | "openai";
+  model: string;
+  hasApiKey: boolean;
+  system_prompt: string;
+  auto_reply_enabled: boolean;
+  max_replies_per_conversation: number;
+}
+
+export interface AiKnowledgeDocument {
+  id: string;
+  title: string;
+  content: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface QuickReply {
   id: string;
   title: string;

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { dispatchAutoReply } from "@/lib/ai/auto-reply";
 
 // Webhook de entrada de Evolution API. El mismo servidor de Evolution
 // atiende OTRAS instancias que no son de FORCOM ("onconcilia",
@@ -102,6 +103,14 @@ export async function POST(req: NextRequest) {
       ).toISOString(),
     })
     .eq("id", conversation.id);
+
+  // Se espera a que termine antes de responder — en un entorno
+  // serverless, devolver 200 antes no garantiza que esto siga
+  // corriendo. El costo es un webhook un poco más lento, aceptable
+  // para el volumen de FORCOM.
+  if (text) {
+    await dispatchAutoReply(conversation.id, phone);
+  }
 
   return NextResponse.json({ ok: true });
 }
