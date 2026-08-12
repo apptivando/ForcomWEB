@@ -65,3 +65,35 @@ export async function retrieveKnowledge(
     .slice(0, k)
     .map((r) => r.content);
 }
+
+/**
+ * Mapa corto de todo el catálogo activo, agrupado por sección —
+ * SIEMPRE va en el prompt (no depende de la búsqueda). Sin esto, una
+ * pregunta genérica ("¿tenés impresora térmica?") sólo trae 2-3
+ * descripciones larguísimas de productos por separado, y el modelo no
+ * tiene forma de darse cuenta de que hay varias opciones distintas
+ * dentro de la misma sección (tickets vs. etiquetas, por ejemplo) —
+ * así que termina recomendando una al azar en vez de preguntar.
+ * Con el mapa completo a la vista, el modelo puede notar la
+ * ambigüedad y pedir que el cliente precise antes de responder.
+ */
+export async function getCatalogIndex(db: SupabaseClient): Promise<string> {
+  const { data, error } = await db
+    .from("products")
+    .select("model, category, section")
+    .eq("active", true)
+    .order("section")
+    .order("category");
+  if (error || !data?.length) return "";
+
+  const bySection = new Map<string, string[]>();
+  for (const p of data as { model: string; category: string; section: string }[]) {
+    const list = bySection.get(p.section) ?? [];
+    list.push(`${p.model} (${p.category})`);
+    bySection.set(p.section, list);
+  }
+
+  return Array.from(bySection.entries())
+    .map(([section, models]) => `${section}: ${models.join(", ")}`)
+    .join("\n");
+}

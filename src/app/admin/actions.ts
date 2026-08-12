@@ -8,6 +8,8 @@ import { requireRole, type AdminRole } from "@/lib/auth/roles";
 import { sendText } from "@/lib/evolution";
 import { encrypt } from "@/lib/encryption";
 import { ingestDocument } from "@/lib/ai/knowledge";
+import { generateAssistantReply } from "@/lib/ai/auto-reply";
+import type { ChatMessage } from "@/lib/ai/generate";
 import type {
   HeroContent,
   HeroSlide,
@@ -533,4 +535,19 @@ export async function deleteKnowledgeDocument(id: string): Promise<void> {
   const { error } = await supabase.from("ai_knowledge_documents").delete().eq("id", id);
   if (error) throw new Error(error.message);
   revalidatePath("/admin/agente");
+}
+
+/**
+ * Prueba el asistente sin tocar WhatsApp para nada — misma lógica
+ * exacta que el auto-reply real (mismo retrieval, mismo mapa de
+ * catálogo, mismo prompt), solo que no manda ni guarda nada.
+ */
+export async function testAiReply(userMessage: string): Promise<string> {
+  const supabase = await requireAuth();
+  const { data: config, error } = await supabase.from("ai_config").select("*").eq("id", 1).single();
+  if (error || !config) throw new Error("No se pudo leer la configuración del asistente.");
+  if (!config.api_key_encrypted) throw new Error("Todavía no hay una clave de API cargada.");
+
+  const history: ChatMessage[] = [{ role: "user", content: userMessage }];
+  return generateAssistantReply(supabase, config, history);
 }

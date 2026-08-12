@@ -1,8 +1,56 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { decrypt } from "@/lib/encryption";
-import { retrieveKnowledge } from "./knowledge";
+import { retrieveKnowledge, getCatalogIndex } from "./knowledge";
 import { generateReply, type ChatMessage } from "./generate";
 import { sendText } from "@/lib/evolution";
+
+interface AiConfigRow {
+  provider: "anthropic" | "openai";
+  model: string;
+  api_key_encrypted: string;
+  system_prompt: string;
+}
+
+const DISAMBIGUATION_RULE =
+  "Si la pregunta es genérica y en el mapa del catálogo hay más de un " +
+  "producto de la misma sección que podría aplicar (ej. \"impresora " +
+  "térmica\" cuando la sección tiene varios modelos), NO recomiendes uno " +
+  "al azar — primero preguntá qué necesita el cliente para acotar " +
+  "(uso, volumen, tickets vs. etiquetas, etc.), y recién ahí sugerí el " +
+  "modelo puntual. Si la pregunta ya es específica (nombra un modelo o " +
+  "un uso claro), respondé directo.";
+
+/**
+ * Arma el prompt (instrucciones + mapa del catálogo + info de
+ * referencia relevante + regla de desambiguación) y llama al modelo.
+ * Compartido entre el auto-reply real y el modo de prueba de
+ * /admin/agente — misma lógica exacta, para que probar ahí sea
+ * confiable (no una simulación aparte que podría comportarse distinto).
+ */
+export async function generateAssistantReply(
+  db: SupabaseClient,
+  config: AiConfigRow,
+  history: ChatMessage[]
+): Promise<string> {
+  const lastUserMessage = [...history].reverse().find((m) => m.role === "user")?.content ?? "";
+  const [knowledge, catalogIndex] = await Promise.all([
+    retrieveKnowledge(db, lastUserMessage),
+    getCatalogIndex(db),
+  ]);
+
+  const systemPrompt = [
+    config.system_prompt,
+    catalogIndex && `Mapa del catálogo (todo lo que existe, por sección — para el detalle completo de un modelo puntual usá la información de referencia si está más abajo):\n${catalogIndex}`,
+    knowledge.length && `Información de referencia:\n${knowledge.join("\n\n---\n\n")}`,
+    DISAMBIGUATION_RULE,
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+
+  const apiKey = decrypt(config.api_key_encrypted);
+  return generateReply(config.provider, apiKey, config.model, systemPrompt, history);
+}
 
 /**
  * Dispara la respuesta automática para un mensaje entrante recién
@@ -42,15 +90,7 @@ export async function dispatchAutoReply(conversationId: string, phone: string): 
         content: m.content_text as string,
       }));
 
-    const lastUserMessage = [...history].reverse().find((m) => m.role === "user")?.content ?? "";
-    const knowledge = await retrieveKnowledge(db, lastUserMessage);
-
-    const systemPrompt = knowledge.length
-      ? `${config.system_prompt}\n\nInformación de referencia:\n${knowledge.join("\n\n---\n\n")}`
-      : config.system_prompt;
-
-    const apiKey = decrypt(config.api_key_encrypted);
-    const replyText = await generateReply(config.provider, apiKey, config.model, systemPrompt, history);
+    const replyText = await generateAssistantReply(db, config, history);
     if (!replyText?.trim()) return;
 
     const result = await sendText(phone, replyText);
