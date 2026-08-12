@@ -541,13 +541,18 @@ export async function deleteKnowledgeDocument(id: string): Promise<void> {
  * Prueba el asistente sin tocar WhatsApp para nada — misma lógica
  * exacta que el auto-reply real (mismo retrieval, mismo mapa de
  * catálogo, mismo prompt), solo que no manda ni guarda nada.
+ *
+ * Recibe la conversación completa hasta ahora (incluyendo el mensaje
+ * nuevo del "cliente" al final) para que el modo de prueba también
+ * pueda simular idas y vueltas — necesario para probar el flujo de
+ * "pregunta genérica → el asistente pide precisar → el cliente aclara
+ * → recién ahí recomienda", no solo una pregunta suelta.
  */
-export async function testAiReply(userMessage: string): Promise<string> {
+export async function testAiReply(history: ChatMessage[]): Promise<string> {
   const supabase = await requireAuth();
   const { data: config, error } = await supabase.from("ai_config").select("*").eq("id", 1).single();
   if (error || !config) throw new Error("No se pudo leer la configuración del asistente.");
   if (!config.api_key_encrypted) throw new Error("Todavía no hay una clave de API cargada.");
 
-  const history: ChatMessage[] = [{ role: "user", content: userMessage }];
   return generateAssistantReply(supabase, config, history);
 }

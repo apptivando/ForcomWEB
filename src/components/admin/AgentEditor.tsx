@@ -8,6 +8,7 @@ import {
   testAiReply,
 } from "@/app/admin/actions";
 import type { AiConfig, AiKnowledgeDocument } from "@/lib/types";
+import type { ChatMessage } from "@/lib/ai/generate";
 
 const inputCls =
   "w-full bg-[#0D0D0F] border border-[#2A2A2E] rounded-sm px-4 py-3 text-white placeholder:text-[#8A8A8A]/50 focus:border-[#E8231A] focus:outline-none transition-colors";
@@ -33,7 +34,7 @@ export default function AgentEditor({
 function TestSection() {
   const [, startTransition] = useTransition();
   const [message, setMessage] = useState("");
-  const [reply, setReply] = useState<string | null>(null);
+  const [history, setHistory] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -41,12 +42,14 @@ function TestSection() {
     e.preventDefault();
     if (!message.trim()) return;
     setError("");
-    setReply(null);
     setLoading(true);
+    const nextHistory: ChatMessage[] = [...history, { role: "user", content: message.trim() }];
+    setHistory(nextHistory);
+    setMessage("");
     startTransition(async () => {
       try {
-        const result = await testAiReply(message);
-        setReply(result);
+        const reply = await testAiReply(nextHistory);
+        setHistory((prev) => [...prev, { role: "assistant", content: reply }]);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Error al probar.");
       } finally {
@@ -55,18 +58,48 @@ function TestSection() {
     });
   }
 
+  function reset() {
+    setHistory([]);
+    setError("");
+  }
+
   return (
     <div>
-      <h2 className="font-display font-bold text-lg text-white mb-1">Probar el asistente</h2>
+      <div className="flex items-center justify-between mb-1">
+        <h2 className="font-display font-bold text-lg text-white">Probar el asistente</h2>
+        {history.length > 0 && (
+          <button onClick={reset} className="text-xs text-[#8A8A8A] hover:text-white">
+            Reiniciar conversación
+          </button>
+        )}
+      </div>
       <p className="text-xs text-[#8A8A8A] mb-4">
-        Escribí una pregunta como si fueras un cliente — no manda nada por WhatsApp, solo muestra qué contestaría.
+        Simulá una conversación como si fueras cliente — sigue el hilo (podés contestar sus preguntas), no manda nada por WhatsApp.
       </p>
-      <form onSubmit={handleTest} className="bg-[#141416] border border-[#2A2A2E] rounded-sm p-6 space-y-4">
-        <div className="flex gap-3">
+      <div className="bg-[#141416] border border-[#2A2A2E] rounded-sm p-6 space-y-4">
+        {history.length > 0 && (
+          <div className="space-y-3 max-h-80 overflow-y-auto">
+            {history.map((m, i) => (
+              <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+                <div
+                  className={`max-w-[80%] rounded-sm px-4 py-2.5 text-sm whitespace-pre-wrap ${
+                    m.role === "user"
+                      ? "bg-[#E8231A] text-white"
+                      : "bg-[#0D0D0F] border border-[#2A2A2E] text-white"
+                  }`}
+                >
+                  {m.content}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <form onSubmit={handleTest} className="flex gap-3">
           <input
             value={message}
             onChange={(e) => setMessage(e.target.value)}
-            placeholder="¿Tenés impresora térmica?"
+            placeholder={history.length === 0 ? "¿Tenés impresora térmica?" : "Tu respuesta..."}
             className={inputCls}
           />
           <button
@@ -74,23 +107,16 @@ function TestSection() {
             disabled={loading}
             className="px-6 py-3 bg-[#E8231A] text-white text-sm font-display font-bold tracking-widest uppercase rounded-sm hover:bg-[#C41D16] transition-colors disabled:opacity-50 whitespace-nowrap"
           >
-            {loading ? "..." : "Probar"}
+            {loading ? "..." : "Enviar"}
           </button>
-        </div>
+        </form>
+
         {error && (
           <p className="text-sm text-[#E8231A] bg-[#E8231A]/10 border border-[#E8231A]/20 rounded-sm px-4 py-3">
             {error}
           </p>
         )}
-        {reply && (
-          <div className="bg-[#0D0D0F] border border-[#2A2A2E] rounded-sm px-4 py-3">
-            <p className="text-[10px] font-display font-semibold tracking-[0.15em] uppercase text-[#8A8A8A] mb-2">
-              Respondería
-            </p>
-            <p className="text-sm text-white whitespace-pre-wrap">{reply}</p>
-          </div>
-        )}
-      </form>
+      </div>
     </div>
   );
 }
