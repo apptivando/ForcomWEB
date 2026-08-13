@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { dispatchAutoReply } from "@/lib/ai/auto-reply";
+import { dispatchAutomations } from "@/lib/automations/engine";
 
 // Webhook de entrada de Evolution API. El mismo servidor de Evolution
 // atiende OTRAS instancias que no son de FORCOM ("onconcilia",
@@ -69,6 +70,7 @@ export async function POST(req: NextRequest) {
     .eq("status", "open")
     .maybeSingle();
 
+  const isNewConversation = !conversation;
   if (!conversation) {
     const { data: created, error: convErr } = await supabase
       .from("crm_conversations")
@@ -108,8 +110,15 @@ export async function POST(req: NextRequest) {
   // serverless, devolver 200 antes no garantiza que esto siga
   // corriendo. El costo es un webhook un poco más lento, aceptable
   // para el volumen de FORCOM.
+  //
+  // Automatizaciones primero, IA como respaldo — si una automatización
+  // ya mandó algo, el auto-reply de IA no contesta encima (misma
+  // prioridad que tenía wacrm).
   if (text) {
-    await dispatchAutoReply(conversation.id, phone);
+    const automationHandled = await dispatchAutomations(supabase, conversation.id, phone, text, isNewConversation);
+    if (!automationHandled) {
+      await dispatchAutoReply(conversation.id, phone);
+    }
   }
 
   return NextResponse.json({ ok: true });

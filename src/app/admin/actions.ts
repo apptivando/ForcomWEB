@@ -23,6 +23,8 @@ import type {
   AiKnowledgeDocument,
   PipelineStage,
   PipelineDeal,
+  Automation,
+  AutomationStep,
 } from "@/lib/types";
 
 async function requireAuth() {
@@ -637,4 +639,116 @@ export async function deletePipelineDeal(dealId: string): Promise<void> {
   const { error } = await supabase.from("pipeline_deals").delete().eq("id", dealId);
   if (error) throw new Error(error.message);
   revalidatePath("/admin/pipelines");
+}
+
+// ─── Automatizaciones (Track E, fase 6) ───────────────────────────────────────
+
+export async function listAutomations(): Promise<Automation[]> {
+  const supabase = await requireAuth();
+  const { data: automations, error } = await supabase
+    .from("automations")
+    .select("*")
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(error.message);
+  if (!automations?.length) return [];
+
+  const { data: steps } = await supabase
+    .from("automation_steps")
+    .select("*")
+    .in("automation_id", automations.map((a) => a.id))
+    .order("step_index");
+
+  return automations.map((a) => ({
+    ...a,
+    steps: (steps ?? []).filter((s) => s.automation_id === a.id),
+  })) as Automation[];
+}
+
+async function replaceSteps(
+  supabase: Awaited<ReturnType<typeof requireAuth>>,
+  automationId: string,
+  steps: AutomationStep[]
+) {
+  await supabase.from("automation_steps").delete().eq("automation_id", automationId);
+  if (!steps.length) return;
+  const rows = steps.map((s, i) => ({
+    automation_id: automationId,
+    step_index: i,
+    action_type: s.action_type,
+    message_text: s.action_type === "send_message" ? s.message_text : null,
+    wait_minutes: s.action_type === "wait" ? s.wait_minutes : null,
+    assign_member_id: s.action_type === "assign_agent" ? s.assign_member_id : null,
+  }));
+  const { error } = await supabase.from("automation_steps").insert(rows);
+  if (error) throw new Error(error.message);
+}
+
+export async function upsertAutomation(
+  id: string | null,
+  data: {
+    name: string;
+    trigger_type: "keyword_match" | "new_conversation";
+    trigger_keywords: string[];
+    steps: AutomationStep[];
+  }
+): Promise<void> {
+  const supabase = await requireAuth();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  let automationId = id;
+  if (automationId) {
+    const { error } = await supabase
+      .from("automations")
+      .update({
+        name: data.name.trim(),
+        trigger_type: data.trigger_type,
+        trigger_keywords: data.trigger_type === "keyword_match" ? data.trigger_keywords : null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", automationId);
+    if (error) throw new Error(error.message);
+  } else {
+    const { data: created, error } = await supabase
+      .from("automations")
+      .insert({
+        name: data.name.trim(),
+        trigger_type: data.trigger_type,
+        trigger_keywords: data.trigger_type === "keyword_match" ? data.trigger_keywords : null,
+        created_by: user!.id,
+      })
+      .select("id")
+      .single();
+    if (error) throw new Error(error.message);
+    automationId = created.id;
+  }
+
+  await replaceSteps(supabase, automationId!, data.steps);
+  revalidatePath("/admin/automatizaciones");
+}
+
+export async function toggleAutomationActive(id: string, active: boolean): Promise<void> {
+  const supabase = await requireAuth();
+  const { error } = await supabase.from("automations").update({ active }).eq("id", id);
+  if (error) throw new Error(error.message);
+  revalidatePath("/admin/automatizaciones");
+}
+
+export async function deleteAutomation(id: string): Promise<void> {
+  const supabase = await requireAuth();
+  const { error } = await supabase.from("automations").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+  revalidatePath("/admin/automatizaciones");
+}
+
+/** Para el selector de "asignar a" en los pasos — mismo cruce que /admin/miembros. */
+export async function listMembersForAssignment(): Promise<{ user_id: string; email: string }[]> {
+  const supabase = await requireAuth();
+  const { data: members } = await supabase.from("admin_members").select("user_id");
+  if (!members?.length) return [];
+
+  const admin = createAdminClient();
+  const { data: usersPage } = await admin.auth.admin.listUsers({ perPage: 200 });
+  const emailByUserId = new Map(usersPage?.users.map((u) => [u.id, u.email ?? ""]));
+
+  return members.map((m) => ({ user_id: m.user_id, email: emailByUserId.get(m.user_id) ?? m.user_id }));
 }

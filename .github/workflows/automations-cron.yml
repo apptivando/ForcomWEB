@@ -1,0 +1,23 @@
+name: Automations cron
+
+# Reemplaza a los Cron Jobs de Vercel (ocupados por otro proyecto).
+# Le pega a /api/cron/automations cada 5 minutos para que las
+# automatizaciones con pasos "wait" sigan solas donde quedaron.
+# GitHub no garantiza el minuto exacto bajo carga — está bien, no es
+# un caso de uso que necesite precisión al segundo.
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch: {} # para poder correrlo a mano desde la pestaña Actions
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Llamar al endpoint de automatizaciones
+        run: |
+          curl -sf -X GET "https://dev.forcom.tech/api/cron/automations" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
+        # TODO: cambiar a https://www.forcom.tech/api/cron/automations
+        # cuando el Track E se mergee de develop a main.

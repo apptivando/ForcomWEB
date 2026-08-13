@@ -138,6 +138,25 @@ export interface AiKnowledgeDocument {
   updated_at: string;
 }
 
+export interface AutomationStep {
+  id?: string;
+  step_index: number;
+  action_type: "send_message" | "wait" | "assign_agent";
+  message_text: string | null;
+  wait_minutes: number | null;
+  assign_member_id: string | null;
+}
+
+export interface Automation {
+  id: string;
+  name: string;
+  trigger_type: "keyword_match" | "new_conversation";
+  trigger_keywords: string[] | null;
+  active: boolean;
+  created_at: string;
+  steps: AutomationStep[];
+}
+
 export interface PipelineStage {
   id: string;
   name: string;
