@@ -15,11 +15,14 @@ import type {
   HeroSlide,
   Product,
   CompanyInfo,
+  CrmContact,
   CrmConversation,
   CrmMessage,
   QuickReply,
   AiConfig,
   AiKnowledgeDocument,
+  PipelineStage,
+  PipelineDeal,
 } from "@/lib/types";
 
 async function requireAuth() {
@@ -352,6 +355,16 @@ export async function acceptInvitation() {
 
 // ─── Bandeja de WhatsApp (Track E, fase 3) ────────────────────────────────────
 
+export async function listCrmContacts(): Promise<CrmContact[]> {
+  const supabase = await requireAuth();
+  const { data, error } = await supabase
+    .from("crm_contacts")
+    .select("*")
+    .order("name", { ascending: true });
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
 export async function listConversations(): Promise<CrmConversation[]> {
   const supabase = await requireAuth();
   const { data, error } = await supabase
@@ -555,4 +568,73 @@ export async function testAiReply(history: ChatMessage[]): Promise<string> {
   if (!config.api_key_encrypted) throw new Error("Todavía no hay una clave de API cargada.");
 
   return generateAssistantReply(supabase, config, history);
+}
+
+// ─── Pipelines de venta (Track E, fase 5) ─────────────────────────────────────
+
+export async function listPipelineStages(): Promise<PipelineStage[]> {
+  const supabase = await requireAuth();
+  const { data, error } = await supabase
+    .from("pipeline_stages")
+    .select("id, name, order_index")
+    .order("order_index");
+  if (error) throw new Error(error.message);
+  return (data ?? []) as PipelineStage[];
+}
+
+export async function listPipelineDeals(): Promise<PipelineDeal[]> {
+  const supabase = await requireAuth();
+  const { data, error } = await supabase
+    .from("pipeline_deals")
+    .select("*, contact:crm_contacts(*)")
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(error.message);
+  return (data ?? []) as unknown as PipelineDeal[];
+}
+
+export async function createPipelineDeal(data: {
+  contactId: string;
+  stageId: string;
+  title: string;
+  value?: number | null;
+}): Promise<void> {
+  const supabase = await requireAuth();
+  const { error } = await supabase.from("pipeline_deals").insert({
+    contact_id: data.contactId,
+    stage_id: data.stageId,
+    title: data.title.trim(),
+    value: data.value ?? null,
+  });
+  if (error) throw new Error(error.message);
+  revalidatePath("/admin/pipelines");
+}
+
+export async function moveDealStage(dealId: string, stageId: string): Promise<void> {
+  const supabase = await requireAuth();
+  const { error } = await supabase
+    .from("pipeline_deals")
+    .update({ stage_id: stageId })
+    .eq("id", dealId);
+  if (error) throw new Error(error.message);
+  revalidatePath("/admin/pipelines");
+}
+
+export async function updatePipelineDeal(
+  dealId: string,
+  data: { title: string; value: number | null; notes: string | null }
+): Promise<void> {
+  const supabase = await requireAuth();
+  const { error } = await supabase
+    .from("pipeline_deals")
+    .update({ title: data.title.trim(), value: data.value, notes: data.notes?.trim() || null })
+    .eq("id", dealId);
+  if (error) throw new Error(error.message);
+  revalidatePath("/admin/pipelines");
+}
+
+export async function deletePipelineDeal(dealId: string): Promise<void> {
+  const supabase = await requireAuth();
+  const { error } = await supabase.from("pipeline_deals").delete().eq("id", dealId);
+  if (error) throw new Error(error.message);
+  revalidatePath("/admin/pipelines");
 }

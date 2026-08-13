@@ -138,6 +138,25 @@ export interface AiKnowledgeDocument {
   updated_at: string;
 }
 
+export interface PipelineStage {
+  id: string;
+  name: string;
+  order_index: number;
+}
+
+export interface PipelineDeal {
+  id: string;
+  contact_id: string;
+  stage_id: string;
+  title: string;
+  value: number | null;
+  notes: string | null;
+  assigned_member_id: string | null;
+  created_at: string;
+  updated_at: string;
+  contact: CrmContact;
+}
+
 export interface QuickReply {
   id: string;
   title: string;
