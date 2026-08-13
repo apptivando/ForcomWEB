@@ -630,3 +630,35 @@ CREATE POLICY "Members can read automation_pending_executions" ON automation_pen
 DROP POLICY IF EXISTS "Members can read automation_logs" ON automation_logs;
 CREATE POLICY "Members can read automation_logs" ON automation_logs FOR SELECT
   USING (public.current_admin_role() IS NOT NULL);
+
+-- ============================================================
+-- Migración: búsqueda semántica del asistente (13/08/2026)
+-- Ejecutar en Supabase Dashboard > SQL Editor
+-- Ver supabase/sql-changes/009_ai_semantic_search.sql
+-- ============================================================
+
+CREATE EXTENSION IF NOT EXISTS vector;
+
+ALTER TABLE ai_config ADD COLUMN IF NOT EXISTS embeddings_api_key_encrypted TEXT;
+
+ALTER TABLE ai_knowledge_chunks ADD COLUMN IF NOT EXISTS embedding vector(1536);
+
+CREATE INDEX IF NOT EXISTS ai_knowledge_chunks_embedding_idx
+  ON ai_knowledge_chunks USING hnsw (embedding vector_cosine_ops);
+
+CREATE OR REPLACE FUNCTION public.match_ai_knowledge_semantic(
+  p_query_embedding text,
+  p_match_count     integer
+)
+RETURNS TABLE (id uuid, content text, distance real) AS $$
+  SELECT c.id,
+         c.content,
+         (c.embedding <=> p_query_embedding::vector) AS distance
+  FROM ai_knowledge_chunks c
+  WHERE c.embedding IS NOT NULL
+  ORDER BY c.embedding <=> p_query_embedding::vector
+  LIMIT GREATEST(p_match_count, 0);
+$$ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public;
+
+REVOKE ALL ON FUNCTION public.match_ai_knowledge_semantic(text, integer) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.match_ai_knowledge_semantic(text, integer) TO authenticated, service_role;

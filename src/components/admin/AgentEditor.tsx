@@ -6,6 +6,7 @@ import {
   upsertKnowledgeDocument,
   deleteKnowledgeDocument,
   testAiReply,
+  reindexKnowledgeEmbeddings,
 } from "@/app/admin/actions";
 import type { AiConfig, AiKnowledgeDocument } from "@/lib/types";
 import type { ChatMessage } from "@/lib/ai/generate";
@@ -127,14 +128,18 @@ function ConfigSection({ initialConfig }: { initialConfig: AiConfig }) {
     provider: initialConfig.provider,
     model: initialConfig.model,
     apiKey: "",
+    embeddingsApiKey: "",
     system_prompt: initialConfig.system_prompt,
     auto_reply_enabled: initialConfig.auto_reply_enabled,
     max_replies_per_conversation: initialConfig.max_replies_per_conversation,
   });
   const [hasApiKey] = useState(initialConfig.hasApiKey);
+  const [hasEmbeddingsKey, setHasEmbeddingsKey] = useState(initialConfig.hasEmbeddingsKey);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
+  const [reindexing, setReindexing] = useState(false);
+  const [reindexMsg, setReindexMsg] = useState("");
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -143,13 +148,29 @@ function ConfigSection({ initialConfig }: { initialConfig: AiConfig }) {
     startTransition(async () => {
       try {
         await updateAiConfig(form);
-        setForm((f) => ({ ...f, apiKey: "" }));
+        if (form.embeddingsApiKey.trim()) setHasEmbeddingsKey(true);
+        setForm((f) => ({ ...f, apiKey: "", embeddingsApiKey: "" }));
         setSaved(true);
         setTimeout(() => setSaved(false), 3000);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Error al guardar.");
       } finally {
         setSaving(false);
+      }
+    });
+  }
+
+  function handleReindex() {
+    setReindexMsg("");
+    setReindexing(true);
+    startTransition(async () => {
+      try {
+        const count = await reindexKnowledgeEmbeddings();
+        setReindexMsg(`✓ ${count} fragmentos reindexados`);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Error al reindexar.");
+      } finally {
+        setReindexing(false);
       }
     });
   }
@@ -209,6 +230,36 @@ function ConfigSection({ initialConfig }: { initialConfig: AiConfig }) {
             className={inputCls}
             placeholder={hasApiKey ? "•••••••••••• (dejar vacío para no cambiarla)" : "sk-..."}
           />
+        </div>
+
+        <div className="pt-2 border-t border-[#2A2A2E]">
+          <label className={labelCls}>Clave de embeddings (OpenAI) — opcional, recomendada</label>
+          <p className="text-[11px] text-[#8A8A8A] mb-2">
+            Sin esto, el asistente solo encuentra respuestas si la pregunta usa palabras parecidas a las del documento
+            (ej. no relaciona &quot;a qué hora atienden&quot; con &quot;horario de atención&quot;). Con esta clave busca
+            por significado — es una clave distinta a la de arriba, siempre de OpenAI aunque el modelo de chat sea Claude
+            (Anthropic no tiene API de embeddings).
+          </p>
+          <input
+            type="password"
+            value={form.embeddingsApiKey}
+            onChange={(e) => setForm((f) => ({ ...f, embeddingsApiKey: e.target.value }))}
+            className={inputCls}
+            placeholder={hasEmbeddingsKey ? "•••••••••••• (dejar vacío para no cambiarla)" : "sk-..."}
+          />
+          {hasEmbeddingsKey && (
+            <div className="flex items-center gap-3 mt-2">
+              <button
+                type="button"
+                onClick={handleReindex}
+                disabled={reindexing}
+                className="text-xs text-[#E8231A] hover:underline disabled:opacity-50"
+              >
+                {reindexing ? "Reindexando..." : "Reindexar toda la base de conocimiento"}
+              </button>
+              {reindexMsg && <span className="text-xs text-green-400">{reindexMsg}</span>}
+            </div>
+          )}
         </div>
 
         <div>

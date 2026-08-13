@@ -9,6 +9,7 @@ interface AiConfigRow {
   provider: "anthropic" | "openai";
   model: string;
   api_key_encrypted: string;
+  embeddings_api_key_encrypted?: string | null;
   system_prompt: string;
 }
 
@@ -43,8 +44,11 @@ export async function generateAssistantReply(
   history: ChatMessage[]
 ): Promise<string> {
   const lastUserMessage = [...history].reverse().find((m) => m.role === "user")?.content ?? "";
+  const embeddingsApiKey = config.embeddings_api_key_encrypted
+    ? decrypt(config.embeddings_api_key_encrypted)
+    : null;
   const [knowledge, catalogIndex] = await Promise.all([
-    retrieveKnowledge(db, lastUserMessage),
+    retrieveKnowledge(db, lastUserMessage, embeddingsApiKey),
     getCatalogIndex(db),
   ]);
 

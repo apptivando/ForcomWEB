@@ -125,6 +125,7 @@ export interface AiConfig {
   provider: "anthropic" | "openai";
   model: string;
   hasApiKey: boolean;
+  hasEmbeddingsKey: boolean;
   system_prompt: string;
   auto_reply_enabled: boolean;
   max_replies_per_conversation: number;

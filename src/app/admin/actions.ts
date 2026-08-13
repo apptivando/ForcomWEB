@@ -6,8 +6,8 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireRole, type AdminRole } from "@/lib/auth/roles";
 import { sendText } from "@/lib/evolution";
-import { encrypt } from "@/lib/encryption";
-import { ingestDocument } from "@/lib/ai/knowledge";
+import { encrypt, decrypt } from "@/lib/encryption";
+import { ingestDocument, reindexAllEmbeddings } from "@/lib/ai/knowledge";
 import { generateAssistantReply } from "@/lib/ai/auto-reply";
 import type { ChatMessage } from "@/lib/ai/generate";
 import type {
@@ -472,6 +472,7 @@ export async function getAiConfig(): Promise<AiConfig> {
     provider: data.provider,
     model: data.model,
     hasApiKey: Boolean(data.api_key_encrypted),
+    hasEmbeddingsKey: Boolean(data.embeddings_api_key_encrypted),
     system_prompt: data.system_prompt,
     auto_reply_enabled: data.auto_reply_enabled,
     max_replies_per_conversation: data.max_replies_per_conversation,
@@ -482,6 +483,7 @@ export async function updateAiConfig(data: {
   provider: "anthropic" | "openai";
   model: string;
   apiKey?: string; // solo si se está cambiando — nunca se devuelve al cliente
+  embeddingsApiKey?: string;
   system_prompt: string;
   auto_reply_enabled: boolean;
   max_replies_per_conversation: number;
@@ -500,10 +502,28 @@ export async function updateAiConfig(data: {
   if (data.apiKey?.trim()) {
     update.api_key_encrypted = encrypt(data.apiKey.trim());
   }
+  if (data.embeddingsApiKey?.trim()) {
+    update.embeddings_api_key_encrypted = encrypt(data.embeddingsApiKey.trim());
+  }
 
   const { error } = await supabase.from("ai_config").update(update).eq("id", 1);
   if (error) throw new Error(error.message);
   revalidatePath("/admin/agente");
+}
+
+/** Recalcula el embedding de todos los chunks — para cuando se agrega la clave después de haber cargado documentos. */
+export async function reindexKnowledgeEmbeddings(): Promise<number> {
+  const supabase = await requireAuth();
+  await requireRole(supabase, "admin");
+
+  const { data: config, error } = await supabase.from("ai_config").select("embeddings_api_key_encrypted").eq("id", 1).single();
+  if (error || !config?.embeddings_api_key_encrypted) {
+    throw new Error("No hay clave de embeddings cargada.");
+  }
+
+  const count = await reindexAllEmbeddings(supabase, decrypt(config.embeddings_api_key_encrypted));
+  revalidatePath("/admin/agente");
+  return count;
 }
 
 export async function listKnowledgeDocuments(): Promise<AiKnowledgeDocument[]> {
@@ -541,7 +561,12 @@ export async function upsertKnowledgeDocument(
     documentId = data.id;
   }
 
-  await ingestDocument(supabase, documentId!, content.trim());
+  const { data: config } = await supabase.from("ai_config").select("embeddings_api_key_encrypted").eq("id", 1).single();
+  const embeddingsApiKey = config?.embeddings_api_key_encrypted
+    ? decrypt(config.embeddings_api_key_encrypted)
+    : null;
+
+  await ingestDocument(supabase, documentId!, content.trim(), embeddingsApiKey);
   revalidatePath("/admin/agente");
 }
 
