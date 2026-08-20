@@ -169,6 +169,34 @@ export function clientSubLabel(c: Pick<CrmContact, "business_name" | "contact_na
  */
 export const CLIENTS_PAGE_SIZE = 50;
 
+/**
+ * Plantilla de contacto inicial. Modelada con los campos que pide Meta
+ * (nombre, idioma, categoría, estado de aprobación) desde antes de migrar a la
+ * Cloud API, para no tener que rehacerla después.
+ *
+ * Distinta de `QuickReply` a propósito: una respuesta rápida es texto que un
+ * agente inserta dentro de una conversación ya abierta y no necesita
+ * aprobación de nadie; una plantilla INICIA la conversación y Meta la tiene que
+ * aprobar antes de que se pueda usar.
+ */
+export interface OutreachTemplate {
+  id: string;
+  name: string;
+  meta_template_name: string | null;
+  language: string;
+  category: "marketing" | "utility" | "authentication";
+  status: "borrador" | "enviada" | "aprobada" | "rechazada";
+  rejection_reason: string | null;
+  /** Con marcadores {{1}}, {{2}}… igual que Meta. */
+  body: string;
+  /** Qué representa cada marcador, en orden. Ej: ["nombre de contacto", "rubro"]. */
+  variables: string[];
+  active: boolean;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 /** Una corrida del buscador de prospectos (rubro + localidad). */
 export interface ProspectSearch {
   id: string;

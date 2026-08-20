@@ -62,6 +62,8 @@ cambia la prioridad.
 | `PROSPECT_SEARCH_DAILY_LIMIT` | Tope diario de consultas del nivel 3 (default `90`) | No |
 | `PROSPECT_USER_AGENT` | Cómo se presenta el bot ante los sitios que visita | No (hay default) |
 | `PROSPECTS_WHATSAPP_CHECK` | `off`. El gancho de verificación por Evolution, apagado | No |
+| `WHATSAPP_TRANSPORT` | `evolution` (actual) o `meta` (Cloud API oficial) | No — default `evolution` |
+| `OUTREACH_DAILY_LIMIT` | Tope de mensajes en frío por día (default `20`) | No |
 | `CRON_SECRET` | Protege el endpoint del cron. Ya existía | Sí, para el cron |
 
 > Después de tocar `.env.local` hay que reiniciar `npm run dev`: se lee una sola
@@ -223,6 +225,55 @@ partir de ese momento **ningún proceso automático vuelve a tocar esa ficha**, 
 el enriquecedor ni el merge de una búsqueda futura.
 
 ---
+
+## Escribirle a un prospecto
+
+Botón **Escribir** en la fila del cliente. Abre un panel con tres salidas:
+
+- **Enviar** — manda el mensaje desde el número de la empresa y deja la
+  conversación abierta en la Bandeja para seguirla ahí. Puede ser una plantilla
+  (con los datos de la ficha ya reemplazados y a la vista) o texto libre.
+- **Abrir en la Bandeja** — crea la conversación **sin mandar nada**, para
+  escribirla a mano. Es lo más prudente para un primer contacto.
+- **Abrir en mi WhatsApp** — el link `wa.me` de siempre, que sale desde tu
+  número personal y no desde el del CRM.
+
+### La ventana de 24 horas
+
+Es la regla que ordena toda esta parte. Con una conexión oficial de Meta se
+puede mandar **texto libre solo dentro de las 24 horas posteriores al último
+mensaje del cliente**. Fuera de esa ventana —o sea, en todo primer contacto—
+Meta únicamente acepta plantillas que haya aprobado antes.
+
+Hoy el transporte es Evolution, que al no ser oficial no aplica esa regla. Igual
+la ventana se calcula y se muestra en el panel, por dos motivos: avisa cuándo se
+está haciendo algo que Meta no permitiría, y hace que el día que se conecte la
+cuenta oficial no cambie nada más que el transporte. Con
+`WHATSAPP_TRANSPORT=meta`, un texto libre fuera de la ventana se rechaza antes
+de salir a la red, con un mensaje entendible en vez de un error de API.
+
+Las plantillas se cargan en **`/admin/plantillas`**, con los campos que pide
+Meta (nombre, idioma, categoría y estado de aprobación). Los marcadores son
+`{{1}}`, `{{2}}`… igual que allá, y se completan solos desde la ficha cuando la
+descripción de la variable menciona *nombre de contacto*, *razón social*,
+*rubro* o *localidad*. Si el dato falta, el marcador queda vacío: nunca se le
+muestra un `{{1}}` crudo a un cliente.
+
+### El tope diario
+
+Mandar mensajes no solicitados desde el número de la empresa es exactamente el
+patrón que hace que WhatsApp limite o bloquee una línea. `OUTREACH_DAILY_LIMIT`
+(20 por defecto) es el freno. Conviene arrancar bajo y subirlo despacio.
+
+El cupo **solo lo consume el contacto en frío**: contestar dentro de la ventana
+de 24 h no descuenta, porque no es prospección sino atender a alguien que
+escribió. La reserva del cupo es atómica y ocurre *antes* de enviar; si el envío
+falla, el cupo se devuelve.
+
+Cada ficha guarda `outreach_at` y `outreach_count`, así que se ve de un vistazo
+a quién ya se le escribió y no se le insiste al mismo prospecto en cada tanda.
+Los mensajes quedan marcados con `is_outreach` y con la plantilla que se usó,
+para poder medir después qué porcentaje contesta y con cuál.
 
 ## El proceso automático
 

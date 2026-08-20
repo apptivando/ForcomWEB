@@ -132,6 +132,58 @@ console.log("\n── Funciones ──");
   else bad("bump_cse_usage no respeta el tope");
 }
 
+// ─── 2b. Migración 011 (contacto en frío) ────────────────────────────────────
+
+console.log("\n── Migración 011 ──");
+
+{
+  const { error } = await db.from("outreach_templates").select("id, name, status, variables").limit(1);
+  if (error) bad(`falta la tabla outreach_templates: ${error.message}`,
+                 "Correr supabase/sql-changes/011_contacto_en_frio.sql.");
+  else ok("tabla outreach_templates");
+}
+
+{
+  const { error } = await db.from("crm_contacts").select("outreach_at, outreach_count").limit(1);
+  if (error) bad("crm_contacts no tiene outreach_at / outreach_count", "Correr la migración 011.");
+  else ok("crm_contacts.outreach_at / outreach_count");
+}
+
+{
+  const { error } = await db.from("crm_messages").select("is_outreach, template_id").limit(1);
+  if (error) bad("crm_messages no tiene is_outreach / template_id", "Correr la migración 011.");
+  else ok("crm_messages.is_outreach / template_id");
+}
+
+{
+  // Un tope de 0 hace que devuelva allowed=false sin mandar nada. Se libera el
+  // cupo enseguida para no dejar el contador del día desviado.
+  const { data, error } = await db.rpc("reserve_cold_message", { p_limit: 0 });
+  const row = Array.isArray(data) ? data[0] : data;
+  if (error) {
+    bad(`reserve_cold_message: ${error.message}`, "Correr la migración 011.");
+  } else if (row?.allowed === false) {
+    await db.rpc("release_cold_message");
+    ok("reserve_cold_message / release_cold_message", "(el tope frena bien)");
+  } else {
+    bad("reserve_cold_message no respeta el tope");
+  }
+}
+
+{
+  const { data } = await db.from("outreach_templates").select("name, status, active");
+  if (data) {
+    const aprobadas = data.filter((t) => t.status === "aprobada" && t.active).length;
+    if (data.length === 0) warn("no hay plantillas cargadas");
+    else {
+      ok(`${data.length} plantilla(s)`, `(${aprobadas} aprobada(s) y activa(s))`);
+      for (const t of data) console.log(`   ${DIM}${t.name} — ${t.status}${t.active ? "" : " (inactiva)"}${OFF}`);
+    }
+  }
+}
+
+console.log(`   ${DIM}transporte: ${env.WHATSAPP_TRANSPORT ?? "evolution"} · tope diario en frío: ${env.OUTREACH_DAILY_LIMIT ?? 20}${OFF}`);
+
 // ─── 3. Datos ────────────────────────────────────────────────────────────────
 
 console.log("\n── Estado de los datos ──");

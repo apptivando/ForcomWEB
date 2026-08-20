@@ -6,6 +6,7 @@ import { clientLabel, clientSubLabel } from "@/lib/types";
 import { formatArPhone } from "@/lib/phone";
 import { updateClient, deleteClient, requeueClient, exportClients } from "@/app/admin/actions";
 import type { ClientFilters } from "@/app/admin/actions";
+import OutreachPanel from "@/components/admin/OutreachPanel";
 import type { CrmContact, ClientOrigin, ContactTier } from "@/lib/types";
 
 /** Escapa un campo para CSV: comillas dobladas y todo entre comillas. */
@@ -192,6 +193,7 @@ export default function ClientsTable({
   // hasta que el enriquecimiento termine.
   const [collapsed, setCollapsed] = useState<Set<ContactTier>>(new Set<ContactTier>([4]));
   const [editing, setEditing] = useState<string | null>(null);
+  const [writing, setWriting] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const [, startTransition] = useTransition();
@@ -433,8 +435,25 @@ export default function ClientsTable({
                           🔒
                         </span>
                       )}
+                      {/* Solo tiene sentido si hay a dónde escribir. Se
+                          prefiere el WhatsApp confirmado, pero un teléfono
+                          suelto también sirve para intentarlo. */}
+                      {(c.whatsapp_phone || c.phone) && (
+                        <button
+                          onClick={() => {
+                            setWriting(writing === c.id ? null : c.id);
+                            setEditing(null);
+                          }}
+                          className="text-green-400 hover:text-green-300"
+                        >
+                          Escribir
+                        </button>
+                      )}
                       <button
-                        onClick={() => setEditing(editing === c.id ? null : c.id)}
+                        onClick={() => {
+                          setEditing(editing === c.id ? null : c.id);
+                          setWriting(null);
+                        }}
                         className="text-[#B0B0B0] hover:text-white"
                       >
                         Editar
@@ -487,6 +506,7 @@ export default function ClientsTable({
                   </td>
                 </tr>
                 {editing === c.id && <EditRow client={c} onDone={() => setEditing(null)} />}
+                {writing === c.id && <OutreachPanel client={c} onClose={() => setWriting(null)} />}
                 </Fragment>
               );
             })}
