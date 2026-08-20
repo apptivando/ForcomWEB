@@ -352,10 +352,30 @@ export default function ClientsTable({
                           href={`https://wa.me/${c.whatsapp_phone}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          title={`WhatsApp ${formatArPhone(c.whatsapp_phone)}`}
+                          title={`Abrir WhatsApp con ${formatArPhone(c.whatsapp_phone)}`}
                           className="text-green-400 hover:text-green-300"
                         >
                           WhatsApp
+                        </a>
+                      )}
+                      {c.email && (
+                        <a
+                          href={`mailto:${c.email}`}
+                          title={c.email}
+                          className="text-blue-400 hover:text-blue-300"
+                        >
+                          Email
+                        </a>
+                      )}
+                      {/* El teléfono también es accionable desde el celular, y
+                          en la compu al menos permite copiarlo de un click. */}
+                      {c.phone && (
+                        <a
+                          href={`tel:+${c.phone}`}
+                          title={formatArPhone(c.phone)}
+                          className="text-[#8A8A8A] hover:text-white"
+                        >
+                          Tel
                         </a>
                       )}
                       {c.website && (
@@ -419,10 +439,13 @@ export default function ClientsTable({
                       >
                         Editar
                       </button>
-                      {/* Solo para los que puede mejorar: si ya está cargado a
-                          mano, re-enriquecer no haría nada (queda excluido de
-                          la cola a propósito). */}
-                      {!c.manual_lock && c.enrichment_status !== "pending" && c.contact_tier > 1 && (
+                      {/* Se ofrece siempre salvo que ya esté en la cola o
+                          cargado a mano (esas fichas quedan excluidas del
+                          enriquecedor a propósito). Antes se escondía cuando la
+                          prioridad era 1, lo cual estaba mal: un contacto puede
+                          tener WhatsApp y seguir sin email, y el enriquecedor
+                          solo se da por satisfecho cuando tiene los dos. */}
+                      {!c.manual_lock && c.enrichment_status !== "pending" && (
                         <button
                           onClick={() => startTransition(async () => {
                             await requeueClient(c.id);
