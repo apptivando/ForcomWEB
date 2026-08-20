@@ -313,6 +313,16 @@ export default function ThreadComposer({
                 <pre className="text-xs text-[#B0B0B0] bg-[#141416] border border-[#2A2A2E] rounded-sm p-3 whitespace-pre-wrap font-sans max-h-40 overflow-y-auto">
                   {preview?.text ?? ""}
                 </pre>
+                {/* Limpiar los espacios sobrantes disimula el hueco pero no
+                    arregla la frase: "trabajan en y quería contarte" sigue
+                    estando mal escrita. Por eso se avisa en vez de confiar en
+                    que alguien lea la vista previa con atención. */}
+                {preview && preview.missing.length > 0 && (
+                  <p className="text-[11px] text-yellow-400 mt-2">
+                    A la ficha le falta {preview.missing.join(" y ")}, así que esa parte del
+                    mensaje queda incompleta. Convendría completar el dato antes de enviar.
+                  </p>
+                )}
               </>
             )}
           </div>

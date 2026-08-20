@@ -13,6 +13,7 @@ import { requireRole } from "@/lib/auth/roles";
 import {
   getWindowState,
   renderTemplate,
+  templateGaps,
   deliver,
   dailyColdLimit,
   currentTransport,
@@ -94,8 +95,12 @@ export async function deleteOutreachTemplate(id: string): Promise<void> {
 
 export interface OutreachContext {
   window: WindowState;
-  /** Vista previa por plantilla, ya con los datos de la ficha reemplazados. */
-  previews: Array<{ template: OutreachTemplate; text: string }>;
+  /**
+   * Vista previa por plantilla, ya con los datos de la ficha reemplazados.
+   * `missing` son los marcadores que quedaron vacíos porque a la ficha le falta
+   * ese dato — la frase queda mal escrita y hay que avisarlo antes de enviar.
+   */
+  previews: Array<{ template: OutreachTemplate; text: string; missing: string[] }>;
   quota: { used: number; limit: number };
   transport: OutreachTransport;
   alreadyContactedAt: string | null;
@@ -127,7 +132,11 @@ export async function getOutreachContext(contactId: string): Promise<OutreachCon
     window: windowState,
     previews: templates
       .filter((t) => t.active)
-      .map((t) => ({ template: t, text: renderTemplate(t, contact as CrmContact) })),
+      .map((t) => ({
+        template: t,
+        text: renderTemplate(t, contact as CrmContact),
+        missing: templateGaps(t, contact as CrmContact),
+      })),
     quota: { used: usage.data?.cold_messages ?? 0, limit: dailyColdLimit() },
     transport: currentTransport(),
     alreadyContactedAt: contact.outreach_at,

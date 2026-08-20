@@ -94,23 +94,75 @@ export async function getWindowState(
  * Si un dato falta, el marcador se reemplaza por vacío en vez de dejar un
  * "{{1}}" crudo a la vista del cliente — que es el peor resultado posible.
  */
-export function renderTemplate(template: OutreachTemplate, contact: CrmContact): string {
-  const values = template.variables.map((variable) => {
+interface TemplateValue {
+  value: string;
+  /**
+   * El mensaje sigue estando bien escrito si este marcador queda vacío.
+   *
+   * El caso que lo motiva: un prospecto que salió de Google **nunca** tiene
+   * nombre de persona — Places da la razón social, no quién atiende. Si eso
+   * contara como dato faltante, la advertencia saltaría en todos los
+   * prospectos y dejaría de significar nada. Y no hace falta: el saludo se
+   * escribe "Hola{{1}}," con el espacio del lado del valor justamente para que
+   * sin nombre quede "Hola," y no "Hola ,".
+   */
+  optional: boolean;
+}
+
+function templateValues(template: OutreachTemplate, contact: CrmContact): TemplateValue[] {
+  return template.variables.map((variable) => {
     const key = variable.toLowerCase();
+    // Escape hatch para quien escribe la plantilla: describir la variable como
+    // "algo (opcional)" la exime de la advertencia.
+    const optional = key.includes("opcional");
+
     if (key.includes("contacto") || key.includes("persona")) {
-      // El saludo suele escribirse "Hola{{1}}," — por eso el espacio va
-      // adelante y no en la plantilla: sin nombre queda "Hola," y no "Hola ,".
-      return contact.contact_name ? ` ${contact.contact_name}` : "";
+      return { value: contact.contact_name ? ` ${contact.contact_name}` : "", optional: true };
     }
     if (key.includes("razón") || key.includes("razon") || key.includes("empresa") || key.includes("comercio")) {
-      return contact.business_name ?? "";
+      return { value: contact.business_name ?? "", optional };
     }
-    if (key.includes("rubro")) return contact.rubro ?? "";
-    if (key.includes("localidad") || key.includes("ciudad")) return contact.locality ?? "";
-    return "";
+    if (key.includes("rubro")) return { value: contact.rubro ?? "", optional };
+    if (key.includes("localidad") || key.includes("ciudad")) return { value: contact.locality ?? "", optional };
+    return { value: "", optional };
   });
+}
 
-  return template.body.replace(/\{\{(\d+)\}\}/g, (_, n) => values[Number(n) - 1] ?? "");
+export function renderTemplate(template: OutreachTemplate, contact: CrmContact): string {
+  const values = templateValues(template, contact);
+
+  return (
+    template.body
+      .replace(/\{\{(\d+)\}\}/g, (_, n) => values[Number(n) - 1]?.value ?? "")
+      // Un marcador que quedó vacío deja un hueco a la vista: "Vimos que
+      // trabajan en  y quería…" con doble espacio, o un " ," colgado. Se
+      // limpia solo lo que no altera el formato — corridas de espacios y
+      // tabs, nunca saltos de línea, que son intencionales en la plantilla.
+      .replace(/[ \t]{2,}/g, " ")
+      .replace(/[ \t]+([,.;:!?])/g, "$1")
+      .replace(/[ \t]+$/gm, "")
+  );
+}
+
+/**
+ * Marcadores que quedaron vacíos **y dejan la frase mal escrita**.
+ *
+ * Limpiar los espacios sobrantes disimula el hueco pero no arregla la
+ * redacción: "Vimos que trabajan en y quería contarte" sigue estando mal. Por
+ * eso la pantalla avisa antes de enviar, en vez de confiar en que alguien lea
+ * la vista previa con atención.
+ *
+ * No entran los marcadores opcionales: un saludo sin nombre es correcto, y si
+ * avisara por eso saltaría en todos los prospectos de Google —que nunca traen
+ * nombre de persona— y la advertencia dejaría de significar algo.
+ */
+export function templateGaps(template: OutreachTemplate, contact: CrmContact): string[] {
+  const values = templateValues(template, contact);
+  const used = new Set([...template.body.matchAll(/\{\{(\d+)\}\}/g)].map((m) => Number(m[1])));
+
+  return template.variables.filter(
+    (_, i) => used.has(i + 1) && !values[i].optional && values[i].value.trim() === ""
+  );
 }
 
 export class OutreachBlocked extends Error {
