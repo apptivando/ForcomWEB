@@ -11,6 +11,7 @@ import { ORIGIN_STYLE, TIER_LABEL, ENRICHMENT_LEVEL_LABEL, WHATSAPP_SOURCE_LABEL
 import { formatArPhone } from "@/lib/phone";
 import { clientLabel } from "@/lib/types";
 import { openConversation } from "@/app/admin/outreach-actions";
+import { getClient } from "@/app/admin/client-actions";
 import type { CrmContact, PipelineStage } from "@/lib/types";
 
 type Tab = "resumen" | "actividad" | "datos";
@@ -72,9 +73,19 @@ export default function ClientDrawer({
 }) {
   const [tab, setTab] = useState<Tab>("resumen");
   const [shownId, setShownId] = useState(client?.id ?? null);
-  // Se conserva el último cliente para que el contenido no desaparezca de
-  // golpe mientras el panel se desliza hacia afuera.
-  const [shownClient, setShownClient] = useState(client);
+  /**
+   * La ficha es dueña de su copia del cliente.
+   *
+   * Antes se leía directo de la prop, y eso la ataba a que el servidor
+   * re-renderizara la lista: después de guardar, el panel seguía mostrando la
+   * versión vieja —por ejemplo sin el candado recién puesto— hasta recargar. Y
+   * cada refresco del servidor era una oportunidad de que el panel se
+   * reiniciara y perdieras la pestaña en la que estabas.
+   *
+   * Ahora se sincroniza solo cuando cambia el cliente, y después de cada
+   * acción propia se relee con `getClient`.
+   */
+  const [current, setCurrent] = useState(client);
   const [, startTransition] = useTransition();
   const router = useRouter();
 
@@ -83,12 +94,23 @@ export default function ClientDrawer({
   // llenar es la peor sorpresa posible.
   if (client && client.id !== shownId) {
     setShownId(client.id);
+    setCurrent(client);
     setTab("resumen");
   }
-  if (client && client !== shownClient) setShownClient(client);
 
-  const shown = client ?? shownClient;
+  // Al cerrar, `client` pasa a null pero se conserva el último para que el
+  // contenido no desaparezca de golpe mientras el panel se desliza afuera.
+  const shown = current;
   if (!shown) return null;
+
+  async function refreshCurrent() {
+    if (!shown) return;
+    try {
+      setCurrent(await getClient(shown.id));
+    } catch {
+      // Si falla, se queda con lo que tenía: peor sería vaciar la ficha.
+    }
+  }
 
   const origin = ORIGIN_STYLE[shown.origin] ?? ORIGIN_STYLE.manual;
   const tabs: Array<[Tab, string]> = [
@@ -317,7 +339,12 @@ export default function ClientDrawer({
       )}
 
       {tab === "datos" && (
-        <ClientDataForm client={shown} canDelete={canModerate} onDeleted={onClose} />
+        <ClientDataForm
+          client={shown}
+          canDelete={canModerate}
+          onDeleted={onClose}
+          onSaved={refreshCurrent}
+        />
       )}
     </Drawer>
   );

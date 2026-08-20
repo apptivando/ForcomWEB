@@ -83,8 +83,6 @@ export async function addClientNote(contactId: string, body: string): Promise<vo
     actor_member_id: user.id,
   });
   if (error) throw new Error(error.message);
-
-  revalidatePath("/admin/clientes");
 }
 
 /**
@@ -106,8 +104,6 @@ export async function updateClientNote(id: string, body: string): Promise<void> 
   if (error) throw new Error(error.message);
   // Con RLS, un UPDATE no permitido no da error: simplemente afecta 0 filas.
   if (!data || data.length === 0) throw new Error("No se pudo editar la nota");
-
-  revalidatePath("/admin/clientes");
 }
 
 export async function deleteClientNote(id: string): Promise<void> {
@@ -121,8 +117,6 @@ export async function deleteClientNote(id: string): Promise<void> {
     .select("id");
   if (error) throw new Error(error.message);
   if (!data || data.length === 0) throw new Error("No se pudo borrar la nota");
-
-  revalidatePath("/admin/clientes");
 }
 
 /** Las notas de un contacto, para poder resolver autor y permisos en la UI. */

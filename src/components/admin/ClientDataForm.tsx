@@ -33,10 +33,14 @@ export default function ClientDataForm({
   client,
   canDelete,
   onDeleted,
+  onSaved,
 }: {
   client: CrmContact;
   canDelete: boolean;
   onDeleted: () => void;
+  /** Le avisa a la ficha que relea el cliente. Sin esto, después de guardar
+   *  seguía mostrando la versión vieja — por ejemplo sin el candado nuevo. */
+  onSaved: () => void | Promise<void>;
 }) {
   const router = useRouter();
   const [form, setForm] = useState(() => toForm(client));
@@ -64,6 +68,9 @@ export default function ClientDataForm({
     try {
       await updateClient(client.id, Object.fromEntries(dirty.map((f) => [f.key, form[f.key]])));
       setSaved(true);
+      // Primero la ficha, que es lo que estás mirando; después la lista de
+      // atrás, que puede tardar sin que se note.
+      await onSaved();
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error desconocido");
@@ -86,6 +93,7 @@ export default function ClientDataForm({
           <button
             onClick={async () => {
               await unfreezeClient(client.id);
+              await onSaved();
               router.refresh();
             }}
             className="shrink-0 text-[11px] font-display font-semibold text-[#B0B0B0] hover:text-white whitespace-nowrap"
