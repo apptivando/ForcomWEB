@@ -143,7 +143,15 @@ export interface CrmContact {
   last_scraped_at: string | null;
   /** Alguien editó la ficha a mano: ningún proceso automático la vuelve a tocar. */
   manual_lock: boolean;
+  /**
+   * Bloc del enriquecedor automático. Las notas que escribe una persona van en
+   * `crm_events` con `kind='note'` — ver la migración 012.
+   */
   notes: string | null;
+
+  /** Primer contacto en frío. No se pisa: sirve para saber desde cuándo se lo trabaja. */
+  outreach_at: string | null;
+  outreach_count: number;
 
   /** SOLO LECTURA — columna GENERATED. Mandarla en un insert/update revienta. */
   contact_tier: ContactTier;
@@ -168,6 +176,48 @@ export function clientSubLabel(c: Pick<CrmContact, "business_name" | "contact_na
  * rompe el build.
  */
 export const CLIENTS_PAGE_SIZE = 50;
+
+/**
+ * Una entrada del registro de la ficha — el "chatter" de la ficha de cliente.
+ *
+ * Una sola tabla cubre las notas que escribe una persona y los eventos que
+ * registra el sistema, porque la línea de tiempo tiene que paginar por fecha:
+ * con dos tablas, cada página sería un merge de dos listas paginadas por
+ * separado, correcto en la primera página y roto en la segunda.
+ *
+ * La diferencia de ciclo de vida la sostiene RLS, no el esquema: solo se puede
+ * insertar `kind='note'` y a nombre propio; el resto lo escribe un trigger.
+ */
+export interface CrmEvent {
+  id: string;
+  contact_id: string;
+  kind: "note" | "deal_created" | "deal_moved" | "deal_updated" | "deal_deleted" | "edited";
+  body: string | null;
+  /** Datos del evento. Los nombres de etapa van COPIADOS, no por id. */
+  meta: Record<string, unknown>;
+  actor_member_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Una fila de la línea de tiempo del cliente, como la devuelve la función
+ * `contact_timeline` de Postgres: cuatro fuentes distintas normalizadas a la
+ * misma forma y ordenadas juntas.
+ */
+export interface TimelineItem {
+  source: "event" | "wa" | "form" | "search";
+  ref_id: string;
+  /**
+   * Los `kind` de `CrmEvent`, más los propios de cada fuente:
+   * `wa_in` · `wa_out` · `form_message` · `from_search`.
+   */
+  kind: string;
+  at: string;
+  body: string | null;
+  meta: Record<string, unknown>;
+  actor_id: string | null;
+}
 
 /**
  * Plantilla de contacto inicial. Modelada con los campos que pide Meta

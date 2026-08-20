@@ -1093,8 +1093,40 @@ export interface ClientEdit {
   email?: string | null;
   phone?: string | null;
   whatsapp_phone?: string | null;
-  notes?: string | null;
+  website?: string | null;
+  instagram_url?: string | null;
+  facebook_url?: string | null;
+  linkedin_url?: string | null;
+  address?: string | null;
+  rubro?: string | null;
+  locality?: string | null;
+  google_maps_url?: string | null;
 }
+
+/**
+ * Campos que también escribe algún proceso automático (`upsert_prospect` o el
+ * enriquecedor). Tocar cualquiera de estos congela la ficha.
+ *
+ * El caso que lo justifica no es que te sobrescriban un dato —el enriquecedor
+ * solo completa lo que está vacío, así que un valor cargado a mano ya se
+ * defiende solo— sino **borrar**: si alguien saca un teléfono equivocado, sin
+ * el candado la próxima corrida lo vuelve a poner. El mismo teléfono
+ * equivocado.
+ */
+const DISPUTED_FIELDS = [
+  "business_name",
+  "contact_name",
+  "email",
+  "phone",
+  "whatsapp_phone",
+  "website",
+  "instagram_url",
+  "facebook_url",
+  "linkedin_url",
+  "address",
+  "rubro",
+  "locality",
+] as const satisfies readonly (keyof ClientEdit)[];
 
 /**
  * Edición manual de una ficha. Es la salida del nivel 4: cuando la cascada no
@@ -1107,20 +1139,41 @@ export interface ClientEdit {
  */
 export async function updateClient(id: string, data: ClientEdit): Promise<void> {
   const supabase = await requireAuth();
+  // RLS es la última línea de defensa; esto da un error legible antes.
+  await requireRole(supabase, "agent");
 
   const clean = (v: string | null | undefined) => (v?.trim() ? v.trim() : null);
-  const patch: Record<string, unknown> = {
-    manual_lock: true,
-    updated_at: new Date().toISOString(),
-  };
+
+  // Lista blanca explícita, nunca `...data`: `contact_tier` es una columna
+  // GENERATED y mandarla revienta el UPDATE, y `enrichment_*`, `outreach_*` y
+  // `google_place_id` no son editables a mano.
+  const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
 
   if ("business_name" in data) patch.business_name = clean(data.business_name);
   if ("contact_name" in data) patch.contact_name = clean(data.contact_name);
   if ("email" in data) patch.email = clean(data.email)?.toLowerCase() ?? null;
-  if ("notes" in data) patch.notes = clean(data.notes);
+  if ("address" in data) patch.address = clean(data.address);
+  if ("rubro" in data) patch.rubro = clean(data.rubro);
+  if ("locality" in data) patch.locality = clean(data.locality);
 
-  // Los teléfonos se normalizan al mismo formato que usa el resto del sistema
-  // (dígitos sin '+'), o quedan en null si no se pueden interpretar.
+  // Las URLs se normalizan igual que los teléfonos. Un `instagram.com/comercio`
+  // sin `https://` metido en un `href` queda relativo y manda a
+  // /admin/clientes/instagram.com/comercio en vez de al perfil.
+  for (const field of ["website", "instagram_url", "facebook_url", "linkedin_url", "google_maps_url"] as const) {
+    if (!(field in data)) continue;
+    const raw = clean(data[field]);
+    if (!raw) {
+      patch[field] = null;
+      continue;
+    }
+    const classified = classifyUrl(raw);
+    if (!classified.url) throw new Error(`No se pudo interpretar la dirección "${raw}"`);
+    patch[field] = classified.url;
+  }
+
+  // Los teléfonos se normalizan al formato que usa el resto del sistema
+  // (dígitos sin '+'). Si no se pueden interpretar se avisa en vez de guardar
+  // un número corrompido.
   if ("phone" in data) {
     const raw = clean(data.phone);
     patch.phone = raw ? (toE164Ar(raw)?.e164 ?? null) : null;
@@ -1134,11 +1187,68 @@ export async function updateClient(id: string, data: ClientEdit): Promise<void> 
     patch.whatsapp_source = normalized ? "manual" : null;
   }
 
+  // Solo congela si se tocó un campo que un proceso automático también
+  // escribe. Y nunca baja el candado por omisión: para eso está
+  // `unfreezeClient`, que además devuelve la ficha a la cola.
+  const touchedDisputed = DISPUTED_FIELDS.some((f) => f in data);
+  if (touchedDisputed) patch.manual_lock = true;
+
+  // El "antes" hace falta para que el evento diga algo útil: sin él, el
+  // registro sería "alguien editó algo" y no serviría para nada.
+  const { data: before } = await supabase
+    .from("crm_contacts")
+    .select(Object.keys(patch).filter((k) => k !== "updated_at").join(","))
+    .eq("id", id)
+    .single();
+
   const { error } = await supabase.from("crm_contacts").update(patch).eq("id", id);
   if (error) throw new Error(error.message);
 
+  await logClientEdit(id, before as Record<string, unknown> | null, patch);
+
   revalidatePath("/admin/clientes");
   revalidatePath("/admin/pipelines");
+}
+
+/**
+ * Deja constancia de la edición en la línea de tiempo.
+ *
+ * Con la service key porque la política de INSERT de `crm_events` solo acepta
+ * `kind='note'`: los eventos de sistema no se pueden fabricar desde una sesión
+ * de usuario, y este lo es. Un fallo acá no revierte la edición — el dato ya
+ * se guardó y perder el registro es menos malo que perder el cambio.
+ */
+async function logClientEdit(
+  contactId: string,
+  before: Record<string, unknown> | null,
+  patch: Record<string, unknown>
+): Promise<void> {
+  const fields = Object.keys(patch).filter(
+    (k) => k !== "updated_at" && k !== "manual_lock" && before?.[k] !== patch[k]
+  );
+  if (fields.length === 0) return;
+
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    const admin = createAdminClient();
+    await admin.from("crm_events").insert({
+      contact_id: contactId,
+      kind: "edited",
+      body: fields.join(", "),
+      meta: {
+        fields,
+        before: Object.fromEntries(fields.map((f) => [f, before?.[f] ?? null])),
+        after: Object.fromEntries(fields.map((f) => [f, patch[f] ?? null])),
+      },
+      actor_member_id: user?.id ?? null,
+    });
+  } catch (err) {
+    console.error("[updateClient] no se pudo registrar la edición:", err);
+  }
 }
 
 /**

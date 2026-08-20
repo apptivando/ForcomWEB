@@ -226,6 +226,58 @@ el enriquecedor ni el merge de una búsqueda futura.
 
 ---
 
+## La ficha del cliente
+
+Click en cualquier fila de Clientes y se abre un **panel lateral a la derecha**,
+con la lista visible y usable a la izquierda. Click en otra fila y cambia de
+cliente sin cerrarse; con las flechas del encabezado se salta al siguiente o al
+anterior. Se cierra con Escape, la X, o el botón "atrás" del navegador.
+
+Tres pestañas:
+
+- **Resumen** — todo lo que sabemos, incluidos los campos que antes no se veían
+  en ningún lado: dirección, LinkedIn, cuándo se trajeron los datos de Google,
+  hasta dónde llegó la búsqueda automática y, si falló, **por qué** — ese texto
+  antes solo existía como globito al pasar el mouse. También el bloque del
+  Pipeline: se puede crear una oportunidad o moverla de etapa sin ir a la otra
+  pantalla.
+- **Actividad** — una sola lista cronológica que mezcla, sin importar el canal:
+  WhatsApp, mensajes del formulario web, movimientos de oportunidades, de qué
+  búsqueda salió el prospecto y las notas internas del equipo. Cada uno edita
+  sus notas; owner y admin, todas.
+- **Datos** — el formulario de edición, con todos los campos. Acá también está
+  eliminar el cliente.
+
+### Dos decisiones de diseño que no son obvias
+
+**La ficha no pasa por el router de Next.** `?cliente=<id>` se maneja con
+`history.pushState`, no con `router.replace`. Si pasara por el router, cada
+apertura y cada salto re-ejecutaría las siete consultas de la página —incluida
+la de facetas, que lee hasta 5.000 filas—. Abrir una ficha no puede costar eso.
+El efecto secundario bueno: "atrás" cierra la ficha y el link directo funciona.
+
+**No hay click-fuera para cerrar** en escritorio. Sería incompatible con dejar
+la lista usable: cada click en una fila significaría a la vez "abrir esta ficha"
+y "cerrar el panel". En pantallas chicas, donde el panel tapa la lista entera,
+sí hay velo que cierra al tocarlo.
+
+### El candado, ahora con salida
+
+Antes, corregir cualquier dato congelaba la ficha **para siempre**: la búsqueda
+automática no la volvía a tocar y no había forma de descongelarla. Ahora:
+
+- **Congela** editar un campo que un proceso automático también escribe.
+- **No congela** editar los demás.
+- Y hay un botón **"Descongelar y volver a buscar"** que la devuelve a la cola.
+
+El motivo del candado no es que te sobrescriban un dato —el enriquecedor solo
+completa lo que está vacío— sino que si **borrás** un dato equivocado, sin
+candado la próxima corrida lo vuelve a poner.
+
+Las notas de una persona ya no comparten campo con las del robot:
+`crm_contacts.notes` queda como bloc del enriquecedor y las notas del equipo
+viven en `crm_events`, con autor y fecha.
+
 ## Escribirle a un prospecto
 
 Botón **Escribir** en la fila del cliente. No abre nada ahí: crea la

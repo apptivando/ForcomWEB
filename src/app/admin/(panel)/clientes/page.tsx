@@ -6,6 +6,8 @@ import {
   listProspectSearches,
   getEnrichmentQueueCount,
   getCseUsageToday,
+  listPipelineStages,
+  listMembersForAssignment,
 } from "@/app/admin/actions";
 import { placesConfigured } from "@/lib/prospects/places";
 import { createClient } from "@/lib/supabase/server";
@@ -42,16 +44,36 @@ export default async function ClientesPage({ searchParams }: { searchParams: Sea
   );
 
   const supabase = await createClient();
-  const [{ clients, total }, tierCounts, facets, searches, queueCount, cseUsage, role] =
-    await Promise.all([
-      listClients(filters),
-      getClientTierCounts(),
-      getClientFacets(),
-      listProspectSearches(6),
-      getEnrichmentQueueCount(),
-      getCseUsageToday(),
-      getCurrentRole(supabase),
-    ]);
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const [
+    { clients, total },
+    tierCounts,
+    facets,
+    searches,
+    queueCount,
+    cseUsage,
+    role,
+    stages,
+    memberList,
+  ] = await Promise.all([
+    listClients(filters),
+    getClientTierCounts(),
+    getClientFacets(),
+    listProspectSearches(6),
+    getEnrichmentQueueCount(),
+    getCseUsageToday(),
+    getCurrentRole(supabase),
+    listPipelineStages(),
+    // Se resuelve una sola vez y se pasa como mapa: la línea de tiempo tiene
+    // hasta 40 ítems por página y resolver el autor de cada uno por separado
+    // serían 40 consultas.
+    listMembersForAssignment(),
+  ]);
+
+  const members = Object.fromEntries(memberList.map((m) => [m.user_id, m.email]));
 
   const totalAll = tierCounts[1] + tierCounts[2] + tierCounts[3] + tierCounts[4];
   const totalPages = Math.max(Math.ceil(total / CLIENTS_PAGE_SIZE), 1);
@@ -61,7 +83,7 @@ export default async function ClientesPage({ searchParams }: { searchParams: Sea
     const next = new URLSearchParams();
     for (const [k, v] of Object.entries(sp)) {
       const s = one(v);
-      if (s && k !== "page") next.set(k, s);
+      if (s && k !== "page" && k !== "cliente") next.set(k, s);
     }
     if (page > 1) next.set("page", String(page));
     const qs = next.toString();
@@ -109,6 +131,10 @@ export default async function ClientesPage({ searchParams }: { searchParams: Sea
           filtered={isFiltered}
           canDelete={role === "owner" || role === "admin"}
           filters={filters}
+          stages={stages}
+          members={members}
+          currentUserId={user?.id ?? null}
+          initialClientId={one(sp.cliente) ?? null}
         />
 
         {totalPages > 1 && (

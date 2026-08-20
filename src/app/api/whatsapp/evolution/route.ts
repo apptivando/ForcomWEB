@@ -56,19 +56,18 @@ export async function POST(req: NextRequest) {
   // Desde la migración 010, `crm_contacts` es la tabla única de clientes y
   // guarda los dos nombres por separado: `contact_name` es la persona (esto,
   // el pushName de WhatsApp) y `business_name` la razón social (la carga el
-  // scraper de prospectos). Por eso acá solo se escribe `contact_name`, y
-  // `origin` queda fuera del upsert a propósito: si este número ya existía
-  // como prospecto de una búsqueda, tiene que seguir figurando como tal.
-  // Para una fila nueva, el DEFAULT de la columna la marca como 'whatsapp'.
-  const { data: contact, error: contactErr } = await supabase
-    .from("crm_contacts")
-    .upsert({ phone, contact_name: name }, { onConflict: "phone", ignoreDuplicates: false })
-    .select("id")
-    .single();
-  if (contactErr) {
-    console.error("[evolution webhook] contact upsert failed:", contactErr.message);
-    return NextResponse.json({ ok: true }); // 200 igual — Evolution no debe reintentar por esto
-  }
+  // scraper). `origin` queda fuera a propósito: si este número ya existía como
+  // prospecto de una búsqueda, tiene que seguir figurando como tal. Para una
+  // fila nueva, el DEFAULT de la columna la marca como 'whatsapp'.
+  //
+  // Y el nombre NO se pisa si ya hay uno. Antes esto era un upsert que
+  // escribía `contact_name` en cada mensaje entrante, con la service key, sin
+  // mirar `manual_lock`: cargabas "María González, compras" a mano y en cuanto
+  // ella escribía desde un teléfono cuyo perfil dice "Mari 💅", se perdía. El
+  // pushName es lo que la persona puso en SU WhatsApp, no cómo la conoce la
+  // empresa.
+  const contact = await upsertContactByPhone(supabase, phone, name);
+  if (!contact) return NextResponse.json({ ok: true }); // 200 igual — Evolution no debe reintentar
 
   let { data: conversation } = await supabase
     .from("crm_conversations")
@@ -146,4 +145,59 @@ function extractContent(data: {
     (m.documentMessage as { caption?: string } | undefined)?.caption ??
     "";
   return { text, contentType };
+}
+
+/**
+ * Encuentra o crea el cliente por su teléfono, sin pisarle el nombre.
+ *
+ * Un `upsert` de PostgREST no sirve para esto: escribe todas las columnas que
+ * le pasás, siempre. Y no se puede resolver "solo si está vacío" del lado del
+ * cliente sin leer primero. Por eso son dos pasos.
+ *
+ * La carrera —dos mensajes del mismo número nuevo llegando a la vez— se
+ * resuelve dejando que la clave única de `phone` decida y releyendo: es más
+ * simple y más correcto que intentar prevenirla.
+ */
+async function upsertContactByPhone(
+  supabase: ReturnType<typeof createAdminClient>,
+  phone: string,
+  pushName: string
+): Promise<{ id: string } | null> {
+  const { data: existing } = await supabase
+    .from("crm_contacts")
+    .select("id, contact_name")
+    .eq("phone", phone)
+    .maybeSingle();
+
+  if (existing) {
+    // Solo se completa si nadie puso un nombre antes.
+    if (!existing.contact_name && pushName) {
+      await supabase
+        .from("crm_contacts")
+        .update({ contact_name: pushName, updated_at: new Date().toISOString() })
+        .eq("id", existing.id);
+    }
+    return { id: existing.id };
+  }
+
+  const { data: created, error } = await supabase
+    .from("crm_contacts")
+    .insert({ phone, contact_name: pushName })
+    .select("id")
+    .single();
+
+  if (created) return created;
+
+  // 23505 = otro pedido lo insertó entre nuestro SELECT y nuestro INSERT.
+  if (error?.code === "23505") {
+    const { data: raced } = await supabase
+      .from("crm_contacts")
+      .select("id")
+      .eq("phone", phone)
+      .maybeSingle();
+    if (raced) return raced;
+  }
+
+  console.error("[evolution webhook] no se pudo crear el contacto:", error?.message);
+  return null;
 }
