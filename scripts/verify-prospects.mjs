@@ -184,6 +184,90 @@ console.log("\n── Migración 011 ──");
 
 console.log(`   ${DIM}transporte: ${env.WHATSAPP_TRANSPORT ?? "evolution"} · tope diario en frío: ${env.OUTREACH_DAILY_LIMIT ?? 20}${OFF}`);
 
+// ─── 2c. Migración 012 (ficha de cliente) ────────────────────────────────────
+
+console.log("\n── Migración 012 ──");
+
+{
+  const { error } = await db.from("crm_events").select("id, kind, meta").limit(1);
+  if (error) bad(`falta la tabla crm_events: ${error.message}`,
+                 "Correr supabase/sql-changes/012_ficha_cliente.sql (después de la 011).");
+  else ok("tabla crm_events");
+}
+
+{
+  const { error } = await db.rpc("contact_timeline", {
+    p_contact_id: "00000000-0000-0000-0000-000000000000",
+    p_before: null,
+    p_limit: 1,
+  });
+  if (error) bad(`contact_timeline: ${error.message}`, "Correr la migración 012.");
+  else ok("contact_timeline");
+}
+
+{
+  const { data } = await db.from("crm_events").select("kind");
+  const tally = {};
+  for (const e of data ?? []) tally[e.kind] = (tally[e.kind] ?? 0) + 1;
+  const resumen = Object.entries(tally).sort().map(([k, v]) => `${k}=${v}`).join(" · ");
+  console.log(`   ${DIM}eventos registrados: ${resumen || "ninguno todavía"}${OFF}`);
+}
+
+if (process.argv.includes("--live")) {
+  // LA TRAMPA: `pipeline_deals` cascadea desde `crm_contacts`, así que al
+  // borrar un cliente el trigger corre cuando el contacto YA NO EXISTE. Sin el
+  // IF EXISTS de la rama DELETE, esto revienta por clave foránea y
+  // `deleteClient()` deja de funcionar — con un error que no le apunta a nadie
+  // al trigger. Por eso se prueba de verdad y no se asume.
+  const { data: stages } = await db.from("pipeline_stages").select("*").order("order_index");
+  let testId = null;
+  try {
+    const { data: cli } = await db
+      .from("crm_contacts")
+      .insert({
+        business_name: "PRUEBA DEL VERIFICADOR — borrar si queda",
+        email: `verificador-${Date.now()}@forcom.test`,
+        origin: "manual",
+      })
+      .select("id")
+      .single();
+    testId = cli?.id ?? null;
+
+    if (testId && stages?.length >= 2) {
+      const { data: deal } = await db
+        .from("pipeline_deals")
+        .insert({ contact_id: testId, stage_id: stages[0].id, title: "Prueba", value: 1 })
+        .select("id")
+        .single();
+
+      await db.from("pipeline_deals").update({ stage_id: stages[1].id }).eq("id", deal.id);
+
+      const { data: evs } = await db.from("crm_events").select("kind, meta").eq("contact_id", testId);
+      const moved = evs?.find((e) => e.kind === "deal_moved");
+      if (evs?.some((e) => e.kind === "deal_created") && moved) {
+        ok("el trigger registra los movimientos del Pipeline", `(${moved.meta.from} → ${moved.meta.to})`);
+      } else {
+        bad("el trigger no registró los movimientos del Pipeline",
+            "Revisar pipeline_deals_log_events en la migración 012.");
+      }
+
+      const { error: delErr } = await db.from("crm_contacts").delete().eq("id", testId);
+      if (delErr) {
+        bad(`borrar un cliente con oportunidad falló: ${delErr.message}`,
+            "Falta el IF EXISTS de la rama DELETE del trigger (sección 3 de la 012).");
+      } else {
+        testId = null;
+        ok("un cliente con oportunidad se borra limpio", "(la trampa del trigger está cubierta)");
+      }
+    }
+  } finally {
+    // Si algo falló a mitad de camino, que no quede un cliente de prueba.
+    if (testId) await db.from("crm_contacts").delete().eq("id", testId);
+  }
+} else {
+  warn("trampa del trigger sin probar (agregá --live: crea y borra un cliente de prueba)");
+}
+
 // ─── 3. Datos ────────────────────────────────────────────────────────────────
 
 console.log("\n── Estado de los datos ──");
