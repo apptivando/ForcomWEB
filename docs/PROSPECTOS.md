@@ -9,8 +9,25 @@ FORCOM. Fases 7 y 8 del Track E.
 
 Escribís un **rubro** y una **localidad**, y la herramienta trae los comercios
 que Google Maps conoce en esa zona. Después, sola, va completando lo que Google
-no da — email, WhatsApp, redes sociales — visitando el sitio de cada comercio y,
-si hace falta, buscando en Google.
+no da — email, WhatsApp, redes sociales — visitando el sitio de cada comercio.
+
+### Resultados medidos
+
+Primera corrida real, "ferreterías en Córdoba Capital", 20 prospectos:
+
+| | |
+|---|---|
+| Con WhatsApp confirmado | **8** (7 por enlace `wa.me`, 1 por texto) |
+| Con email | 11 |
+| Con perfil de Instagram o Facebook guardado | 10 |
+| Con sitio web publicado en Google | 14 |
+| Sin ningún dato de contacto | 0 |
+
+Los 9 que quedaron en prioridad 3 (solo el teléfono de Google) son casi todos
+comercios **sin sitio web**: son justamente los que resolvería el nivel 3, que
+hoy está apagado porque Google cerró su API de búsqueda (ver esa sección).
+
+Repetir la misma búsqueda dio **0 nuevos y 20 fusionados** — no duplica.
 
 Todos los resultados aterrizan en **`/admin/clientes`**, junto a los contactos
 que llegaron por WhatsApp y a los leads del formulario web, diferenciados por
@@ -39,8 +56,9 @@ cambia la prioridad.
 |---|---|---|
 | `GOOGLE_PLACES_API_KEY` | Buscar comercios en Google Maps | Sí (o el modo de prueba) |
 | `GOOGLE_PLACES_MOCK` | `1` = usa 25 comercios de ejemplo en vez de llamar a Google | No |
-| `GOOGLE_CSE_API_KEY` | Nivel 3: buscar en Google | No — sin ella el nivel 3 se apaga |
-| `GOOGLE_CSE_CX` | ID del buscador de Programmable Search | No |
+| `PROSPECT_SEARCH_PROVIDER` | Nivel 3: `off` \| `google` \| `serper` \| `brave` | No — default `off` |
+| `SERPER_API_KEY` / `BRAVE_SEARCH_API_KEY` | Credencial del proveedor de búsqueda elegido | Solo si el nivel 3 está encendido |
+| `GOOGLE_CSE_API_KEY` / `GOOGLE_CSE_CX` | Nivel 3 vía Google. **Ya no sirve para proyectos nuevos** (ver abajo) | No |
 | `PROSPECT_SEARCH_DAILY_LIMIT` | Tope diario de consultas del nivel 3 (default `90`) | No |
 | `PROSPECT_USER_AGENT` | Cómo se presenta el bot ante los sitios que visita | No (hay default) |
 | `PROSPECTS_WHATSAPP_CHECK` | `off`. El gancho de verificación por Evolution, apagado | No |
@@ -54,17 +72,9 @@ cambia la prioridad.
 1. Crear un proyecto y habilitar **Places API (New)** — la "New", no la legacy.
 2. Crear una API key y restringirla a esa API. Activar facturación y poner una
    alerta de presupuesto.
-3. Para el nivel 3: habilitar **Custom Search API** y crear un buscador en
-   [programmablesearchengine.google.com](https://programmablesearchengine.google.com).
 
-**Importante sobre el buscador**: Google eliminó la opción "buscar en toda la
-web" para motores nuevos el **20/01/2026** (los que ya la tenían la conservan
-hasta el 01/01/2027). Un motor creado hoy solo puede buscar en hasta **50
-dominios**. Hay que cargarlos a mano; la lista sugerida está más abajo.
-
-También: **búsqueda de imágenes desactivada** (no la usamos) y **SafeSearch
-desactivado** (filtraría prospectos legítimos por falsos positivos, y como los
-resultados los procesa el código y no los ve nadie, no protege de nada).
+Eso es todo lo que hace falta. El nivel 3 **no se puede hacer con Google**; ver
+la sección correspondiente.
 
 ### Costos
 
@@ -74,8 +84,8 @@ resultados los procesa el código y no los ve nadie, no protege de nada).
   que son justamente el producto. **No agregar campos al FieldMask "por las
   dudas"**: agregar no encarece mientras no se pase de Enterprise, pero sacar
   abarata.
-- **Custom Search**: 100 consultas por día gratis, después USD 5 cada 1.000. El
-  tope diario configurable lo deja dentro de lo gratuito.
+- **Nivel 3**: hoy apagado y sin costo. Si se enciende, depende del proveedor
+  (ver esa sección). El tope diario acota el gasto en cualquier caso.
 
 ### Base de datos
 
@@ -110,8 +120,8 @@ Nivel 1  Sitio web propio     → home + hasta 3 páginas · email, WA, redes
    ↓  (si no hay sitio, o el sitio no dio nada)
 Nivel 2  Redes enlazadas      → NO se visitan. Solo se guarda la URL.
    ↓
-Nivel 3  Google Search        → snippets + hasta 2 directorios
-   ↓
+Nivel 3  Búsqueda web         → APAGADO (Google cerró su API a proyectos
+   ↓                            nuevos; se puede encender con otro proveedor)
 Nivel 4  Sin contacto         → queda para resolver a mano
 ```
 
@@ -135,59 +145,76 @@ la IP bloqueada. Lo que sí se hace es **guardar el link del perfil**, que es lo
 Instagram y saca el WhatsApp de la bio en diez segundos.
 
 Caso frecuente en Argentina: el "sitio web" que publica Google **es** un
-Instagram. Se detecta antes de intentar crawlearlo, se guarda como perfil, y el
-prospecto salta directo al nivel 3.
+Instagram. Se detecta antes de intentar crawlearlo y se guarda como perfil (con
+el nivel 3 encendido, además saltaría a él).
 
-### Nivel 3 — búsqueda en Google
+### Nivel 3 — búsqueda en la web
+
+**Hoy está apagado.** No por decisión de diseño: Google cerró la puerta en dos
+tiempos.
+
+1. **20/01/2026** — eliminó la opción "buscar en toda la web" de Programmable
+   Search para motores nuevos (los que ya la tenían la conservan hasta el
+   01/01/2027). Se rediseñó para trabajar con un motor restringido a 50 dominios
+   elegidos a mano, que para la búsqueda inversa por teléfono incluso funciona
+   mejor: los directorios comerciales son exactamente donde vive un teléfono
+   indexado.
+2. **Al probarlo con la key real** — 403 `PERMISSION_DENIED`, *"This project does
+   not have the access to Custom Search JSON API"*. Google **cerró la API entera
+   a clientes nuevos**. No es un problema de configuración, de permisos de la key
+   ni de propagación: los proyectos creados ahora no tienen acceso y no lo van a
+   tener. El reemplazo que Google ofrece es Vertex AI Search, un producto
+   empresarial desproporcionado para esto.
+
+Los niveles 0, 1, 2 y 4 funcionan enteros sin esto. Lo que se pierde son los
+prospectos que **no tienen sitio web**: hoy quedan en prioridad 3 (solo el
+teléfono de Google Maps) y hay que trabajarlos a mano.
+
+#### Cómo encenderlo
+
+`src/lib/prospects/search.ts` expone una sola función, `webSearch()`, y el
+proveedor se elige por variable de entorno. Aguas arriba nada cambia.
+
+| `PROSPECT_SEARCH_PROVIDER` | Credencial | Notas |
+|---|---|---|
+| `off` | — | Default. Nivel 3 apagado. |
+| `serper` | `SERPER_API_KEY` | serper.dev. 2.500 consultas gratis por única vez, después crédito prepago con vencimiento a 6 meses. Devuelve toda la web y trae el panel lateral de Google, que para un comercio local suele tener el teléfono ya separado. |
+| `brave` | `BRAVE_SEARCH_API_KEY` | Brave Search API. Discontinuó su plan gratuito en febrero de 2026; hoy cobra por consulta. Devuelve toda la web. |
+| `google` | `GOOGLE_CSE_API_KEY` + `GOOGLE_CSE_CX` | Solo sirve en proyectos que ya tenían acceso antes del cierre. |
+
+Serper y Brave son APIs oficiales de esos proveedores, no scraping. **Verificar
+las tarifas vigentes antes de contratar**: este mercado cambió dos veces en seis
+meses.
+
+Si el proveedor devuelve un error permanente (como el 403 de Google), el nivel 3
+se apaga solo para el resto de la corrida en vez de gastar tres llamadas
+condenadas a fallar por cada prospecto.
+
+#### Qué haría, cuando esté encendido
 
 Tres consultas por prospecto, cortando apenas alcanza:
 
-1. `"<teléfono>"` — búsqueda inversa. La que más rinde para el email, y la que
-   *mejor* funciona restringida a directorios.
+1. `"<teléfono>"` — búsqueda inversa. La que más rinde para el email: encuentra
+   en qué directorios comerciales está listado ese teléfono, y esos directorios
+   publican datos que el comercio no pone en ningún otro lado.
 2. `"<razón social>" <localidad>` — encuentra el perfil de red y la ficha de
-   directorio aunque no estén enlazados.
+   directorio aunque no estén enlazados en ningún lado.
 3. La misma con `(whatsapp OR contacto)`, solo si la anterior trajo ruido.
 
-**Lo más valioso: no hace falta visitar nada.** El `snippet` que devuelve la API
-—el resumen que Google muestra debajo de cada resultado— muy seguido ya trae el
-teléfono, el email, o la biografía de un perfil de Instagram, que es donde los
-comercios argentinos ponen su WhatsApp. Leer el índice de Google no es scrapear
+**Lo más valioso: no hace falta visitar nada.** El resumen que devuelve la API
+—lo que se muestra debajo de cada resultado— muy seguido ya trae el teléfono, el
+email, o la biografía de un perfil de Instagram, que es donde los comercios
+argentinos ponen su WhatsApp. Leer el índice de un buscador no es scrapear
 Instagram: es la vuelta legal al hecho de que las redes no se pueden visitar.
 
 Solo si el resumen no alcanza se abren hasta 2 resultados, y **nunca una red
-social** — solo directorios.
+social** — solo directorios (`paginasamarillas.com.ar`, `cylex.com.ar`,
+`guialocal.com.ar`, `infoisinfo.com.ar`, `opendi.com.ar`, `tuugo.com.ar`,
+`hotfrog.com.ar`, `yalwa.com.ar`, `dateas.com`).
 
 Se aplica **únicamente a prospectos que quedaron en prioridad 3 o 4**. Nunca a
-todos: es lo que mantiene el costo dentro de lo gratuito.
+todos: es lo que mantiene el costo acotado.
 
-#### Los 50 dominios del buscador
-
-**Directorios comerciales argentinos** — donde vive el email que el comercio no
-publica y donde funciona la búsqueda inversa:
-
-```
-*.paginasamarillas.com.ar/*   *.cylex.com.ar/*      *.guialocal.com.ar/*
-*.infoisinfo.com.ar/*         *.opendi.com.ar/*     *.tuugo.com.ar/*
-*.hotfrog.com.ar/*            *.yalwa.com.ar/*      *.dateas.com/*
-```
-
-**Redes sociales** — solo para leer el resumen que Google ya indexó:
-
-```
-*.instagram.com/*   *.facebook.com/*   *.linkedin.com/*
-*.linktr.ee/*       *.beacons.ai/*     *.bio.link/*
-```
-
-**Plataformas donde los comercios chicos arman su web** — recupera buena parte
-de lo que se perdió al no poder buscar en toda la web:
-
-```
-*.mitiendanube.com/*   *.business.site/*   *.wixsite.com/*
-*.sites.google.com/*   *.negocio.site/*    *.mercadolibre.com.ar/*
-```
-
-Quedan ~30 libres. **La lista se ajusta con evidencia**: cuando un prospecto se
-resuelve, conviene anotar de qué dominio salió el dato y agregar los que rinden.
 
 ### Nivel 4 — carga manual
 
@@ -215,6 +242,26 @@ Correrlo a mano: pestaña **Actions** de GitHub → *Automations cron* → *Run
 workflow*.
 
 ---
+
+## Verificar que todo esté en pie
+
+```bash
+node scripts/verify-prospects.mjs          # esquema, funciones, datos (no escribe)
+node scripts/verify-prospects.mjs --live   # además prueba las APIs de Google
+```
+
+Chequea que la migración 010 esté corrida, que las columnas y funciones existan
+y respondan, y que las credenciales sirvan. Cada fallo dice qué hacer.
+
+## Prueba de punta a punta
+
+```bash
+node scripts/e2e-prospects.mjs "ferreterías" "Córdoba Capital" --max 20 --enrich 6
+```
+
+Hace lo mismo que el botón **Buscar** y después corre un lote de
+enriquecimiento, mostrando qué encontró cada prospecto. **Escribe en la base de
+verdad** — es el punto. Cuesta una llamada a Places por cada 20 resultados.
 
 ## Probar sin API key
 

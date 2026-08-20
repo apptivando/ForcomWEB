@@ -67,13 +67,17 @@ interface RawPlace {
 }
 
 export class PlacesError extends Error {
-  constructor(
-    message: string,
-    readonly status: number,
-    readonly hint?: string
-  ) {
+  // Campos declarados y asignados a mano en vez de parameter properties:
+  // node borra tipos pero no las soporta, y estos módulos se corren con node
+  // directo desde los scripts de prueba.
+  readonly status: number;
+  readonly hint: string | undefined;
+
+  constructor(message: string, status: number, hint?: string) {
     super(message);
     this.name = "PlacesError";
+    this.status = status;
+    this.hint = hint;
   }
 }
 
