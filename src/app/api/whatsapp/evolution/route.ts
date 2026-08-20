@@ -53,9 +53,16 @@ export async function POST(req: NextRequest) {
 
   const supabase = createAdminClient();
 
+  // Desde la migración 010, `crm_contacts` es la tabla única de clientes y
+  // guarda los dos nombres por separado: `contact_name` es la persona (esto,
+  // el pushName de WhatsApp) y `business_name` la razón social (la carga el
+  // scraper de prospectos). Por eso acá solo se escribe `contact_name`, y
+  // `origin` queda fuera del upsert a propósito: si este número ya existía
+  // como prospecto de una búsqueda, tiene que seguir figurando como tal.
+  // Para una fila nueva, el DEFAULT de la columna la marca como 'whatsapp'.
   const { data: contact, error: contactErr } = await supabase
     .from("crm_contacts")
-    .upsert({ phone, name }, { onConflict: "phone", ignoreDuplicates: false })
+    .upsert({ phone, contact_name: name }, { onConflict: "phone", ignoreDuplicates: false })
     .select("id")
     .single();
   if (contactErr) {

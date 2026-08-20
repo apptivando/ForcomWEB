@@ -20,7 +20,9 @@ Sitio web B2B de presentación y generación de leads para FORCOM, fabricante de
 >
 > Lo que sigue vigente de esta sección es el contexto histórico y las lecciones (sobre todo `normalizeArgentinePhone`). Lo que **ya no** aplica: el proxy `/admin/crm/*`, las variables `WACRM_*`, y el dominio `crm-dev.forcom.tech`.
 >
-> **Estado del Track E:** fase 1 (roles y miembros) y fase 2 (tablas `crm_contacts` / `crm_conversations` / `crm_messages` + adaptador `src/lib/evolution.ts` + webhook `/api/whatsapp/evolution`) commiteadas. Falta la UI del inbox, cablear las variables `EVOLUTION_*` y reapuntar el formulario de contacto de wacrm a las tablas `crm_*`.
+> **Estado del Track E (19/08/2026):** fases 1 a 8 commiteadas en `develop`. Fase 1 roles · 2 tablas CRM + webhook · 3 bandeja · 4 asistente IA · 5 pipelines · 6 automatizaciones · **7 el formulario de contacto entra al CRM** · **8 clientes unificados + buscador de prospectos** (ver `docs/PROSPECTOS.md`). Falta cablear las variables `EVOLUTION_*` y `GOOGLE_*` en Vercel y correr las migraciones `002` y `010` en Supabase.
+>
+> **`crm_contacts` ya no son "los contactos de WhatsApp": es la tabla única de clientes.** Desde la migración `010` también entran ahí los prospectos del scraper de Google Places y los leads del formulario web, diferenciados por la columna `origin`. Dos consecuencias que rompen código si se ignoran: (a) `phone` es **nullable**; (b) la columna `name` se renombró a **`contact_name`** (la persona) y se agregó **`business_name`** (la razón social) — las escriben fuentes distintas y no se pisan; (c) `contact_tier` es **GENERATED, de solo lectura**: mandarla en un insert/update revienta, así que nada de `select('*')` → `upsert(row)` sobre esa tabla.
 >
 > **Conexión a WhatsApp: Evolution API self-hosted** (WSL, detrás de Cloudflare Tunnel), no Baileys ni Meta directo.
 >
@@ -219,6 +221,14 @@ scripts/
 │                             Requiere SUPABASE_SERVICE_KEY en .env.local (service_role key, bypasea RLS)
 │                             Dry-run: node scripts/import-catalog.mjs
 │                             Carga:   node scripts/import-catalog.mjs --update
+├── test-extract.mjs        — banco de pruebas del extractor de contactos del scraper de
+│                             prospectos. Sin API key ni base de datos.
+│                             Casos fijos:   node scripts/test-extract.mjs
+│                             Un sitio real: node scripts/test-extract.mjs https://sitio.com.ar
+│                             Varios:        node scripts/test-extract.mjs --file urls.txt
+│                             Los casos viven en scripts/fixtures/extract-cases.mjs.
+│                             ts-resolve-hook.mjs le enseña a node a resolver los imports
+│                             del proyecto (extensión implícita y alias `@/`).
 └── bulk-upload-images.js   — carga masiva de fotos: lee carpetas en `../FORCOM 800x600/<carpeta>`,
                               mapea carpeta→producto por un diccionario FOLDER_TO_MODEL hardcodeado
                               en el script, sube hasta 5 fotos (primeras en orden alfabético) a Storage

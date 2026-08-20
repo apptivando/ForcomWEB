@@ -10,12 +10,20 @@ import { encrypt, decrypt } from "@/lib/encryption";
 import { ingestDocument, reindexAllEmbeddings } from "@/lib/ai/knowledge";
 import { generateAssistantReply } from "@/lib/ai/auto-reply";
 import type { ChatMessage } from "@/lib/ai/generate";
+import { searchPlaces, PlacesError } from "@/lib/prospects/places";
+import { classifyUrl } from "@/lib/prospects/urls";
+import { enrichBatch } from "@/lib/prospects/enrich";
+import { toE164Ar, toWhatsappNumber } from "@/lib/phone";
+import { CLIENTS_PAGE_SIZE } from "@/lib/types";
 import type {
   HeroContent,
   HeroSlide,
   Product,
   CompanyInfo,
   CrmContact,
+  ClientOrigin,
+  ContactTier,
+  ProspectSearch,
   CrmConversation,
   CrmMessage,
   QuickReply,
@@ -357,12 +365,20 @@ export async function acceptInvitation() {
 
 // ─── Bandeja de WhatsApp (Track E, fase 3) ────────────────────────────────────
 
+/**
+ * Contactos que se pueden asociar a una oportunidad del Pipeline.
+ * Solo los que tienen alguna forma de contacto (tier 1-3): un prospecto sin
+ * datos todavía no es alguien a quien vender.
+ */
 export async function listCrmContacts(): Promise<CrmContact[]> {
   const supabase = await requireAuth();
   const { data, error } = await supabase
     .from("crm_contacts")
     .select("*")
-    .order("name", { ascending: true });
+    .lt("contact_tier", 4)
+    .order("business_name", { ascending: true, nullsFirst: false })
+    .order("contact_name", { ascending: true, nullsFirst: false })
+    .limit(500);
   if (error) throw new Error(error.message);
   return data ?? [];
 }
@@ -776,4 +792,403 @@ export async function listMembersForAssignment(): Promise<{ user_id: string; ema
   const emailByUserId = new Map(usersPage?.users.map((u) => [u.id, u.email ?? ""]));
 
   return members.map((m) => ({ user_id: m.user_id, email: emailByUserId.get(m.user_id) ?? m.user_id }));
+}
+
+// ─── Clientes (Track E, fases 7 y 8) ──────────────────────────────────────────
+// La tabla `crm_contacts` es la ficha única de cliente: prospectos del scraper,
+// contactos de WhatsApp y leads del formulario, diferenciados por `origin`.
+
+export interface ClientFilters {
+  q?: string;
+  origin?: ClientOrigin;
+  tier?: ContactTier;
+  rubro?: string;
+  locality?: string;
+  searchId?: string;
+  page?: number;
+}
+
+export async function listClients(
+  filters: ClientFilters = {}
+): Promise<{ clients: CrmContact[]; total: number }> {
+  const supabase = await requireAuth();
+
+  let query = supabase.from("crm_contacts").select("*", { count: "exact" });
+
+  if (filters.searchId) {
+    // Los ids de una búsqueda puntual salen de la tabla puente. Se resuelve en
+    // dos pasos en vez de con un join anidado porque PostgREST no deja filtrar
+    // la tabla principal por la existencia de una fila en la puente sin
+    // arrastrar sus columnas al resultado.
+    const { data: ids, error: idsErr } = await supabase
+      .from("prospect_search_results")
+      .select("contact_id")
+      .eq("search_id", filters.searchId);
+    if (idsErr) throw new Error(idsErr.message);
+    const list = (ids ?? []).map((r) => r.contact_id);
+    if (list.length === 0) return { clients: [], total: 0 };
+    query = query.in("id", list);
+  }
+
+  if (filters.origin) query = query.eq("origin", filters.origin);
+  if (filters.tier) query = query.eq("contact_tier", filters.tier);
+  if (filters.rubro) query = query.eq("rubro", filters.rubro);
+  if (filters.locality) query = query.eq("locality", filters.locality);
+
+  if (filters.q?.trim()) {
+    // `or` de PostgREST: la coma separa condiciones y el asterisco es el
+    // comodín de ilike. Se escapan las comas del término para no romper el
+    // parseo del filtro.
+    const term = filters.q.trim().replace(/[,()]/g, " ");
+    query = query.or(
+      [
+        `business_name.ilike.*${term}*`,
+        `contact_name.ilike.*${term}*`,
+        `email.ilike.*${term}*`,
+        `phone.ilike.*${term}*`,
+        `rubro.ilike.*${term}*`,
+        `locality.ilike.*${term}*`,
+      ].join(",")
+    );
+  }
+
+  const page = Math.max(filters.page ?? 1, 1);
+  const from = (page - 1) * CLIENTS_PAGE_SIZE;
+
+  // El orden ES el requisito de negocio: primero WhatsApp, después email,
+  // después teléfono, al final los que quedaron sin nada.
+  const { data, error, count } = await query
+    .order("contact_tier", { ascending: true })
+    .order("updated_at", { ascending: false })
+    .range(from, from + CLIENTS_PAGE_SIZE - 1);
+
+  if (error) throw new Error(error.message);
+  return { clients: (data ?? []) as CrmContact[], total: count ?? 0 };
+}
+
+/** Contadores por prioridad de contacto, para las cabeceras de grupo. */
+export async function getClientTierCounts(): Promise<Record<ContactTier, number>> {
+  const supabase = await requireAuth();
+  const counts = { 1: 0, 2: 0, 3: 0, 4: 0 } as Record<ContactTier, number>;
+
+  // Cuatro `count` en paralelo en vez de traer todas las filas para agrupar en
+  // JS: con miles de clientes eso último sería traer la tabla entera al server.
+  await Promise.all(
+    ([1, 2, 3, 4] as ContactTier[]).map(async (tier) => {
+      const { count } = await supabase
+        .from("crm_contacts")
+        .select("id", { count: "exact", head: true })
+        .eq("contact_tier", tier);
+      counts[tier] = count ?? 0;
+    })
+  );
+
+  return counts;
+}
+
+/** Valores distintos de rubro y localidad, para poblar los selectores de filtro. */
+export async function getClientFacets(): Promise<{ rubros: string[]; localities: string[] }> {
+  const supabase = await requireAuth();
+  const { data, error } = await supabase
+    .from("crm_contacts")
+    .select("rubro, locality")
+    .limit(5000);
+  if (error) throw new Error(error.message);
+
+  const rubros = new Set<string>();
+  const localities = new Set<string>();
+  for (const row of data ?? []) {
+    if (row.rubro) rubros.add(row.rubro);
+    if (row.locality) localities.add(row.locality);
+  }
+  return {
+    rubros: [...rubros].sort((a, b) => a.localeCompare(b, "es")),
+    localities: [...localities].sort((a, b) => a.localeCompare(b, "es")),
+  };
+}
+
+/** Cuántos prospectos esperan enriquecimiento. Se muestra arriba de la tabla. */
+export async function getEnrichmentQueueCount(): Promise<number> {
+  const supabase = await requireAuth();
+  const { count } = await supabase
+    .from("crm_contacts")
+    .select("id", { count: "exact", head: true })
+    .in("enrichment_status", ["pending", "running"]);
+  return count ?? 0;
+}
+
+export async function listProspectSearches(limit = 8): Promise<ProspectSearch[]> {
+  const supabase = await requireAuth();
+  const { data, error } = await supabase
+    .from("prospect_searches")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) throw new Error(error.message);
+  return (data ?? []) as ProspectSearch[];
+}
+
+/** Cuántas consultas del nivel 3 se gastaron hoy, para mostrarlo en la UI. */
+export async function getCseUsageToday(): Promise<{ used: number; limit: number }> {
+  const supabase = await requireAuth();
+  const today = new Date().toISOString().slice(0, 10);
+  const { data } = await supabase
+    .from("prospect_api_usage")
+    .select("cse_queries")
+    .eq("day", today)
+    .maybeSingle();
+  return {
+    used: data?.cse_queries ?? 0,
+    limit: Number(process.env.PROSPECT_SEARCH_DAILY_LIMIT ?? 90),
+  };
+}
+
+// ─── Buscador de prospectos (Google Places) ───────────────────────────────────
+
+export interface ProspectSearchInput {
+  rubro: string;
+  locality: string;
+  includedType?: string;
+  maxResults?: number;
+}
+
+export interface ProspectSearchOutcome {
+  searchId: string;
+  /** Cuántos entraron a la base (los cerrados definitivamente no cuentan). */
+  total: number;
+  /** De esos, cuántos no existían todavía. El resto se fusionó con su ficha. */
+  created: number;
+  /** Descartados por figurar como cerrados definitivamente en Google. */
+  skippedClosed: number;
+}
+
+export async function searchProspects(input: ProspectSearchInput): Promise<ProspectSearchOutcome> {
+  const supabase = await requireAuth();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const rubro = input.rubro.trim();
+  const locality = input.locality.trim();
+  if (!rubro || !locality) throw new Error("Hacen falta el rubro y la localidad");
+
+  // El "en <localidad>, Argentina" le da a Places el contexto geográfico sin
+  // tener que pasar coordenadas. `regionCode: AR` solo sesga, no restringe.
+  const query = `${rubro} en ${locality}, Argentina`;
+
+  const { data: search, error: searchErr } = await supabase
+    .from("prospect_searches")
+    .insert({
+      rubro,
+      locality,
+      query,
+      included_type: input.includedType || null,
+      status: "running",
+      created_by: user?.id ?? null,
+    })
+    .select("id")
+    .single();
+  if (searchErr) throw new Error(searchErr.message);
+
+  try {
+    const places = await searchPlaces({
+      query,
+      includedType: input.includedType,
+      maxResults: input.maxResults,
+    });
+
+    // Un local que Google marca como cerrado definitivamente no es un
+    // prospecto: ensuciaría la lista y consumiría cuota de enriquecimiento.
+    const open = places.filter((p) => p.businessStatus !== "CLOSED_PERMANENTLY");
+    const skippedClosed = places.length - open.length;
+
+    const items = open.map((p) => {
+      // El teléfono internacional es el único que trae el marcador de celular
+      // (+54 9), que es de donde sale `whatsapp_likely`.
+      const parsed = toE164Ar(p.internationalPhone ?? p.nationalPhone ?? "");
+      const site = classifyUrl(p.website);
+
+      return {
+        place_id: p.id,
+        name: p.name,
+        phone: parsed?.e164 ?? null,
+        wa_likely: parsed?.isMobile ?? false,
+        address: p.address,
+        website: site.kind === "web" || site.kind === "linkinbio" ? site.url : null,
+        instagram: site.kind === "instagram" ? site.url : null,
+        facebook: site.kind === "facebook" ? site.url : null,
+        linkedin: site.kind === "linkedin" ? site.url : null,
+        maps_url: p.mapsUrl,
+        rating: p.rating,
+        reviews: p.reviewsCount,
+        rubro: p.primaryType ?? rubro,
+        locality,
+      };
+    });
+
+    // Una sola llamada para los 60: sesenta upserts sueltos serían varios
+    // segundos de pura latencia contra Supabase.
+    const { data: result, error: rpcErr } = await supabase.rpc("upsert_prospects", {
+      p_search_id: search.id,
+      p_items: items,
+    });
+    if (rpcErr) throw new Error(rpcErr.message);
+
+    const row = Array.isArray(result) ? result[0] : result;
+    const total = row?.total ?? 0;
+    const created = row?.created ?? 0;
+
+    await supabase
+      .from("prospect_searches")
+      .update({
+        status: "done",
+        results_count: total,
+        new_count: created,
+        finished_at: new Date().toISOString(),
+      })
+      .eq("id", search.id);
+
+    revalidatePath("/admin/clientes");
+    return { searchId: search.id, total, created, skippedClosed };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Error desconocido";
+    await supabase
+      .from("prospect_searches")
+      .update({ status: "error", error: message, finished_at: new Date().toISOString() })
+      .eq("id", search.id);
+
+    // El `hint` de PlacesError dice qué hacer (habilitar la API, cargar la
+    // key, etc.) — sin él el mensaje crudo de Google no le sirve a nadie.
+    const hint = err instanceof PlacesError ? err.hint : undefined;
+    throw new Error(hint ? `${message}\n\n${hint}` : message);
+  }
+}
+
+/**
+ * Procesa un lote chico de la cola al instante, para no esperar al cron.
+ * Deliberadamente corto (5 prospectos): es una Server Action y el usuario está
+ * mirando la pantalla. El grueso lo hace el cron cada 5 minutos.
+ */
+export async function enrichNow(limit = 5): Promise<{
+  processed: number;
+  email: number;
+  whatsapp: number;
+  quotaExhausted: boolean;
+}> {
+  await requireAuth();
+  // El enriquecedor escribe sobre fichas que la sesión puede ver igual, pero
+  // usa la service key como el cron: así el mismo código corre idéntico en los
+  // dos caminos y no hay una RLS que se comporte distinto según quién llame.
+  const admin = createAdminClient();
+  const result = await enrichBatch(admin, {
+    limit: Math.min(Math.max(limit, 1), 10),
+    deadline: Date.now() + 45_000,
+  });
+
+  revalidatePath("/admin/clientes");
+  return {
+    processed: result.processed,
+    email: result.found.email,
+    whatsapp: result.found.whatsapp,
+    quotaExhausted: result.quotaExhausted,
+  };
+}
+
+/** Vuelve a poner un prospecto en la cola, reseteando sus intentos. */
+export async function requeueClient(id: string): Promise<void> {
+  const supabase = await requireAuth();
+  const { error } = await supabase
+    .from("crm_contacts")
+    .update({
+      enrichment_status: "pending",
+      enrichment_error: null,
+      scrape_attempts: 0,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id);
+  if (error) throw new Error(error.message);
+  revalidatePath("/admin/clientes");
+}
+
+export interface ClientEdit {
+  business_name?: string | null;
+  contact_name?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  whatsapp_phone?: string | null;
+  notes?: string | null;
+}
+
+/**
+ * Edición manual de una ficha. Es la salida del nivel 4: cuando la cascada no
+ * encontró nada, alguien abre el Instagram del comercio y carga el dato a mano.
+ *
+ * Lo que se guarda acá queda con `manual_lock`, y a partir de ese momento
+ * ningún proceso automático vuelve a tocar la ficha (ni el enriquecedor ni el
+ * merge de una búsqueda futura). Es deliberado: el trabajo de una persona vale
+ * más que cualquier cosa que adivine el scraper.
+ */
+export async function updateClient(id: string, data: ClientEdit): Promise<void> {
+  const supabase = await requireAuth();
+
+  const clean = (v: string | null | undefined) => (v?.trim() ? v.trim() : null);
+  const patch: Record<string, unknown> = {
+    manual_lock: true,
+    updated_at: new Date().toISOString(),
+  };
+
+  if ("business_name" in data) patch.business_name = clean(data.business_name);
+  if ("contact_name" in data) patch.contact_name = clean(data.contact_name);
+  if ("email" in data) patch.email = clean(data.email)?.toLowerCase() ?? null;
+  if ("notes" in data) patch.notes = clean(data.notes);
+
+  // Los teléfonos se normalizan al mismo formato que usa el resto del sistema
+  // (dígitos sin '+'), o quedan en null si no se pueden interpretar.
+  if ("phone" in data) {
+    const raw = clean(data.phone);
+    patch.phone = raw ? (toE164Ar(raw)?.e164 ?? null) : null;
+    if (raw && !patch.phone) throw new Error(`No se pudo interpretar el teléfono "${raw}"`);
+  }
+  if ("whatsapp_phone" in data) {
+    const raw = clean(data.whatsapp_phone);
+    const normalized = raw ? toWhatsappNumber(raw) : null;
+    if (raw && !normalized) throw new Error(`No se pudo interpretar el WhatsApp "${raw}"`);
+    patch.whatsapp_phone = normalized;
+    patch.whatsapp_source = normalized ? "manual" : null;
+  }
+
+  const { error } = await supabase.from("crm_contacts").update(patch).eq("id", id);
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/admin/clientes");
+  revalidatePath("/admin/pipelines");
+}
+
+/**
+ * Borra una ficha de cliente de verdad. El CASCADE se lleva sus conversaciones
+ * y oportunidades. Solo owner/admin: un agente no debería poder perder el
+ * historial de un cliente.
+ */
+export async function deleteClient(id: string): Promise<void> {
+  const supabase = await requireAuth();
+  await requireRole(supabase, "admin");
+  const { error } = await supabase.from("crm_contacts").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+  revalidatePath("/admin/clientes");
+}
+
+/**
+ * Todos los clientes que matchean los filtros, para exportar a CSV.
+ * Sin paginar pero con techo: 5.000 filas es más de lo que alguien va a
+ * trabajar a mano y evita que un click tumbe el server.
+ */
+export async function exportClients(filters: ClientFilters = {}): Promise<CrmContact[]> {
+  const pageSize = CLIENTS_PAGE_SIZE;
+  const out: CrmContact[] = [];
+  for (let page = 1; page <= Math.ceil(5000 / pageSize); page++) {
+    const { clients } = await listClients({ ...filters, page });
+    out.push(...clients);
+    if (clients.length < pageSize) break;
+  }
+  return out;
 }

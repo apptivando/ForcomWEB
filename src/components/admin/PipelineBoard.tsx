@@ -7,6 +7,7 @@ import {
   updatePipelineDeal,
   deletePipelineDeal,
 } from "@/app/admin/actions";
+import { clientLabel } from "@/lib/types";
 import type { PipelineStage, PipelineDeal, CrmContact } from "@/lib/types";
 
 const inputCls =
@@ -89,7 +90,7 @@ export default function PipelineBoard({
                 ) : (
                   <div key={deal.id} className="bg-[#141416] border border-[#2A2A2E] rounded-sm p-3">
                     <p className="text-sm font-display font-semibold text-white truncate">
-                      {deal.contact?.name || deal.contact?.phone}
+                      {deal.contact ? clientLabel(deal.contact) : "—"}
                     </p>
                     <p className="text-xs text-[#8A8A8A] truncate">{deal.title}</p>
                     {deal.value != null && (
@@ -212,7 +213,7 @@ function NewDealForm({
       <select value={contactId} onChange={(e) => setContactId(e.target.value)} className={inputCls}>
         {contacts.map((c) => (
           <option key={c.id} value={c.id}>
-            {c.name || c.phone}
+            {clientLabel(c)}
           </option>
         ))}
       </select>

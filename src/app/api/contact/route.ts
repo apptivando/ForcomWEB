@@ -1,40 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-
-/**
- * Normaliza un teléfono argentino a E.164 con el "9" de celular
- * (+549<área><número>), el formato que espera WhatsApp — es el mismo
- * que usa `crm_contacts.phone` del CRM propio (Track E), así que el
- * número queda listo para cuando ese inbox lo consuma.
- * Heurística best-effort — no hay forma determinística de saber dónde
- * termina el código de área sin una lista completa, así que cubre el
- * formato más común en Argentina (área + número directo, con o sin
- * +54, con o sin el 0 nacional) y devuelve null si el resultado no
- * tiene una longitud razonable. Un fallo acá no bloquea el envío del
- * formulario — solo significa que el lead queda guardado sin teléfono
- * normalizado.
- *
- * NO intenta detectar/sacar el viejo prefijo local "15" (ej. "011
- * 15-1234-5678") — se probó y el "15" aparece tan seguido por pura
- * coincidencia en el borde entre área y número (ej. área 351 + número
- * que empieza en 5 arma un "15" ahí que no es el prefijo) que hacía
- * más daño rompiendo números válidos que el que evitaba. Un número
- * escrito con el "15" explícito va a dar un resultado más largo de lo
- * esperado y termina devolviendo null (falla segura) en vez de un
- * número corrompido.
- */
-function normalizeArgentinePhone(raw: string): string | null {
-  let d = raw.replace(/[^\d]/g, "");
-  if (!d) return null;
-
-  if (d.startsWith("54")) d = d.slice(2);
-  if (d.startsWith("9")) d = d.slice(1);
-  if (d.startsWith("0")) d = d.slice(1);
-
-  const e164 = `549${d}`;
-  if (e164.length < 12 || e164.length > 14) return null;
-  return `+${e164}`;
-}
+import { createAdminClient } from "@/lib/supabase/admin";
+import { toWhatsappNumber } from "@/lib/phone";
 
 export async function POST(request: Request) {
   let body: unknown;
@@ -55,22 +22,111 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Email inválido" }, { status: 400 });
   }
 
-  const normalizedPhone = phone?.trim() ? normalizeArgentinePhone(phone) : null;
+  // Dígitos sin `+`, mismo formato que `crm_contacts.phone`. Antes se guardaba
+  // con `+` y los dos formatos no matcheaban; la migración 010 normaliza las
+  // filas viejas. Un teléfono que no se puede normalizar no bloquea el envío:
+  // el lead se guarda igual, solo que sin teléfono.
+  const normalizedPhone = phone?.trim() ? toWhatsappNumber(phone) : null;
 
+  const cleanEmail = email.trim().toLowerCase();
+  const cleanName = name.trim();
+  const cleanCompany = company?.trim() || null;
+
+  // El mensaje se guarda con el cliente anon: `contact_messages` tiene una
+  // policy de INSERT público justamente para esto (el formulario lo usa gente
+  // sin sesión).
   const supabase = await createClient();
-  const { error } = await supabase.from("contact_messages").insert({
-    name: name.trim(),
-    company: company?.trim() || null,
-    email: email.trim().toLowerCase(),
-    phone: normalizedPhone,
-    industry: industry || null,
-    message: message.trim(),
-    status: "nuevo",
-  });
+  const { data: inserted, error } = await supabase
+    .from("contact_messages")
+    .insert({
+      name: cleanName,
+      company: cleanCompany,
+      email: cleanEmail,
+      phone: normalizedPhone,
+      industry: industry || null,
+      message: message.trim(),
+      status: "nuevo",
+    })
+    .select("id")
+    .single();
 
   if (error) {
     console.error("contact insert error:", error);
     return NextResponse.json({ error: "Error al guardar el mensaje" }, { status: 500 });
+  }
+
+  // Fase 7 del Track E: además del mensaje, se crea (o se completa) la ficha
+  // del cliente, así el lead aparece en /admin/clientes junto a los prospectos
+  // y a los contactos de WhatsApp.
+  //
+  // Va con la service key y NO con el cliente anon: `crm_contacts` no tiene ni
+  // debe tener una policy para anónimos — abrirla dejaría a cualquiera leer la
+  // base de clientes entera desde el navegador. Con RLS activo y sin policy el
+  // insert no daría error, simplemente no escribiría ninguna fila.
+  //
+  // Un fallo acá no rompe el formulario: el mensaje ya está guardado y el mail
+  // de aviso se manda igual. Se loguea y se sigue.
+  try {
+    const admin = createAdminClient();
+    let contactId: string | null = null;
+
+    if (normalizedPhone) {
+      // Con teléfono, la clave es el teléfono: es lo que comparte con el CRM
+      // de WhatsApp. `origin` queda fuera del upsert a propósito — si este
+      // número ya existía como prospecto o como contacto de WhatsApp, tiene
+      // que seguir figurando con su origen original.
+      const { data } = await admin
+        .from("crm_contacts")
+        .upsert(
+          { phone: normalizedPhone, contact_name: cleanName },
+          { onConflict: "phone", ignoreDuplicates: false }
+        )
+        .select("id, email, business_name")
+        .single();
+
+      if (data) {
+        contactId = data.id;
+        const patch: Record<string, string> = {};
+        if (!data.email) patch.email = cleanEmail;
+        if (!data.business_name && cleanCompany) patch.business_name = cleanCompany;
+        if (Object.keys(patch).length > 0) {
+          await admin.from("crm_contacts").update(patch).eq("id", data.id);
+        }
+      }
+    } else {
+      // Sin teléfono, la clave es el email. No hay UNIQUE sobre esa columna
+      // (las cadenas comparten info@… entre sucursales), así que se busca
+      // primero en vez de hacer upsert.
+      const { data: existing } = await admin
+        .from("crm_contacts")
+        .select("id")
+        .eq("email", cleanEmail)
+        .limit(1)
+        .maybeSingle();
+
+      if (existing) {
+        contactId = existing.id;
+      } else {
+        const { data: created } = await admin
+          .from("crm_contacts")
+          .insert({
+            email: cleanEmail,
+            contact_name: cleanName,
+            business_name: cleanCompany,
+            origin: "formulario",
+            enrichment_status: "skipped",
+          })
+          .select("id")
+          .single();
+        contactId = created?.id ?? null;
+      }
+    }
+
+    if (contactId && inserted?.id) {
+      await admin.from("contact_messages").update({ contact_id: contactId }).eq("id", inserted.id);
+    }
+  } catch (crmError) {
+    console.error("contact → crm_contacts error (non-fatal):", crmError);
   }
 
   // Envío de email via Resend (opcional — configurar RESEND_API_KEY en .env.local)

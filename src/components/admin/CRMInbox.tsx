@@ -128,6 +128,18 @@ export default function CRMInbox({ messages }: { messages: ContactMessage[] }) {
                   <p className="text-[#B0B0B0] leading-relaxed whitespace-pre-wrap">{msg.message}</p>
                 </div>
 
+                {/* Esta pantalla guarda el TEXTO del mensaje, que no vive en
+                    ningún otro lado. La ficha del cliente (teléfono, WhatsApp,
+                    historial de otros canales) vive en /admin/clientes. */}
+                {msg.contact_id && (
+                  <a
+                    href={`/admin/clientes?q=${encodeURIComponent(msg.email)}`}
+                    className="inline-block text-xs font-display font-semibold text-[#B0B0B0] hover:text-white underline underline-offset-4"
+                  >
+                    Ver ficha del cliente →
+                  </a>
+                )}
+
                 {/* Status change */}
                 <div>
                   <p className="text-xs font-display font-semibold tracking-[0.15em] uppercase text-[#8A8A8A] mb-2">

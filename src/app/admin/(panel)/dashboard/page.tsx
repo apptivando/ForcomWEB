@@ -1,14 +1,24 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
 
-  const [{ count: totalProducts }, { count: newMessages }, { count: totalMessages }] =
-    await Promise.all([
-      supabase.from("products").select("*", { count: "exact", head: true }).eq("active", true),
-      supabase.from("contact_messages").select("*", { count: "exact", head: true }).eq("status", "nuevo"),
-      supabase.from("contact_messages").select("*", { count: "exact", head: true }),
-    ]);
+  const [
+    { count: totalProducts },
+    { count: newMessages },
+    { count: totalMessages },
+    { count: totalClients },
+    { count: whatsappClients },
+  ] = await Promise.all([
+    supabase.from("products").select("*", { count: "exact", head: true }).eq("active", true),
+    supabase.from("contact_messages").select("*", { count: "exact", head: true }).eq("status", "nuevo"),
+    supabase.from("contact_messages").select("*", { count: "exact", head: true }),
+    supabase.from("crm_contacts").select("id", { count: "exact", head: true }),
+    // contact_tier = 1 significa WhatsApp confirmado con evidencia, no
+    // "el número parece un celular".
+    supabase.from("crm_contacts").select("id", { count: "exact", head: true }).eq("contact_tier", 1),
+  ]);
 
   const { data: recentMessages } = await supabase
     .from("contact_messages")
@@ -35,7 +45,17 @@ export default async function DashboardPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
+        <Link
+          href="/admin/clientes"
+          className="bg-[#141416] border border-[#2A2A2E] rounded-sm p-6 hover:border-[#3A3A3E] transition-colors"
+        >
+          <p className="text-xs font-display font-semibold tracking-[0.15em] uppercase text-[#8A8A8A] mb-2">
+            Clientes con WhatsApp
+          </p>
+          <p className="font-display font-extrabold text-4xl text-green-400">{whatsappClients ?? 0}</p>
+          <p className="text-xs text-[#8A8A8A] mt-1">de {totalClients ?? 0} en total</p>
+        </Link>
         <div className="bg-[#141416] border border-[#2A2A2E] rounded-sm p-6">
           <p className="text-xs font-display font-semibold tracking-[0.15em] uppercase text-[#8A8A8A] mb-2">
             Productos activos

@@ -7,6 +7,7 @@ import {
   createQuickReply,
   deleteQuickReply,
 } from "@/app/admin/actions";
+import { clientLabel } from "@/lib/types";
 import type { CrmConversation, CrmMessage, QuickReply } from "@/lib/types";
 
 function formatTime(iso: string | null): string {
@@ -151,7 +152,7 @@ export default function InboxView({
           >
             <div className="flex items-center justify-between gap-2">
               <p className="text-sm font-display font-semibold text-white truncate">
-                {c.contact?.name || c.contact?.phone || "Desconocido"}
+                {c.contact ? clientLabel(c.contact) : "Desconocido"}
               </p>
               <span className="text-[10px] text-[#8A8A8A] shrink-0">
                 {formatTime(c.last_message_at)}
@@ -174,7 +175,7 @@ export default function InboxView({
           <>
             <div className="px-6 py-4 border-b border-[#2A2A2E]">
               <p className="font-display font-semibold text-white">
-                {selected.contact?.name || selected.contact?.phone}
+                {selected.contact ? clientLabel(selected.contact) : "Desconocido"}
               </p>
               <p className="text-xs text-[#8A8A8A]">{selected.contact?.phone}</p>
             </div>
