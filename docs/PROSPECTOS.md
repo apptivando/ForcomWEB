@@ -228,15 +228,28 @@ el enriquecedor ni el merge de una búsqueda futura.
 
 ## Escribirle a un prospecto
 
-Botón **Escribir** en la fila del cliente. Abre un panel con tres salidas:
+Botón **Escribir** en la fila del cliente. No abre nada ahí: crea la
+conversación y **te lleva a la Bandeja**, al hilo de ese cliente.
 
-- **Enviar** — manda el mensaje desde el número de la empresa y deja la
-  conversación abierta en la Bandeja para seguirla ahí. Puede ser una plantilla
-  (con los datos de la ficha ya reemplazados y a la vista) o texto libre.
-- **Abrir en la Bandeja** — crea la conversación **sin mandar nada**, para
-  escribirla a mano. Es lo más prudente para un primer contacto.
-- **Abrir en mi WhatsApp** — el link `wa.me` de siempre, que sale desde tu
-  número personal y no desde el del CRM.
+**Todo el envío vive en la Bandeja.** Antes había dos lugares desde donde
+mandar mensajes —el panel de la fila y el composer del hilo— y solo uno de los
+dos miraba la ventana de 24 h y el tope diario. Ahora es uno solo.
+
+En el pie del hilo, arriba del cuadro de escribir, la Bandeja dice en qué
+situación estás y te ofrece únicamente lo que corresponde:
+
+- **Ventana abierta** (el cliente escribió hace menos de 24 h): el cuadro de
+  texto libre de siempre, con las respuestas rápidas.
+- **Ventana cerrada, o nunca escribió**: el cuadro se reemplaza por el selector
+  de plantillas, con la vista previa ya completada con los datos del cliente y
+  el contador de mensajes en frío del día al lado.
+
+Esconder el cuadro de texto cuando no se puede usar es más honesto que dejarlo
+ahí para que el envío falle después. Al costado siempre está **Abrir en mi
+WhatsApp**, el link `wa.me` que sale desde tu número y no desde el del CRM.
+
+La Bandeja también acepta `?c=<id>` en la URL, así un hilo puntual se puede
+compartir por link.
 
 ### La ventana de 24 horas
 

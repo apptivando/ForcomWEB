@@ -1,7 +1,17 @@
 import { listConversations, listQuickReplies } from "@/app/admin/actions";
 import InboxView from "@/components/admin/InboxView";
 
-export default async function InboxPage() {
+// En Next 16 `searchParams` es una Promise y hay que await-earla.
+type SearchParams = Promise<Record<string, string | string[] | undefined>>;
+
+export default async function InboxPage({ searchParams }: { searchParams: SearchParams }) {
+  const sp = await searchParams;
+  // `?c=<id>` abre una conversación puntual. Es lo que usa el botón "Escribir"
+  // de Clientes para aterrizar en el hilo correcto en vez de en el primero de
+  // la lista.
+  const raw = sp.c;
+  const selectedId = (Array.isArray(raw) ? raw[0] : raw)?.trim() || null;
+
   const [conversations, quickReplies] = await Promise.all([
     listConversations(),
     listQuickReplies(),
@@ -18,7 +28,11 @@ export default async function InboxPage() {
         </p>
       </div>
       <div className="flex-1 min-h-0">
-        <InboxView initialConversations={conversations} initialQuickReplies={quickReplies} />
+        <InboxView
+          initialConversations={conversations}
+          initialQuickReplies={quickReplies}
+          initialSelectedId={selectedId}
+        />
       </div>
     </div>
   );

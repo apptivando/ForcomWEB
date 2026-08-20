@@ -179,6 +179,14 @@ export async function sendOutreach(opts: {
   templateId?: string;
   /** Texto libre. Con Meta solo se permite dentro de la ventana de 24 h. */
   text?: string;
+  /**
+   * Conversación exacta a la que agregar el mensaje. Sin esto se busca (o se
+   * crea) la conversación abierta del contacto, que es lo correcto para un
+   * primer contacto pero no para responder en un hilo que se está mirando: si
+   * ese hilo estuviera cerrado, la respuesta se iría a una conversación nueva
+   * y quedaría partida en dos.
+   */
+  conversationId?: string;
 }): Promise<OutreachResult> {
   const supabase = await requireAuth();
   const {
@@ -241,7 +249,7 @@ export async function sendOutreach(opts: {
     }
   }
 
-  const conversationId = await openConversation(opts.contactId);
+  const conversationId = opts.conversationId ?? (await openConversation(opts.contactId));
 
   try {
     const { waMessageId } = await deliver({

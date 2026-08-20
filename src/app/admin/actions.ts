@@ -5,7 +5,6 @@ import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireRole, type AdminRole } from "@/lib/auth/roles";
-import { sendText } from "@/lib/evolution";
 import { encrypt, decrypt } from "@/lib/encryption";
 import { ingestDocument, reindexAllEmbeddings } from "@/lib/ai/knowledge";
 import { generateAssistantReply } from "@/lib/ai/auto-reply";
@@ -13,6 +12,7 @@ import type { ChatMessage } from "@/lib/ai/generate";
 import { searchPlaces, PlacesError } from "@/lib/prospects/places";
 import { classifyUrl } from "@/lib/prospects/urls";
 import { enrichBatch } from "@/lib/prospects/enrich";
+import { sendOutreach } from "@/app/admin/outreach-actions";
 import { toE164Ar, toWhatsappNumber } from "@/lib/phone";
 import { CLIENTS_PAGE_SIZE } from "@/lib/types";
 import type {
@@ -404,51 +404,28 @@ export async function getConversationMessages(conversationId: string): Promise<C
   return (data ?? []) as CrmMessage[];
 }
 
+/**
+ * Responder en una conversación abierta.
+ *
+ * Ya no manda nada por su cuenta: delega en `sendOutreach`, que es el único
+ * camino de envío del sistema. Antes había dos —éste y el del contacto en
+ * frío— y solo uno de los dos miraba la ventana de 24 h de Meta y el tope
+ * diario, así que contestar desde la Bandeja se salteaba las dos cosas.
+ *
+ * Se conserva la firma por `conversationId` porque es lo que tiene a mano
+ * quien está mirando un hilo; adentro se resuelve el contacto.
+ */
 export async function sendCrmReply(conversationId: string, text: string): Promise<void> {
   const supabase = await requireAuth();
-  const { data: { user } } = await supabase.auth.getUser();
 
-  const { data: conversation, error: convErr } = await supabase
+  const { data: conversation, error } = await supabase
     .from("crm_conversations")
-    .select("*, contact:crm_contacts(*)")
+    .select("contact_id")
     .eq("id", conversationId)
     .single();
-  if (convErr || !conversation) throw new Error("Conversación no encontrada");
+  if (error || !conversation) throw new Error("Conversación no encontrada");
 
-  // Evolution primero — si falla, no queda un mensaje "fantasma" guardado
-  // como si hubiera salido.
-  let waMessageId: string | undefined;
-  try {
-    const result = await sendText(conversation.contact.phone, text);
-    waMessageId = result?.key?.id;
-  } catch (err) {
-    throw new Error(
-      `No se pudo enviar por WhatsApp: ${err instanceof Error ? err.message : "error desconocido"}`
-    );
-  }
-
-  const { error: msgErr } = await supabase.from("crm_messages").insert({
-    conversation_id: conversationId,
-    direction: "out",
-    content_type: "text",
-    content_text: text,
-    wa_message_id: waMessageId ?? null,
-    sender_member_id: user!.id,
-  });
-  if (msgErr) throw new Error(msgErr.message);
-
-  await supabase
-    .from("crm_conversations")
-    .update({
-      last_message_text: text,
-      last_message_at: new Date().toISOString(),
-      // Un humano contestó — la IA no debe seguir respondiendo encima
-      // en esta conversación.
-      assigned_member_id: user!.id,
-    })
-    .eq("id", conversationId);
-
-  revalidatePath("/admin/inbox");
+  await sendOutreach({ contactId: conversation.contact_id, text, conversationId });
 }
 
 export async function listQuickReplies(): Promise<QuickReply[]> {
