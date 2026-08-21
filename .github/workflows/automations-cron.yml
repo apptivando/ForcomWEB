@@ -34,3 +34,13 @@ jobs:
         run: |
           curl -sf --max-time 300 -X GET "https://dev.forcom.tech/api/cron/prospects" \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
+
+      # El endpoint decide solo cuándo encolar el día anterior (pasada cierta
+      # hora) y en cada corrida procesa un lote chico. Así el análisis se
+      # reparte a lo largo de la mañana en vez de intentar hacer 200
+      # conversaciones en una sola llamada.
+      - name: Analizar conversaciones de vendedores
+        if: always()
+        run: |
+          curl -sf --max-time 300 -X GET "https://dev.forcom.tech/api/cron/reviews" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"

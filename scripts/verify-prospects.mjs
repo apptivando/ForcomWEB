@@ -268,6 +268,57 @@ if (process.argv.includes("--live")) {
   warn("trampa del trigger sin probar (agregá --live: crea y borra un cliente de prueba)");
 }
 
+// ─── 2d. Migración 013 (líneas de WhatsApp) ──────────────────────────────────
+
+console.log("\n── Migración 013 ──");
+
+{
+  const { data, error } = await db
+    .from("wa_lines")
+    .select("name, kind, instance, is_primary, active, conn_state");
+  if (error) {
+    bad(`falta la tabla wa_lines: ${error.message}`,
+        "Correr supabase/sql-changes/013_lineas_whatsapp.sql.");
+  } else {
+    const primary = data.find((l) => l.is_primary);
+    if (!primary) bad("no hay línea principal", "La migración 013 la crea; revisar que corrió entera.");
+    else ok("línea principal", `${primary.name} · ${primary.instance ?? "instancia sin asignar todavía"}`);
+
+    const vendedores = data.filter((l) => l.kind === "baileys");
+    console.log(`   ${DIM}${data.length} línea(s): ${data.map((l) => `${l.name} [${l.kind}${l.conn_state ? ` ${l.conn_state}` : ""}]`).join(" · ")}${OFF}`);
+    if (vendedores.length === 0) warn("todavía no hay líneas de vendedores conectadas");
+  }
+}
+
+{
+  const { count: sinLinea } = await db
+    .from("crm_conversations")
+    .select("id", { count: "exact", head: true })
+    .is("line_id", null);
+  if ((sinLinea ?? 0) === 0) ok("todas las conversaciones tienen su línea asignada");
+  else bad(`${sinLinea} conversación(es) sin línea`, "El backfill de la sección 3 de la 013 no corrió.");
+}
+
+{
+  // El filtro que separa los dos mundos. Si esto falla, las conversaciones de
+  // los vendedores se verían en la Bandeja.
+  const { data, error } = await db
+    .from("crm_conversations")
+    .select("id, line:wa_lines!inner(kind)")
+    .eq("line.kind", "meta");
+  if (error) bad(`el filtro de la Bandeja falló: ${error.message}`);
+  else {
+    const { count: total } = await db.from("crm_conversations").select("id", { count: "exact", head: true });
+    ok("el filtro de la Bandeja responde", `(${data.length} de ${total ?? 0} conversaciones son de la línea oficial)`);
+  }
+}
+
+{
+  const { error } = await db.from("wa_excluded_numbers").select("phone").limit(1);
+  if (error) bad(`falta wa_excluded_numbers: ${error.message}`);
+  else ok("tabla wa_excluded_numbers");
+}
+
 // ─── 3. Datos ────────────────────────────────────────────────────────────────
 
 console.log("\n── Estado de los datos ──");

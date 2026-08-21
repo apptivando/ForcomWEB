@@ -37,6 +37,7 @@ const MIRRORED = [
   ["011_contacto_en_frio.sql", "contacto en frío (20/08/2026)"],
   ["012_ficha_cliente.sql", "ficha de cliente y línea de tiempo (20/08/2026)"],
   ["013_lineas_whatsapp.sql", "líneas de WhatsApp (20/08/2026)"],
+  ["014_analisis_conversaciones.sql", "análisis de conversaciones de vendedores (20/08/2026)"],
 ];
 
 /** El cuerpo de una migración: de la sección 1 hasta antes de la verificación. */
