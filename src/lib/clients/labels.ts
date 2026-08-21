@@ -12,6 +12,8 @@ export const ORIGIN_STYLE: Record<ClientOrigin, { label: string; className: stri
   busqueda: { label: "Búsqueda", className: "bg-blue-500/10 text-blue-400 border-blue-500/20" },
   whatsapp: { label: "WhatsApp", className: "bg-green-500/10 text-green-400 border-green-500/20" },
   formulario: { label: "Formulario", className: "bg-[#E8231A]/10 text-[#E8231A] border-[#E8231A]/20" },
+  // Apareció en el celular de un vendedor, no por la línea oficial.
+  vendedor: { label: "Vendedor", className: "bg-purple-500/10 text-purple-400 border-purple-500/20" },
   manual: { label: "Manual", className: "bg-[#2A2A2E] text-[#B0B0B0] border-[#2A2A2E]" },
 };
 

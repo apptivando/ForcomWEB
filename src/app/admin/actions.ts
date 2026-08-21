@@ -383,11 +383,24 @@ export async function listCrmContacts(): Promise<CrmContact[]> {
   return data ?? [];
 }
 
+/**
+ * Las conversaciones de la Bandeja: **solo las de la línea oficial**.
+ *
+ * Éste es el único lugar donde se separan los dos mundos de WhatsApp, y por eso
+ * el filtro vive acá y no repartido por la pantalla. Las líneas de los
+ * vendedores (Baileys) usan las mismas tablas —para que la línea de tiempo del
+ * cliente pueda mostrar todo junto— pero no se operan desde la plataforma: sus
+ * conversaciones se leen en la ficha del cliente, no acá.
+ *
+ * El `!inner` no es decorativo: sin él, una conversación sin línea asignada se
+ * colaría en la Bandeja.
+ */
 export async function listConversations(): Promise<CrmConversation[]> {
   const supabase = await requireAuth();
   const { data, error } = await supabase
     .from("crm_conversations")
-    .select("*, contact:crm_contacts(*)")
+    .select("*, contact:crm_contacts(*), line:wa_lines!inner(id, name, kind)")
+    .eq("line.kind", "meta")
     .order("last_message_at", { ascending: false, nullsFirst: false });
   if (error) throw new Error(error.message);
   return (data ?? []) as unknown as CrmConversation[];

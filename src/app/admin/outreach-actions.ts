@@ -151,17 +151,32 @@ export async function getOutreachContext(contactId: string): Promise<OutreachCon
 export async function openConversation(contactId: string): Promise<string> {
   const supabase = await requireAuth();
 
+  // Siempre sobre la línea principal: lo que se abre desde la plataforma se
+  // atiende desde la Bandeja, y la Bandeja solo muestra la línea oficial. Sin
+  // asignarla, la conversación quedaría creada pero invisible.
+  const { data: line } = await supabase
+    .from("wa_lines")
+    .select("id")
+    .eq("is_primary", true)
+    .maybeSingle();
+  if (!line) {
+    throw new Error(
+      "No hay una línea principal configurada. Cargala en /admin/lineas antes de escribir."
+    );
+  }
+
   const { data: existing } = await supabase
     .from("crm_conversations")
     .select("id")
     .eq("contact_id", contactId)
+    .eq("line_id", line.id)
     .eq("status", "open")
     .maybeSingle();
   if (existing) return existing.id;
 
   const { data: created, error } = await supabase
     .from("crm_conversations")
-    .insert({ contact_id: contactId })
+    .insert({ contact_id: contactId, line_id: line.id })
     .select("id")
     .single();
   if (error) throw new Error(error.message);

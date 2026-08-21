@@ -88,7 +88,38 @@ export interface AdminInvitation {
 }
 
 /** De dónde salió el cliente. Es la etiqueta que se muestra en /admin/clientes. */
-export type ClientOrigin = "busqueda" | "whatsapp" | "formulario" | "manual";
+export type ClientOrigin = "busqueda" | "whatsapp" | "formulario" | "manual" | "vendedor";
+
+/**
+ * Una línea de WhatsApp conectada al sistema.
+ *
+ * `kind` separa dos mundos que no se mezclan: `meta` es la línea oficial de la
+ * empresa, la única que se atiende desde la Bandeja; `baileys` son los números
+ * de los vendedores, que **solo registran** lo que se habla para que quede en
+ * la ficha del cliente y se pueda analizar después.
+ *
+ * Un mismo número no puede ser las dos cosas: activar Cloud API en una línea
+ * hace que Baileys deje de poder descifrar sus mensajes.
+ */
+export interface WaLine {
+  id: string;
+  name: string;
+  kind: "meta" | "baileys";
+  /** Nombre de la instancia en Evolution. Null en las líneas de Meta. */
+  instance: string | null;
+  phone: string | null;
+  /** De qué vendedor es. Null en la oficial, que es de la empresa. */
+  member_id: string | null;
+  active: boolean;
+  /** Último estado que reportó Evolution: open | close | connecting. */
+  conn_state: string | null;
+  conn_checked_at: string | null;
+  last_message_at: string | null;
+  /** La línea a la que se asignan las conversaciones abiertas desde la plataforma. */
+  is_primary: boolean;
+  created_at: string;
+  updated_at: string;
+}
 
 /** 1 WhatsApp · 2 email · 3 teléfono · 4 sin contacto. Lo calcula la base. */
 export type ContactTier = 1 | 2 | 3 | 4;
@@ -266,6 +297,10 @@ export interface ProspectSearch {
 export interface CrmConversation {
   id: string;
   contact_id: string;
+  /** De qué línea vino. Null solo en datos anteriores a la migración 013. */
+  line_id: string | null;
+  /** Presente cuando la consulta la trae embebida. */
+  line?: Pick<WaLine, "id" | "name" | "kind">;
   status: "open" | "closed";
   last_message_text: string | null;
   last_message_at: string | null;
