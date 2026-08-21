@@ -20,7 +20,13 @@ Sitio web B2B de presentación y generación de leads para FORCOM, fabricante de
 >
 > Lo que sigue vigente de esta sección es el contexto histórico y las lecciones (sobre todo `normalizeArgentinePhone`). Lo que **ya no** aplica: el proxy `/admin/crm/*`, las variables `WACRM_*`, y el dominio `crm-dev.forcom.tech`.
 >
-> **Estado del Track E (19/08/2026):** fases 1 a 8 commiteadas en `develop`. Fase 1 roles · 2 tablas CRM + webhook · 3 bandeja · 4 asistente IA · 5 pipelines · 6 automatizaciones · **7 el formulario de contacto entra al CRM** · **8 clientes unificados + buscador de prospectos** (ver `docs/PROSPECTOS.md`). Falta cablear las variables `EVOLUTION_*` y `GOOGLE_*` en Vercel y correr las migraciones `002` y `010` en Supabase.
+> **Estado del Track E (21/08/2026):** cerrado. Fase 1 roles · 2 tablas CRM + webhook · 3 bandeja · 4 asistente IA · 5 pipelines · 6 automatizaciones · 7 el formulario entra al CRM · 8 clientes unificados + buscador de prospectos · 9 ficha de cliente con línea de tiempo · 10 líneas de vendedores y análisis de conversaciones. Migraciones 010 a 014 corridas en Supabase. Falta cablear las `EVOLUTION_*` en Vercel.
+>
+> **Documentación**: `docs/PROSPECTOS.md` (buscador de prospectos, enriquecimiento, contacto en frío, ficha de cliente) y `docs/WHATSAPP.md` (las dos líneas, captura desde el celular, análisis de vendedores).
+>
+> **Verificación**: `node scripts/verify-prospects.mjs` chequea las migraciones 010-014 y el estado de los datos. Con `--live` además prueba las APIs de Google y el trigger del Pipeline.
+>
+> **Espejar una migración nueva en `schema.sql`**: `node scripts/sync-schema.mjs`, después de agregarla al array `MIRRORED` de ese script. No copiar a mano ni con un script de un solo uso — el anterior truncaba desde su propio marcador y se llevó puestas dos migraciones.
 >
 > **`crm_contacts` ya no son "los contactos de WhatsApp": es la tabla única de clientes.** Desde la migración `010` también entran ahí los prospectos del scraper de Google Places y los leads del formulario web, diferenciados por la columna `origin`. Dos consecuencias que rompen código si se ignoran: (a) `phone` es **nullable**; (b) la columna `name` se renombró a **`contact_name`** (la persona) y se agregó **`business_name`** (la razón social) — las escriben fuentes distintas y no se pisan; (c) `contact_tier` es **GENERATED, de solo lectura**: mandarla en un insert/update revienta, así que nada de `select('*')` → `upsert(row)` sobre esa tabla.
 >

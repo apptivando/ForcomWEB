@@ -319,6 +319,62 @@ console.log("\n── Migración 013 ──");
   else ok("tabla wa_excluded_numbers");
 }
 
+// ─── 2e. Migración 014 (análisis de conversaciones) ──────────────────────────
+
+console.log("\n── Migración 014 ──");
+
+{
+  const from = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const { data, error } = await db.rpc("seller_stats", { p_from: from, p_to: new Date().toISOString() });
+  if (error) {
+    bad(`seller_stats: ${error.message}`, "Correr supabase/sql-changes/014_analisis_conversaciones.sql.");
+  } else {
+    ok("seller_stats", `(${(data ?? []).length} línea(s))`);
+    for (const s of data ?? []) {
+      const resp = s.median_response_s == null
+        ? "sin datos"
+        : s.median_response_s < 60
+          ? `${s.median_response_s}s`
+          : `${Math.round(s.median_response_s / 60)}min`;
+      console.log(
+        `   ${DIM}${s.line_name}: ${s.conversations} conv · ${s.messages_in}↓ ${s.messages_out}↑ · ` +
+          `responde en ${resp} · ${s.unanswered} sin contestar${OFF}`
+      );
+    }
+  }
+}
+
+{
+  const { error } = await db.from("conversation_reviews").select("id, status, personal").limit(1);
+  if (error) bad(`falta conversation_reviews: ${error.message}`);
+  else ok("tabla conversation_reviews");
+}
+
+{
+  // Idempotencia del encolado: correrlo dos veces sobre el mismo día no debe
+  // duplicar. Con 0 líneas de vendedor devuelve 0 las dos veces, que también
+  // es la respuesta correcta.
+  const ayer = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const a = await db.rpc("enqueue_conversation_reviews", { p_day: ayer });
+  const b = await db.rpc("enqueue_conversation_reviews", { p_day: ayer });
+  if (a.error || b.error) bad(`enqueue_conversation_reviews: ${(a.error ?? b.error).message}`);
+  else if (Number(b.data) === 0) ok("enqueue_conversation_reviews es idempotente", `(encoló ${a.data} la primera vez, 0 la segunda)`);
+  else bad(`el encolado duplicó: ${a.data} y después ${b.data}`);
+}
+
+{
+  const { error } = await db.rpc("claim_conversation_reviews", { p_limit: 0 });
+  if (error) bad(`claim_conversation_reviews: ${error.message}`);
+  else ok("claim_conversation_reviews");
+}
+
+{
+  const { data } = await db.from("ai_config").select("provider, model, analysis_model, api_key_encrypted").eq("id", 1).maybeSingle();
+  if (!data) warn("no hay configuración de IA — el análisis no va a poder correr");
+  else if (!data.api_key_encrypted) warn("falta la clave de IA en /admin/agente — el análisis no va a poder correr");
+  else ok("configuración de IA", `${data.provider} · análisis con ${data.analysis_model ?? data.model}`);
+}
+
 // ─── 3. Datos ────────────────────────────────────────────────────────────────
 
 console.log("\n── Estado de los datos ──");
