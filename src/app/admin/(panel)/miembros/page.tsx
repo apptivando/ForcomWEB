@@ -15,9 +15,11 @@ export default async function MiembrosPage() {
       .from("admin_members")
       .select("*")
       .order("created_at", { ascending: true }),
+    // Columnas explícitas, no `*`: `token_hash` no tiene por qué viajar al
+    // navegador aunque sea un hash.
     supabase
       .from("admin_invitations")
-      .select("*")
+      .select("id, email, role, invited_by, accepted_at, expires_at, created_at")
       .is("accepted_at", null)
       .order("created_at", { ascending: false }),
   ]);

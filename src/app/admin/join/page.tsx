@@ -1,91 +1,23 @@
-"use client";
+/**
+ * Aceptar una invitación al panel.
+ *
+ * Server component a propósito: valida el token contra la base antes de pintar
+ * nada, y esa validación es de solo lectura — abrir esta página no consume la
+ * invitación. Eso es lo que arregla el bug del flujo anterior, donde el
+ * antivirus de la casilla abría el link y quemaba el token de Supabase antes
+ * de que la persona lo viera (ver 015_invitaciones_propias.sql).
+ */
 
-// Página que completa una invitación: Supabase ya autenticó a la
-// persona (procesó el link del mail de invitación) antes de traerla
-// acá — a veces vía un fragmento #access_token en la URL (que el
-// cliente de Supabase detecta solo al iniciar), a veces vía ?code=
-// (flujo PKCE, hay que canjearlo a mano). Cubrimos los dos casos
-// porque no hay forma de confirmar cuál usa este proyecto sin probar
-// un mail de invitación real — ver nota en el plan (Track E).
-//
-// Una vez hay sesión: pide una contraseña, la setea, y llama a
-// acceptInvitation() para crear la fila en admin_members con el rol
-// que le asignó quien invitó.
+import Link from "next/link";
+import { lookupInvitation } from "@/lib/auth/invitations";
+import { ROLE_LABEL } from "@/lib/auth/roles";
+import PasswordForm from "@/components/admin/PasswordForm";
 
-import { useEffect, useState, Suspense } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
-import { acceptInvitation } from "@/app/admin/actions";
+type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
-export default function JoinPage() {
+function Shell({ subtitle, children }: { subtitle: string; children: React.ReactNode }) {
   return (
-    <Suspense fallback={null}>
-      <JoinPageInner />
-    </Suspense>
-  );
-}
-
-function JoinPageInner() {
-  const searchParams = useSearchParams();
-  const router = useRouter();
-
-  const [status, setStatus] = useState<"checking" | "ready" | "invalid">("checking");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [error, setError] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-
-  useEffect(() => {
-    const supabase = createClient();
-
-    async function resolveSession() {
-      const code = searchParams.get("code");
-      if (code) {
-        const { error: exchangeErr } = await supabase.auth.exchangeCodeForSession(code);
-        if (exchangeErr) {
-          setStatus("invalid");
-          return;
-        }
-      }
-
-      const { data: { session } } = await supabase.auth.getSession();
-      setStatus(session ? "ready" : "invalid");
-    }
-
-    resolveSession();
-  }, [searchParams]);
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError("");
-
-    if (password.length < 8) {
-      setError("La contraseña tiene que tener al menos 8 caracteres.");
-      return;
-    }
-    if (password !== confirmPassword) {
-      setError("Las contraseñas no coinciden.");
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-      const supabase = createClient();
-      const { error: pwErr } = await supabase.auth.updateUser({ password });
-      if (pwErr) throw new Error(pwErr.message);
-
-      await acceptInvitation();
-
-      router.push("/admin/dashboard");
-      router.refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al completar la invitación.");
-      setSubmitting(false);
-    }
-  }
-
-  return (
-    <div className="min-h-screen bg-[#0D0D0F] flex items-center justify-center px-4">
+    <div className="min-h-screen bg-[#0D0D0F] flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-2 mb-2">
@@ -94,78 +26,75 @@ function JoinPageInner() {
               FORCOM
             </span>
           </div>
-          <p className="text-[#8A8A8A] text-sm">Aceptar invitación</p>
+          <p className="text-[#8A8A8A] text-sm">{subtitle}</p>
         </div>
-
-        <div className="bg-[#141416] border border-[#2A2A2E] rounded-sm p-8">
-          {status === "checking" && (
-            <p className="text-sm text-[#8A8A8A]">Verificando invitación...</p>
-          )}
-
-          {status === "invalid" && (
-            <>
-              <h1 className="font-display font-bold text-xl text-white mb-3">
-                Link inválido o vencido
-              </h1>
-              <p className="text-sm text-[#8A8A8A]">
-                Pedile a quien te invitó que te mande una invitación nueva.
-              </p>
-            </>
-          )}
-
-          {status === "ready" && (
-            <>
-              <h1 className="font-display font-bold text-xl text-white mb-6">
-                Elegí tu contraseña
-              </h1>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-display font-semibold tracking-[0.15em] uppercase text-[#8A8A8A] mb-2">
-                    Contraseña
-                  </label>
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    autoComplete="new-password"
-                    className="w-full bg-[#0D0D0F] border border-[#2A2A2E] rounded-sm px-4 py-3 text-white placeholder:text-[#8A8A8A]/50 focus:border-[#E8231A] focus:outline-none transition-colors"
-                    placeholder="••••••••"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-display font-semibold tracking-[0.15em] uppercase text-[#8A8A8A] mb-2">
-                    Confirmar contraseña
-                  </label>
-                  <input
-                    type="password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    required
-                    autoComplete="new-password"
-                    className="w-full bg-[#0D0D0F] border border-[#2A2A2E] rounded-sm px-4 py-3 text-white placeholder:text-[#8A8A8A]/50 focus:border-[#E8231A] focus:outline-none transition-colors"
-                    placeholder="••••••••"
-                  />
-                </div>
-
-                {error && (
-                  <p className="text-sm text-[#E8231A] bg-[#E8231A]/10 border border-[#E8231A]/20 rounded-sm px-3 py-2">
-                    {error}
-                  </p>
-                )}
-
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="w-full py-3 bg-[#E8231A] text-white font-display font-bold text-sm tracking-widest uppercase rounded-sm hover:bg-[#C41D16] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {submitting ? "Entrando..." : "Entrar al panel"}
-                </button>
-              </form>
-            </>
-          )}
-        </div>
+        <div className="bg-[#141416] border border-[#2A2A2E] rounded-sm p-8">{children}</div>
       </div>
     </div>
+  );
+}
+
+function Problema({ titulo, detalle }: { titulo: string; detalle: string }) {
+  return (
+    <>
+      <h1 className="font-display font-bold text-xl text-white mb-3">{titulo}</h1>
+      <p className="text-sm text-[#8A8A8A] mb-6">{detalle}</p>
+      <Link
+        href="/admin/login"
+        className="inline-block text-sm text-[#E8231A] hover:underline"
+      >
+        Ir al inicio de sesión
+      </Link>
+    </>
+  );
+}
+
+export default async function JoinPage({ searchParams }: { searchParams: SearchParams }) {
+  const sp = await searchParams;
+  const raw = Array.isArray(sp.token) ? sp.token[0] : sp.token;
+  const invitation = await lookupInvitation(raw ?? "");
+
+  if (invitation.status === "expired") {
+    return (
+      <Shell subtitle="Invitación vencida">
+        <Problema
+          titulo="La invitación venció"
+          detalle={`El link para ${invitation.email} ya no sirve. Pedile a un administrador que te la mande de nuevo desde Miembros — te va a llegar un correo con un link nuevo.`}
+        />
+      </Shell>
+    );
+  }
+
+  if (invitation.status === "used") {
+    return (
+      <Shell subtitle="Invitación ya usada">
+        <Problema
+          titulo="Esta invitación ya se usó"
+          detalle={`La cuenta de ${invitation.email} ya está creada. Entrá con tu email y tu contraseña.`}
+        />
+      </Shell>
+    );
+  }
+
+  if (invitation.status === "invalid") {
+    return (
+      <Shell subtitle="Link inválido">
+        <Problema
+          titulo="El link no es válido"
+          detalle="Puede estar cortado por el correo: probá copiarlo entero y pegarlo en el navegador. Si sigue sin andar, pedile a un administrador una invitación nueva."
+        />
+      </Shell>
+    );
+  }
+
+  return (
+    <Shell subtitle="Activar tu acceso">
+      <h1 className="font-display font-bold text-xl text-white mb-2">Elegí tu contraseña</h1>
+      <p className="text-sm text-[#8A8A8A] mb-6">
+        Vas a entrar al panel como{" "}
+        <span className="text-white">{ROLE_LABEL[invitation.role]}</span>.
+      </p>
+      <PasswordForm mode="invite" email={invitation.email} token={raw!} />
+    </Shell>
   );
 }

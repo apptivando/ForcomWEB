@@ -4,16 +4,24 @@ import { useState, useTransition } from "react";
 import {
   inviteMember,
   cancelInvitation,
+  resendInvitation,
   updateMemberRole,
   removeMember,
 } from "@/app/admin/actions";
+import { ROLE_LABEL } from "@/lib/auth/roles";
 import type { AdminMember, AdminInvitation } from "@/lib/types";
 
-const ROLE_LABEL: Record<AdminMember["role"], string> = {
-  owner: "Dueño",
-  admin: "Admin",
-  agent: "Agente",
-};
+/** "vence el 28 de agosto, 10:15" en hora de Argentina. */
+function formatExpiry(iso: string): string {
+  return new Intl.DateTimeFormat("es-AR", {
+    day: "numeric",
+    month: "long",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: "America/Argentina/Buenos_Aires",
+  }).format(new Date(iso));
+}
 
 const inputCls =
   "w-full bg-[#0D0D0F] border border-[#2A2A2E] rounded-sm px-4 py-3 text-white focus:border-[#E8231A] focus:outline-none transition-colors";
@@ -37,6 +45,8 @@ export default function MembersEditor({
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
   const [sent, setSent] = useState(false);
+  const [resending, setResending] = useState<string | null>(null);
+  const [resent, setResent] = useState<string | null>(null);
 
   function handleInvite(e: React.FormEvent) {
     e.preventDefault();
@@ -73,6 +83,22 @@ export default function MembersEditor({
         await removeMember(userId);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Error al quitar el miembro.");
+      }
+    });
+  }
+
+  function handleResendInvitation(id: string) {
+    setError("");
+    setResending(id);
+    startTransition(async () => {
+      try {
+        await resendInvitation(id);
+        setResent(id);
+        setTimeout(() => setResent(null), 4000);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Error al reenviar la invitación.");
+      } finally {
+        setResending(null);
       }
     });
   }
@@ -142,17 +168,37 @@ export default function MembersEditor({
           </h3>
           <div className="space-y-2">
             {invitations.map((inv) => (
-              <div key={inv.id} className="flex items-center justify-between py-2 border-b border-[#2A2A2E] last:border-0">
-                <div>
-                  <p className="text-sm text-white">{inv.email}</p>
-                  <p className="text-[11px] text-[#8A8A8A]">{ROLE_LABEL[inv.role]}</p>
+              <div key={inv.id} className="flex items-center justify-between gap-3 py-2 border-b border-[#2A2A2E] last:border-0">
+                <div className="min-w-0">
+                  <p className="text-sm text-white truncate">{inv.email}</p>
+                  <p className="text-[11px] text-[#8A8A8A]">
+                    {ROLE_LABEL[inv.role]}
+                    {" · "}
+                    {new Date(inv.expires_at) < new Date()
+                      ? "vencida"
+                      : `vence el ${formatExpiry(inv.expires_at)}`}
+                  </p>
+                  {resent === inv.id && (
+                    <p className="text-[11px] text-green-400 mt-0.5">
+                      ✓ Correo reenviado con un link nuevo
+                    </p>
+                  )}
                 </div>
-                <button
-                  onClick={() => handleCancelInvitation(inv.id)}
-                  className="text-xs text-[#8A8A8A] hover:text-[#E8231A] transition-colors"
-                >
-                  Cancelar
-                </button>
+                <div className="flex items-center gap-3 shrink-0">
+                  <button
+                    onClick={() => handleResendInvitation(inv.id)}
+                    disabled={resending === inv.id}
+                    className="text-xs text-[#8A8A8A] hover:text-white transition-colors disabled:opacity-50"
+                  >
+                    {resending === inv.id ? "Enviando..." : "Reenviar"}
+                  </button>
+                  <button
+                    onClick={() => handleCancelInvitation(inv.id)}
+                    className="text-xs text-[#8A8A8A] hover:text-[#E8231A] transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                </div>
               </div>
             ))}
           </div>

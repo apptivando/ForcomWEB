@@ -3,8 +3,22 @@
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import {
+  createAdminClient,
+  createCredentialsClient,
+  findAuthUserByEmail,
+} from "@/lib/supabase/admin";
 import { requireRole, type AdminRole } from "@/lib/auth/roles";
+import {
+  generateInvitationToken,
+  hashInvitationToken,
+  invitationExpiry,
+  invitationUrl,
+  lookupInvitation,
+} from "@/lib/auth/invitations";
+import { validatePassword } from "@/lib/auth/password";
+import { sendEmail } from "@/lib/email/send";
+import { invitationEmail } from "@/lib/email/invitation";
 import { encrypt, decrypt } from "@/lib/encryption";
 import { ingestDocument, reindexAllEmbeddings } from "@/lib/ai/knowledge";
 import { generateAssistantReply } from "@/lib/ai/auto-reply";
@@ -271,26 +285,120 @@ export async function updateCompanyInfo(data: Omit<CompanyInfo, "id" | "updated_
 
 // ─── Miembros del admin (Track E, fase 1) ─────────────────────────────────────
 
+/**
+ * Manda el correo de invitación. Se usa igual al invitar y al reenviar: en los
+ * dos casos se emite un token nuevo, así que el link anterior deja de servir.
+ */
+async function issueInvitationEmail(opts: {
+  invitationId: string;
+  email: string;
+  role: AdminRole;
+  invitedBy: string | null;
+  resent: boolean;
+}) {
+  const admin = createAdminClient();
+  const token = generateInvitationToken();
+  const expiresAt = invitationExpiry();
+
+  const { error: tokenErr } = await admin
+    .from("admin_invitations")
+    .update({ token_hash: hashInvitationToken(token), expires_at: expiresAt })
+    .eq("id", opts.invitationId);
+  if (tokenErr) throw new Error(tokenErr.message);
+
+  const { subject, html, text } = invitationEmail({
+    email: opts.email,
+    role: opts.role,
+    url: invitationUrl(await siteOrigin(), token),
+    expiresAt,
+    invitedBy: opts.invitedBy,
+    resent: opts.resent,
+  });
+
+  await sendEmail({ to: opts.email, subject, html, text });
+}
+
 export async function inviteMember(email: string, role: AdminRole) {
   const supabase = await requireAuth();
   const { data: { user } } = await supabase.auth.getUser();
   await requireRole(supabase, "admin");
 
   const normalizedEmail = email.trim().toLowerCase();
+  const admin = createAdminClient();
 
-  const { error: inviteErr } = await supabase.from("admin_invitations").insert({
-    email: normalizedEmail,
-    role,
-    invited_by: user!.id,
-  });
+  // Invitar a alguien que ya entra al panel no hace nada útil y confunde: el
+  // camino para esa persona es cambiar el rol, no una invitación nueva.
+  const existingUser = await findAuthUserByEmail(admin, normalizedEmail);
+  if (existingUser) {
+    const { data: member } = await admin
+      .from("admin_members")
+      .select("user_id")
+      .eq("user_id", existingUser.id)
+      .maybeSingle();
+    if (member) throw new Error("Esa persona ya es miembro del panel.");
+  }
+
+  // Una sola invitación viva por casilla: si había otra pendiente, la nueva la
+  // reemplaza (y su link queda muerto).
+  await admin
+    .from("admin_invitations")
+    .delete()
+    .eq("email", normalizedEmail)
+    .is("accepted_at", null);
+
+  const { data: invitation, error: inviteErr } = await admin
+    .from("admin_invitations")
+    .insert({ email: normalizedEmail, role, invited_by: user!.id })
+    .select("id")
+    .single();
   if (inviteErr) throw new Error(inviteErr.message);
 
-  const origin = await siteOrigin();
+  try {
+    await issueInvitationEmail({
+      invitationId: invitation.id,
+      email: normalizedEmail,
+      role,
+      invitedBy: user!.email ?? null,
+      resent: false,
+    });
+  } catch (err) {
+    // Una invitación sin correo es una fila que no sirve para nada y que
+    // encima bloquea el reintento: se borra y se avisa el error real.
+    await admin.from("admin_invitations").delete().eq("id", invitation.id);
+    throw new Error(
+      `No se pudo enviar el correo: ${err instanceof Error ? err.message : "error desconocido"}`
+    );
+  }
+
+  revalidatePath("/admin/miembros");
+}
+
+/**
+ * Reenvía una invitación pendiente con un link nuevo. Es la salida cuando el
+ * link venció, se perdió en spam o el filtro de la casilla se lo comió.
+ */
+export async function resendInvitation(id: string) {
+  const supabase = await requireAuth();
+  const { data: { user } } = await supabase.auth.getUser();
+  await requireRole(supabase, "admin");
+
   const admin = createAdminClient();
-  const { error: sendErr } = await admin.auth.admin.inviteUserByEmail(normalizedEmail, {
-    redirectTo: `${origin}/admin/join`,
+  const { data: invitation, error } = await admin
+    .from("admin_invitations")
+    .select("id, email, role, accepted_at")
+    .eq("id", id)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!invitation) throw new Error("Esa invitación ya no existe.");
+  if (invitation.accepted_at) throw new Error("Esa invitación ya fue aceptada.");
+
+  await issueInvitationEmail({
+    invitationId: invitation.id,
+    email: invitation.email,
+    role: invitation.role as AdminRole,
+    invitedBy: user!.email ?? null,
+    resent: true,
   });
-  if (sendErr) throw new Error(`Invitación guardada pero el email falló: ${sendErr.message}`);
 
   revalidatePath("/admin/miembros");
 }
@@ -325,42 +433,112 @@ export async function removeMember(userId: string) {
 }
 
 /**
- * Completa la invitación: llamado desde /admin/join una vez que el
- * usuario invitado ya está autenticado (Supabase procesó el link del
- * mail) y eligió su contraseña. Busca la invitación pendiente por
- * email, crea la fila en admin_members con el rol que le asignaron, y
- * marca la invitación como aceptada.
+ * Completa la invitación: la llama /admin/join cuando la persona manda la
+ * contraseña. Acá — y no al abrir el link — es donde el token se consume.
+ *
+ * Es una acción pública a propósito: quien la llama todavía no tiene sesión.
+ * Lo que la protege es el token, que solo está en el correo.
  */
-export async function acceptInvitation() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user?.email) throw new Error("No autorizado");
+export async function acceptInvitation(
+  token: string,
+  password: string
+): Promise<{ email: string }> {
+  const invalid = validatePassword(password);
+  if (invalid) throw new Error(invalid);
 
-  const { data: invitation, error: findErr } = await supabase
-    .from("admin_invitations")
-    .select("id, role, expires_at, accepted_at")
-    .eq("email", user.email.toLowerCase())
-    .is("accepted_at", null)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (findErr) throw new Error(findErr.message);
-  if (!invitation) throw new Error("No hay una invitación pendiente para este email.");
-  if (new Date(invitation.expires_at) < new Date()) {
-    throw new Error("La invitación venció — pedile a un admin que te invite de nuevo.");
+  const found = await lookupInvitation(token);
+  if (found.status === "expired") {
+    throw new Error("La invitación venció. Pedile a un admin que te la mande de nuevo.");
+  }
+  if (found.status === "used") {
+    throw new Error("Esta invitación ya se usó. Entrá con tu email y contraseña.");
+  }
+  if (found.status !== "ok") {
+    throw new Error("El link no es válido. Pedile a un admin que te mande una invitación nueva.");
   }
 
   const admin = createAdminClient();
-  const { error: memberErr } = await admin.from("admin_members").insert({
-    user_id: user.id,
-    role: invitation.role,
-  });
+
+  // El usuario de Auth puede existir de antes (invitaciones del flujo viejo de
+  // Supabase, que creaban el usuario al mandar el mail). Si existe se le setea
+  // la contraseña; si no, se crea ya confirmado — el mail de invitación es la
+  // prueba de que la casilla es suya.
+  const existing = await findAuthUserByEmail(admin, found.email);
+  let userId: string;
+  if (existing) {
+    const { error } = await admin.auth.admin.updateUserById(existing.id, {
+      password,
+      email_confirm: true,
+    });
+    if (error) throw new Error(error.message);
+    userId = existing.id;
+  } else {
+    const { data, error } = await admin.auth.admin.createUser({
+      email: found.email,
+      password,
+      email_confirm: true,
+    });
+    if (error) throw new Error(error.message);
+    userId = data.user.id;
+  }
+
+  const { error: memberErr } = await admin
+    .from("admin_members")
+    .upsert(
+      { user_id: userId, role: found.role, updated_at: new Date().toISOString() },
+      { onConflict: "user_id" }
+    );
   if (memberErr) throw new Error(memberErr.message);
 
+  // token_hash a NULL: un solo uso.
   await admin
     .from("admin_invitations")
-    .update({ accepted_at: new Date().toISOString() })
-    .eq("id", invitation.id);
+    .update({ accepted_at: new Date().toISOString(), token_hash: null })
+    .eq("id", found.id);
+
+  revalidatePath("/admin/miembros");
+  return { email: found.email };
+}
+
+/**
+ * Cambio de contraseña de la propia cuenta, desde /admin/cuenta.
+ *
+ * Pide la contraseña actual aunque haya sesión: si no, cualquiera que agarre
+ * la máquina desbloqueada se queda con la cuenta.
+ */
+export async function changeOwnPassword(
+  currentPassword: string,
+  newPassword: string
+): Promise<void> {
+  const supabase = await requireAuth();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user?.email) throw new Error("No autorizado");
+
+  const invalid = validatePassword(newPassword);
+  if (invalid) throw new Error(invalid);
+  if (newPassword === currentPassword) {
+    throw new Error("La contraseña nueva tiene que ser distinta de la actual.");
+  }
+
+  // Cliente aparte, sin cookies: verificar acá con el cliente de sesión
+  // rotaría los tokens del navegador en medio del pedido.
+  const check = createCredentialsClient();
+  const { error: signInErr } = await check.auth.signInWithPassword({
+    email: user.email,
+    password: currentPassword,
+  });
+  if (signInErr) throw new Error("La contraseña actual no es correcta.");
+
+  // Verificar deja abierta la sesión que se acaba de crear: se cierra. Scope
+  // "local" a propósito — el default de supabase-js es "global", que cerraría
+  // también la sesión del navegador de la persona.
+  await check.auth.signOut({ scope: "local" });
+
+  const admin = createAdminClient();
+  const { error } = await admin.auth.admin.updateUserById(user.id, {
+    password: newPassword,
+  });
+  if (error) throw new Error(error.message);
 }
 
 // ─── Bandeja de WhatsApp (Track E, fase 3) ────────────────────────────────────

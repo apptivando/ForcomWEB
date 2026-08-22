@@ -2,6 +2,13 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type AdminRole = "owner" | "admin" | "agent";
 
+/** Nombre visible de cada rol. Se usa en el panel y en los correos. */
+export const ROLE_LABEL: Record<AdminRole, string> = {
+  owner: "Dueño",
+  admin: "Admin",
+  agent: "Agente",
+};
+
 const ROLE_RANK: Record<AdminRole, number> = {
   agent: 0,
   admin: 1,

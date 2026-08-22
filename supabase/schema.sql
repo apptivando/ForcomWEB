@@ -2232,3 +2232,24 @@ CREATE POLICY "Owner/admin can read reviews" ON conversation_reviews FOR SELECT
 -- key, que bypasea RLS.
 GRANT SELECT ON TABLE conversation_reviews TO authenticated;
 GRANT ALL ON TABLE conversation_reviews TO service_role;
+
+
+-- ============================================================
+-- Migración: invitaciones con token propio (22/08/2026)
+-- Ejecutar en Supabase Dashboard > SQL Editor
+-- Ver supabase/sql-changes/015_invitaciones_propias.sql
+-- ============================================================
+
+
+-- 1. Token propio de invitación
+ALTER TABLE admin_invitations
+  ADD COLUMN IF NOT EXISTS token_hash TEXT;
+
+COMMENT ON COLUMN admin_invitations.token_hash IS
+  'SHA-256 (hex) del token que viaja en el link de invitación. El token en claro solo existe en el mail: si se pierde, se reenvía la invitación y se genera uno nuevo. Se pone en NULL al aceptar (un solo uso).';
+
+-- Un token no puede apuntar a dos invitaciones. NULL no cuenta para UNIQUE en
+-- Postgres, así que las invitaciones ya aceptadas (token_hash = NULL) no
+-- chocan entre sí.
+CREATE UNIQUE INDEX IF NOT EXISTS admin_invitations_token_hash_idx
+  ON admin_invitations (token_hash);

@@ -40,3 +40,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .gstack/
+
+# vista previa de correos (scripts/preview-email.mjs)
+.preview-email.html
