@@ -30,12 +30,15 @@ const labelCls =
 
 function PasswordInput({
   label,
+  name,
   value,
   onChange,
   autoComplete,
   autoFocus,
 }: {
   label: string;
+  /** También lo miran los gestores de contraseñas para entender el campo. */
+  name: string;
   value: string;
   onChange: (v: string) => void;
   autoComplete: string;
@@ -44,9 +47,13 @@ function PasswordInput({
   const [visible, setVisible] = useState(false);
   return (
     <div>
-      <label className={labelCls}>{label}</label>
+      <label htmlFor={name} className={labelCls}>
+        {label}
+      </label>
       <div className="relative">
         <input
+          id={name}
+          name={name}
           type={visible ? "text" : "password"}
           value={value}
           onChange={(e) => onChange(e.target.value)}
@@ -137,19 +144,35 @@ export default function PasswordForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {/* La casilla asociada — no editable, es la que después va en el login. */}
+      {/*
+        La casilla asociada — no editable, es la que después va en el login.
+
+        Es un <input readOnly> y no un <div> por los gestores de contraseñas:
+        sin un campo de usuario en el formulario, Dashlane/1Password/Chrome no
+        tienen a qué asociar la contraseña nueva, leen "un campo de password
+        suelto" como un login y ofrecen las claves guardadas en vez de generar
+        una segura. Con `autocomplete="username"` acá y `new-password` abajo,
+        el formulario queda leído como lo que es. Ver docs/ACCESOS.md.
+      */}
       <div>
-        <label className={labelCls}>
+        <label htmlFor="password-form-email" className={labelCls}>
           {mode === "invite" ? "Vas a entrar con" : mode === "reset" ? "La cuenta es" : "Tu cuenta"}
         </label>
-        <div className="w-full bg-[#0D0D0F] border border-[#2A2A2E] rounded-sm px-4 py-3 text-white text-sm break-all">
-          {email}
-        </div>
+        <input
+          id="password-form-email"
+          name="email"
+          type="email"
+          value={email}
+          readOnly
+          autoComplete="username"
+          className="w-full bg-[#0D0D0F] border border-[#2A2A2E] rounded-sm px-4 py-3 text-white text-sm cursor-default focus:outline-none focus:border-[#2A2A2E]"
+        />
       </div>
 
       {mode === "change" && (
         <PasswordInput
           label="Contraseña actual"
+          name="current-password"
           value={current}
           onChange={setCurrent}
           autoComplete="current-password"
@@ -159,6 +182,7 @@ export default function PasswordForm({
 
       <PasswordInput
         label={mode === "invite" ? "Contraseña" : "Contraseña nueva"}
+        name="new-password"
         value={password}
         onChange={setPassword}
         autoComplete="new-password"
@@ -166,6 +190,7 @@ export default function PasswordForm({
       />
       <PasswordInput
         label="Repetir la contraseña"
+        name="confirm-password"
         value={confirm}
         onChange={setConfirm}
         autoComplete="new-password"

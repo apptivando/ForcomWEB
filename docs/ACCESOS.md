@@ -147,6 +147,30 @@ Después de eso, en orden:
 
 ---
 
+## Los gestores de contraseñas
+
+`PasswordForm` está armado para que Dashlane, 1Password y el de Chrome
+entiendan que es un formulario de contraseña **nueva** y ofrezcan generar una
+segura, en vez de leerlo como un login y ofrecer las claves ya guardadas.
+
+Lo que lo hace funcionar, y que conviene no romper:
+
+- **La casilla es un `<input readOnly autocomplete="username">`, no un `<div>`.**
+  Esto es lo que más importa. Un formulario con campos de contraseña y ningún
+  campo de usuario se lee como un login: el gestor no tiene a qué asociar la
+  contraseña nueva. Fue exactamente lo que pasaba el 24/08/2026 — Dashlane
+  mostraba "Ingresar como" con las cuentas guardadas.
+- **`autocomplete="new-password"`** en el campo nuevo y en el de repetir;
+  `current-password` solo en el de la contraseña actual.
+- **Cada input con su `name` y su `id`**, y el `<label>` apuntando con
+  `htmlFor`. Varios gestores todavía se apoyan en esos nombres.
+
+Además, `/.well-known/change-password` redirige a `/admin/cuenta`
+(`next.config.ts`). Es la URL estándar del W3C que los gestores consultan
+cuando ofrecen "cambiar esta contraseña" desde su propia interfaz.
+
+---
+
 ## Cosas para tener presentes
 
 - **El remitente es `noreply@forcom.tech`** (`RESEND_FROM_EMAIL`), que es el
