@@ -39,8 +39,10 @@ export async function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname;
   const isLoginPage = path === "/admin/login";
   const isJoinPage = path.startsWith("/admin/join");
+  // Recuperar contraseña es, por definición, para quien no puede entrar.
+  const isRecoveryPage = path.startsWith("/admin/recuperar");
   const isAdminRoute = path.startsWith("/admin");
-  const isPublicAdminRoute = isLoginPage || isJoinPage;
+  const isPublicAdminRoute = isLoginPage || isJoinPage || isRecoveryPage;
 
   if (isAdminRoute && !isPublicAdminRoute && !user) {
     const url = request.nextUrl.clone();

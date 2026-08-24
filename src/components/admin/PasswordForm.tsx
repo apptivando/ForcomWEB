@@ -1,14 +1,17 @@
 "use client";
 
 /**
- * Formulario de contraseña, compartido por los dos momentos en que se elige
+ * Formulario de contraseña, compartido por los tres momentos en que se elige
  * una:
  *
  * - `mode="invite"`  → /admin/join, con el token de la invitación. No hay
  *                      sesión todavía; al terminar se entra solo.
+ * - `mode="reset"`   → /admin/recuperar, con el token del link de "olvidé mi
+ *                      contraseña". Igual que invite, pero sobre una cuenta
+ *                      que ya existe.
  * - `mode="change"`  → /admin/cuenta, con sesión. Pide la contraseña actual.
  *
- * En los dos casos se muestra arriba, fija y no editable, la casilla a la que
+ * En los tres casos se muestra arriba, fija y no editable, la casilla a la que
  * queda asociada la contraseña: es el dato que la gente no tiene claro cuando
  * después le pide el login (y en la invitación puede no ser la casilla desde
  * la que están leyendo el correo).
@@ -17,7 +20,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { acceptInvitation, changeOwnPassword } from "@/app/admin/actions";
+import { acceptInvitation, changeOwnPassword, resetPassword } from "@/app/admin/actions";
 import { MIN_PASSWORD_LENGTH, validatePassword } from "@/lib/auth/password";
 
 const inputCls =
@@ -70,7 +73,7 @@ export default function PasswordForm({
   email,
   token,
 }: {
-  mode: "invite" | "change";
+  mode: "invite" | "reset" | "change";
   email: string;
   token?: string;
 }) {
@@ -95,9 +98,11 @@ export default function PasswordForm({
     try {
       const supabase = createClient();
 
-      if (mode === "invite") {
-        await acceptInvitation(token!, password);
-        // La cuenta ya existe con esta contraseña: se entra en el momento, sin
+      if (mode === "invite" || mode === "reset") {
+        if (mode === "invite") await acceptInvitation(token!, password);
+        else await resetPassword(token!, password);
+
+        // La cuenta ya quedó con esta contraseña: se entra en el momento, sin
         // pasar por el login.
         const { error: signInErr } = await supabase.auth.signInWithPassword({
           email,
@@ -135,7 +140,7 @@ export default function PasswordForm({
       {/* La casilla asociada — no editable, es la que después va en el login. */}
       <div>
         <label className={labelCls}>
-          {mode === "invite" ? "Vas a entrar con" : "Tu cuenta"}
+          {mode === "invite" ? "Vas a entrar con" : mode === "reset" ? "La cuenta es" : "Tu cuenta"}
         </label>
         <div className="w-full bg-[#0D0D0F] border border-[#2A2A2E] rounded-sm px-4 py-3 text-white text-sm break-all">
           {email}
@@ -157,7 +162,7 @@ export default function PasswordForm({
         value={password}
         onChange={setPassword}
         autoComplete="new-password"
-        autoFocus={mode === "invite"}
+        autoFocus={mode !== "change"}
       />
       <PasswordInput
         label="Repetir la contraseña"
@@ -190,7 +195,9 @@ export default function PasswordForm({
           ? "Guardando..."
           : mode === "invite"
             ? "Crear contraseña y entrar"
-            : "Cambiar contraseña"}
+            : mode === "reset"
+              ? "Guardar y entrar"
+              : "Cambiar contraseña"}
       </button>
     </form>
   );

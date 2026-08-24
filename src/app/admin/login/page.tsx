@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent, Suspense } from "react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter, useSearchParams } from "next/navigation";
 
@@ -108,6 +109,16 @@ function LoginPageInner() {
             >
               {loading ? "Ingresando..." : "Ingresar"}
             </button>
+
+            {/* Se lleva el email ya tipeado para no hacerlo escribir de nuevo. */}
+            <p className="text-center text-sm">
+              <Link
+                href={`/admin/recuperar${email ? `?email=${encodeURIComponent(email)}` : ""}`}
+                className="text-[#8A8A8A] hover:text-[#E8231A] transition-colors"
+              >
+                ¿Olvidaste tu contraseña?
+              </Link>
+            </p>
           </form>
         </div>
       </div>

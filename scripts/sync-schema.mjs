@@ -39,6 +39,7 @@ const MIRRORED = [
   ["013_lineas_whatsapp.sql", "líneas de WhatsApp (20/08/2026)"],
   ["014_analisis_conversaciones.sql", "análisis de conversaciones de vendedores (20/08/2026)"],
   ["015_invitaciones_propias.sql", "invitaciones con token propio (22/08/2026)"],
+  ["016_recuperar_contrasena.sql", "recuperación de contraseña (24/08/2026)"],
 ];
 
 /** El cuerpo de una migración: de la sección 1 hasta antes de la verificación. */

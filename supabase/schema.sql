@@ -2253,3 +2253,39 @@ COMMENT ON COLUMN admin_invitations.token_hash IS
 -- chocan entre sí.
 CREATE UNIQUE INDEX IF NOT EXISTS admin_invitations_token_hash_idx
   ON admin_invitations (token_hash);
+
+
+-- ============================================================
+-- Migración: recuperación de contraseña (24/08/2026)
+-- Ejecutar en Supabase Dashboard > SQL Editor
+-- Ver supabase/sql-changes/016_recuperar_contrasena.sql
+-- ============================================================
+
+
+-- 1. Pedidos de recuperación de contraseña
+CREATE TABLE IF NOT EXISTS admin_password_resets (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id     UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  email       TEXT NOT NULL,
+  token_hash  TEXT NOT NULL,
+  used_at     TIMESTAMPTZ,
+  expires_at  TIMESTAMPTZ NOT NULL,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+COMMENT ON TABLE admin_password_resets IS
+  'Links de recuperación de contraseña del panel. Duran una hora y son de un solo uso.';
+COMMENT ON COLUMN admin_password_resets.token_hash IS
+  'SHA-256 (hex) del token del link. El token en claro solo existe en el correo.';
+
+CREATE UNIQUE INDEX IF NOT EXISTS admin_password_resets_token_hash_idx
+  ON admin_password_resets (token_hash);
+CREATE INDEX IF NOT EXISTS admin_password_resets_email_idx
+  ON admin_password_resets (email);
+
+-- 2. RLS: cerrada del todo, a propósito
+-- Sin políticas, ni anon ni authenticated pueden tocar nada. La tabla la usa
+-- únicamente el servidor con la service role key (que saltea RLS), porque quien
+-- pide una recuperación justamente NO tiene sesión. Es distinto de
+-- admin_invitations, que sí se lee desde el panel con la sesión de un admin.
+ALTER TABLE admin_password_resets ENABLE ROW LEVEL SECURITY;

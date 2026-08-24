@@ -182,7 +182,8 @@ npm run dev
 - **Logo** usa `next/image` con PNG (`/images/brand/forcom-logo.png`). No volver a SVG con texto — el ® desaparecía y perdía calidad.
 - **HeroCarousel usa `h-screen` (no `min-h-screen`)** — con `min-h-screen` la sección se alargaba en algunos slides y la navegación quedaba fuera del viewport. La navegación está posicionada `absolute bottom-6` para que siempre sea visible. No volver a flujo normal ni a `min-h-screen`.
 - **Hero mobile layout (30/06/2026)** — `section` usa `items-start md:items-center`: en mobile el contenido arranca justo bajo la navbar (elimina el dead space superior), en desktop queda centrado verticalmente. Imagen: `w-80 h-80` fijo en mobile, `md:w-full md:h-auto md:aspect-square` en desktop. Las decoraciones (esquinas rojas, borde rotado, badge de producto) son visibles en todos los tamaños — no agregar `hidden md:block` a esos elementos. Trust badges: `flex justify-center sm:justify-start text-xs sm:text-sm` (visibles en mobile, centrados). Scroll indicator `sm:hidden` al fondo del texto. Título: `text-center sm:text-left`.
-- **Las invitaciones al panel NO usan el mail de Supabase (22/08/2026)** — `inviteUserByEmail` manda su propio correo en inglés y con un token de un solo uso que **se consume con un GET**: los antivirus de las casillas corporativas abren los links antes de entregar el mail y lo queman, así que la invitación le llega vencida a quien la recibe (pasó con `emilio.reula@centroficina.com.ar`, `last_sign_in_at` 24 segundos después de mandarla). Ahora el token lo emite la app y abrir el link no consume nada — ver `docs/ACCESOS.md`. No volver a `inviteUserByEmail` ni a mandar links que ejecuten la acción con un GET.
+- **Las invitaciones al panel NO usan el mail de Supabase (22/08/2026)** — `inviteUserByEmail` manda su propio correo en inglés y con un token de un solo uso que **se consume con un GET**: los antivirus de las casillas corporativas abren los links antes de entregar el mail y lo queman, así que la invitación le llega vencida a quien la recibe (pasó con `emilio.reula@centroficina.com.ar`, `last_sign_in_at` 24 segundos después de mandarla). Ahora el token lo emite la app y abrir el link no consume nada — ver `docs/ACCESOS.md`. Lo mismo vale para el "olvidé mi contraseña" (`/admin/recuperar`, 24/08/2026). No volver a `inviteUserByEmail` ni a mandar links que ejecuten la acción con un GET.
+- **Las rutas de `/admin` que se ven sin sesión hay que declararlas en `src/proxy.ts`** (`isPublicAdminRoute`: login, join, recuperar). Una pantalla nueva de acceso que no se agregue ahí redirige al login y no se puede usar nunca.
 - **Variables de entorno nuevas no se recargan solas en `next dev`** — hay que matar el proceso viejo y arrancar uno nuevo (`.env.local` se lee una sola vez, al arrancar). Si hay más de un `next dev` corriendo (pasó el 30/07/2026 — un proceso viejo quedó vivo en el puerto 3000 y el nuevo cayó al 3001, pero curl seguía pegándole al viejo sin darse cuenta), las pruebas van a ir contra el proceso equivocado sin ningún error visible. Confirmar con `netstat`/`tasklist` que solo hay un proceso antes de probar algo que dependa de env vars recién agregadas.
 
 ## Estado actual (junio 2026)
@@ -228,10 +229,11 @@ scripts/
 │                             Requiere SUPABASE_SERVICE_KEY en .env.local (service_role key, bypasea RLS)
 │                             Dry-run: node scripts/import-catalog.mjs
 │                             Carga:   node scripts/import-catalog.mjs --update
-├── preview-email.mjs       — vista previa del correo de invitación, sin mandar nada.
+├── preview-email.mjs       — vista previa de los correos del panel, sin mandar nada.
 │                             node scripts/preview-email.mjs --text
 │                             Escribe .preview-email.html (ignorado por git). --resent muestra
-│                             la variante de reenvío. Ver docs/ACCESOS.md.
+│                             la invitación reenviada y --reset el correo de recuperación
+│                             de contraseña. Ver docs/ACCESOS.md.
 ├── test-extract.mjs        — banco de pruebas del extractor de contactos del scraper de
 │                             prospectos. Sin API key ni base de datos.
 │                             Casos fijos:   node scripts/test-extract.mjs
