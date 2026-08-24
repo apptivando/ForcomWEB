@@ -155,11 +155,13 @@ segura, en vez de leerlo como un login y ofrecer las claves ya guardadas.
 
 Lo que lo hace funcionar, y que conviene no romper:
 
-- **La casilla es un `<input readOnly autocomplete="username">`, no un `<div>`.**
-  Esto es lo que más importa. Un formulario con campos de contraseña y ningún
-  campo de usuario se lee como un login: el gestor no tiene a qué asociar la
-  contraseña nueva. Fue exactamente lo que pasaba el 24/08/2026 — Dashlane
-  mostraba "Ingresar como" con las cuentas guardadas.
+- **Hay un `<input autocomplete="username" hidden>` con la casilla.** Un
+  formulario con campos de contraseña y ningún campo de usuario se lee como un
+  login: el gestor no tiene a qué asociar la contraseña nueva. Va **oculto**,
+  que es el patrón que documentan Chrome y MDN — con un campo de email a la
+  vista, el formulario tiene exactamente la forma de un login y se invita al
+  mismo comportamiento que se quiere evitar. La casilla igual se muestra al
+  lado, como texto.
 - **`autocomplete="new-password"`** en el campo nuevo y en el de repetir;
   `current-password` solo en el de la contraseña actual.
 - **Cada input con su `name` y su `id`**, y el `<label>` apuntando con
@@ -168,6 +170,20 @@ Lo que lo hace funcionar, y que conviene no romper:
 Además, `/.well-known/change-password` redirige a `/admin/cuenta`
 (`next.config.ts`). Es la URL estándar del W3C que los gestores consultan
 cuando ofrecen "cambiar esta contraseña" desde su propia interfaz.
+
+**Hasta acá llega lo que depende de nosotros.** Que el gestor ofrezca *generar*
+una clave en vez de mostrar las guardadas es una decisión suya, tomada con
+heurísticas propias que no exponen ninguna palanca. La recuperación juega en
+contra: sin campo de "contraseña actual" —que no lo hay, justamente porque no
+se recuerda— a un gestor le cuesta distinguirla de un login. Si insiste con las
+guardadas, siempre se puede generar la clave desde su propio menú.
+
+**No repetir la contraseña anterior**: la actual sí se rechaza, en los dos
+caminos. En `changeOwnPassword` por comparación directa (se tienen las dos), y
+en `resetPassword` probando si con la "nueva" ya se puede entrar — si se puede,
+es la de antes. Un historial de las últimas N sería otra cosa: Supabase no lo
+guarda, habría que armar una tabla de hashes propia y mantenerla. No está hecho
+ni hace falta hoy.
 
 ---
 

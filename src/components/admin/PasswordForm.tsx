@@ -91,6 +91,10 @@ export default function PasswordForm({
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  // En invitación y recuperación se entra al panel al terminar. Sin este paso
+  // el salto es instantáneo y nunca se ve una confirmación: quedaba la duda de
+  // si la contraseña se guardó o no.
+  const [entering, setEntering] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -121,8 +125,12 @@ export default function PasswordForm({
           router.push("/admin/login");
           return;
         }
-        router.push("/admin/dashboard");
-        router.refresh();
+        // Un respiro para que se vea la confirmación antes de saltar al panel.
+        setEntering(true);
+        setTimeout(() => {
+          router.push("/admin/dashboard");
+          router.refresh();
+        }, 1400);
         return;
       }
 
@@ -145,28 +153,25 @@ export default function PasswordForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {/*
-        La casilla asociada — no editable, es la que después va en el login.
+        Campo de usuario para los gestores de contraseñas. Oculto a propósito:
+        es el patrón que documentan Chrome y MDN para los formularios de
+        contraseña nueva. Sin ningún campo de usuario, el gestor no tiene a qué
+        asociar la clave que genere y lee el formulario como un login (Dashlane
+        mostraba "Ingresar como" con las cuentas guardadas). Y visible es peor:
+        un campo de email a la vista es justamente la forma de un login, así que
+        invita al mismo comportamiento que queremos evitar.
 
-        Es un <input readOnly> y no un <div> por los gestores de contraseñas:
-        sin un campo de usuario en el formulario, Dashlane/1Password/Chrome no
-        tienen a qué asociar la contraseña nueva, leen "un campo de password
-        suelto" como un login y ofrecen las claves guardadas en vez de generar
-        una segura. Con `autocomplete="username"` acá y `new-password` abajo,
-        el formulario queda leído como lo que es. Ver docs/ACCESOS.md.
+        La casilla igual se ve, acá abajo, como texto. Ver docs/ACCESOS.md.
       */}
+      <input type="text" name="username" autoComplete="username" value={email} readOnly hidden />
+
       <div>
-        <label htmlFor="password-form-email" className={labelCls}>
+        <label className={labelCls}>
           {mode === "invite" ? "Vas a entrar con" : mode === "reset" ? "La cuenta es" : "Tu cuenta"}
         </label>
-        <input
-          id="password-form-email"
-          name="email"
-          type="email"
-          value={email}
-          readOnly
-          autoComplete="username"
-          className="w-full bg-[#0D0D0F] border border-[#2A2A2E] rounded-sm px-4 py-3 text-white text-sm cursor-default focus:outline-none focus:border-[#2A2A2E]"
-        />
+        <div className="w-full bg-[#0D0D0F] border border-[#2A2A2E] rounded-sm px-4 py-3 text-white text-sm break-all">
+          {email}
+        </div>
       </div>
 
       {mode === "change" && (
@@ -205,24 +210,28 @@ export default function PasswordForm({
           {error}
         </p>
       )}
-      {done && (
+      {(done || entering) && (
         <p className="text-sm text-green-400 bg-green-400/10 border border-green-400/20 rounded-sm px-3 py-2">
-          ✓ Listo, tu contraseña quedó cambiada.
+          {entering
+            ? "✓ Contraseña guardada. Entrando al panel..."
+            : "✓ Listo, tu contraseña quedó cambiada."}
         </p>
       )}
 
       <button
         type="submit"
-        disabled={submitting}
+        disabled={submitting || entering}
         className="w-full py-3 bg-[#E8231A] text-white font-display font-bold text-sm tracking-widest uppercase rounded-sm hover:bg-[#C41D16] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        {submitting
-          ? "Guardando..."
-          : mode === "invite"
-            ? "Crear contraseña y entrar"
-            : mode === "reset"
-              ? "Guardar y entrar"
-              : "Cambiar contraseña"}
+        {entering
+          ? "Entrando al panel..."
+          : submitting
+            ? "Guardando..."
+            : mode === "invite"
+              ? "Crear contraseña y entrar"
+              : mode === "reset"
+                ? "Guardar y entrar"
+                : "Cambiar contraseña"}
       </button>
     </form>
   );

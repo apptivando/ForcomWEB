@@ -615,6 +615,21 @@ export async function resetPassword(
     throw new Error("El link no es válido. Pedí uno nuevo desde “Olvidé mi contraseña”.");
   }
 
+  // ¿Es la misma contraseña que ya tenía? Acá no la conocemos —el link de
+  // recuperación no la pide— pero se puede averiguar sin verla: si con la
+  // "nueva" ya se puede entrar, es la de antes. Recuperar la clave y dejar la
+  // misma no es recuperar nada.
+  const check = createCredentialsClient();
+  const { error: sameErr } = await check.auth.signInWithPassword({
+    email: found.email,
+    password,
+  });
+  if (!sameErr) {
+    // Scope local: cierra solo la sesión que se acaba de crear acá.
+    await check.auth.signOut({ scope: "local" });
+    throw new Error("Esa es la contraseña que ya tenías. Elegí una distinta.");
+  }
+
   const admin = createAdminClient();
   const { error } = await admin.auth.admin.updateUserById(found.userId, {
     password,
