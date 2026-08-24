@@ -22,7 +22,7 @@ import {
   RESET_THROTTLE_SECONDS,
 } from "@/lib/auth/password-resets";
 import { validatePassword } from "@/lib/auth/password";
-import { sendEmail } from "@/lib/email/send";
+import { sendEmail, EmailConfigError } from "@/lib/email/send";
 import { invitationEmail } from "@/lib/email/invitation";
 import { passwordResetEmail } from "@/lib/email/password-reset";
 import { encrypt, decrypt } from "@/lib/encryption";
@@ -558,12 +558,16 @@ export async function requestPasswordReset(email: string): Promise<void> {
 
   const token = generateToken();
   const expiresAt = resetExpiry();
-  const { error } = await admin.from("admin_password_resets").insert({
-    user_id: user.id,
-    email: normalized,
-    token_hash: hashToken(token),
-    expires_at: expiresAt,
-  });
+  const { data: row, error } = await admin
+    .from("admin_password_resets")
+    .insert({
+      user_id: user.id,
+      email: normalized,
+      token_hash: hashToken(token),
+      expires_at: expiresAt,
+    })
+    .select("id")
+    .single();
   if (error) throw new Error(error.message);
 
   const { subject, html, text } = passwordResetEmail({
@@ -575,8 +579,16 @@ export async function requestPasswordReset(email: string): Promise<void> {
   try {
     await sendEmail({ to: normalized, subject, html, text });
   } catch (err) {
-    // No se propaga: un error acá le diría a quien escribió la casilla que la
-    // casilla existe. Queda en los logs del server, que es donde sirve.
+    // El pedido no sirve para nada si el correo no salió: se borra, así el
+    // freno de un minuto no bloquea el próximo intento.
+    await admin.from("admin_password_resets").delete().eq("id", row.id);
+
+    // Un problema de configuración (dominio caído, key vencida) no dice nada
+    // sobre el destinatario — no habría salido para nadie — así que se muestra
+    // en pantalla. Si quedara mudo, la persona esperaría para siempre un
+    // correo que no está saliendo. El resto de los errores sí se traga: ahí el
+    // silencio es lo que evita revelar si la casilla existe.
+    if (err instanceof EmailConfigError) throw err;
     console.error("password reset email error:", err);
   }
 }

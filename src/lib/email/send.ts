@@ -12,6 +12,24 @@
 const DEFAULT_FROM_EMAIL = "noreply@forcom.tech";
 const DEFAULT_FROM_NAME = "FORCOM";
 
+/**
+ * Falla que no depende de a quién se le manda: falta la API key, el dominio
+ * no está verificado, la key no tiene permiso. Se distingue del resto porque
+ * es la única clase de error que se puede mostrar en pantalla sin filtrar si
+ * la casilla del destinatario existe — y porque significa que NINGÚN correo
+ * está saliendo, que es justo lo que no puede pasar en silencio.
+ *
+ * Pasó el 24/08/2026: el registro DKIM de forcom.tech desapareció del DNS,
+ * Resend puso el dominio en "failed" y la recuperación de contraseña se
+ * tragaba el error mostrando "revisá tu correo". Ver docs/ACCESOS.md.
+ */
+export class EmailConfigError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "EmailConfigError";
+  }
+}
+
 export interface SendEmailOptions {
   to: string;
   subject: string;
@@ -31,7 +49,7 @@ export async function sendEmail({
 }: SendEmailOptions): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
-    throw new Error(
+    throw new EmailConfigError(
       "Falta RESEND_API_KEY — sin esa variable no se puede mandar correo."
     );
   }
@@ -54,6 +72,13 @@ export async function sendEmail({
   // El SDK de Resend no tira: devuelve { data, error }. Si no se mira, un
   // dominio sin verificar falla en silencio.
   if (error) {
-    throw new Error(`Resend: ${error.message ?? "error desconocido"}`);
+    const message = error.message ?? "error desconocido";
+    // 401/403 y todo lo que hable de la key o del dominio es configuración:
+    // el envío no habría salido para ningún destinatario.
+    const status = (error as { statusCode?: number }).statusCode;
+    if (status === 401 || status === 403 || /not verified|api key|domain/i.test(message)) {
+      throw new EmailConfigError(`Resend: ${message}`);
+    }
+    throw new Error(`Resend: ${message}`);
   }
 }

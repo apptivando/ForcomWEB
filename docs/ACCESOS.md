@@ -115,6 +115,38 @@ imprime la versión en texto plano. `--resent` muestra la variante de reenvío y
 
 ---
 
+## Si el correo no llega
+
+Lo primero es mirar el **dominio en Resend** (https://resend.com/domains). Si
+`forcom.tech` no dice *verified*, no sale ningún correo de ningún tipo — ni
+invitaciones, ni recuperación, ni el aviso de un lead nuevo del formulario.
+
+Pasó el **24/08/2026**: el registro DKIM (`resend._domainkey.forcom.tech`)
+desapareció del DNS de hostmar y Resend puso el dominio en `failed`. Todo
+envío devolvía `403 — The forcom.tech domain is not verified`. El SPF y el MX
+de `send.forcom.tech` seguían en su lugar; faltaba solo el DKIM. Si vuelve a
+pasar, el registro que hay que reponer lo muestra la propia pantalla de Resend.
+
+Chequeo rápido desde la terminal:
+
+```
+nslookup -type=TXT resend._domainkey.forcom.tech 8.8.8.8
+```
+
+Si contesta *Non-existent domain*, el DKIM no está y ese es el problema.
+
+Después de eso, en orden:
+
+1. ¿La persona **es miembro** del panel? La recuperación solo funciona para
+   quien tiene fila en `admin_members`.
+2. ¿Pasó **menos de un minuto** desde el pedido anterior? El freno descarta el
+   segundo pedido en silencio.
+3. Spam / correo no deseado.
+4. Los envíos y su estado real (`delivered`, `bounced`) están en el panel de
+   Resend.
+
+---
+
 ## Cosas para tener presentes
 
 - **El remitente es `noreply@forcom.tech`** (`RESEND_FROM_EMAIL`), que es el
@@ -124,6 +156,12 @@ imprime la versión en texto plano. `--resent` muestra la variante de reenvío y
 - **Sin `RESEND_API_KEY` no se puede invitar.** La acción falla con un error
   claro en vez de guardar una invitación que nunca va a llegar: si el correo no
   sale, la fila se borra.
+- **`EmailConfigError` es la excepción a la regla del silencio.** La
+  recuperación de contraseña se traga los errores de envío para no revelar si
+  una casilla existe, pero un problema de configuración (dominio caído, API key
+  mal) no dice nada del destinatario y sí significa que no sale ningún correo:
+  ese se muestra en pantalla. Sin esa distinción, un dominio caído se ve
+  exactamente igual que un pedido normal — que fue lo que pasó el 24/08.
 - **Las invitaciones del flujo viejo tienen `token_hash` en NULL** y no se
   pueden aceptar. Hay que reenviarlas desde `/admin/miembros`.
 - El cambio de contraseña **pide la actual** aunque haya sesión abierta, para

@@ -26,8 +26,15 @@ export default function PasswordResetRequest({ initialEmail = "" }: { initialEma
     try {
       await requestPasswordReset(email);
       setSent(true);
-    } catch {
-      setError("No se pudo procesar el pedido. Probá de nuevo en un momento.");
+    } catch (err) {
+      // La acción solo tira cuando el correo no sale para NADIE (dominio o
+      // API key mal): ese mensaje se muestra tal cual, porque es lo único que
+      // le permite a un admin darse cuenta de que hay que arreglar algo.
+      setError(
+        err instanceof Error && err.message
+          ? `El correo no pudo salir: ${err.message}`
+          : "No se pudo procesar el pedido. Probá de nuevo en un momento."
+      );
     } finally {
       setSubmitting(false);
     }
