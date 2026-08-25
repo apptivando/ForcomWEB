@@ -96,14 +96,37 @@ const DIRECTORIOS = new Set([
 console.log(`\n${BOLD}Fichas que tocó el enriquecedor:${OFF} ${filas.length}\n`);
 if (filas.length === 0) process.exit(0);
 
-// Un dominio que aparece en varias fichas distintas no es de ninguna: es el de
-// la agencia que armó las fichas, o el del propio directorio.
-const porDominio = new Map();
+/**
+ * ¿Estas fichas son sucursales de la misma cadena?
+ *
+ * ES LA CORRECCIÓN MÁS IMPORTANTE DE ESTE SCRIPT. Los controles de "dominio
+ * repetido" y "número repetido" existen para pescar el mail de la agencia que
+ * publica fichas de directorio. Pero disparan igual sobre **nueve sucursales de
+ * Kilbel compartiendo `info@kilbel.com.ar`**, que es perfectamente correcto — y
+ * estaban en la rama que BORRA.
+ *
+ * Lo que los separa es el nombre: las sucursales de una cadena comparten un
+ * pedazo distintivo ("Kilbel", "Alvear", "Kilgelmann"); los comercios que un
+ * directorio junta bajo su propio mail, no.
+ */
+function mismaCadena(ids) {
+  const nombres = [...ids].map((id) => tokensDe(byId.get(id)?.business_name));
+  if (nombres.some((t) => t.length === 0)) return false;
+  // Alcanza con que TODAS compartan al menos un token con la primera.
+  return nombres.every((t) => t.some((x) => nombres[0].includes(x)));
+}
+
+const byId = new Map(filas.map((f) => [f.id, f]));
+
+// Un dominio que aparece en varias fichas de comercios DISTINTOS no es de
+// ninguno: es el de la agencia que armó las fichas, o el del propio directorio.
+const fichasPorDominio = new Map();
 for (const f of filas) {
   if (!f.email) continue;
   const d = f.email.split("@")[1]?.toLowerCase();
   if (!d) continue;
-  porDominio.set(d, (porDominio.get(d) ?? 0) + 1);
+  if (!fichasPorDominio.has(d)) fichasPorDominio.set(d, new Set());
+  fichasPorDominio.get(d).add(f.id);
 }
 const GENERICOS_MAIL = /^(gmail|hotmail|yahoo|outlook|live|icloud|aol|yandex|proton(mail)?)\./i;
 
@@ -134,6 +157,13 @@ for (const f of filas) {
   const dudas = [];
   const area = areaDe(f.phone);
 
+  // Un abonado en ceros no es un teléfono: es un relleno. Salió de un caso
+  // real, "Supermercado Cordiez" con 351 000-0000.
+  for (const [campo, valor] of [["teléfono", f.phone], ["WhatsApp", f.whatsapp_phone]]) {
+    const nac = String(valor ?? "").replace(/^54(9)?/, "");
+    if (nac.length === 10 && /0{6,}$/.test(nac)) motivos.push(`${campo} de relleno (${nac})`);
+  }
+
   // Áreas que no existen: el mismo control que ahora hace `isValidArNational`.
   for (const [campo, valor] of [["teléfono", f.phone], ["WhatsApp", f.whatsapp_phone]]) {
     const nac = String(valor ?? "").replace(/^54(9)?/, "");
@@ -149,8 +179,13 @@ for (const f of filas) {
 
   if (f.whatsapp_phone) {
     const nac = String(f.whatsapp_phone).replace(/^54(9)?/, "");
-    const enCuantas = fichasPorNumero.get(nac)?.size ?? 0;
-    if (enCuantas > 1) motivos.push(`WhatsApp repetido en ${enCuantas} comercios`);
+    const comparten = fichasPorNumero.get(nac) ?? new Set();
+    // Una cadena atiende todas sus sucursales por un solo número, y eso es
+    // correcto: siete locales de Kilgelmann con el mismo WhatsApp no son un
+    // error, son Kilgelmann.
+    if (comparten.size > 1 && !mismaCadena(comparten)) {
+      motivos.push(`WhatsApp repetido en ${comparten.size} comercios sin relación`);
+    }
   }
 
   // El "sitio web" que dio Google es en realidad una guía comercial: lo que se
@@ -166,8 +201,14 @@ for (const f of filas) {
     const d = f.email.split("@")[1]?.toLowerCase() ?? "";
     const generico = GENERICOS_MAIL.test(`${d}.`);
 
-    if (!generico && porDominio.get(d) > 1) {
-      motivos.push(`el dominio ${d} figura en ${porDominio.get(d)} fichas distintas`);
+    const compartenDominio = fichasPorDominio.get(d) ?? new Set();
+    if (!generico && compartenDominio.size > 1 && !mismaCadena(compartenDominio)) {
+      motivos.push(`el dominio ${d} figura en ${compartenDominio.size} comercios sin relación`);
+    }
+    // Basura de URL que se coló en el local: `05%7c02%7cmaria@…` salió de un
+    // enlace codificado dentro de una página. Un correo con `%` no es un correo.
+    if (/%[0-9a-f]{2}/i.test(f.email) || f.email.includes("%")) {
+      motivos.push("el correo trae basura de URL codificada");
     }
     // Un comercio de barrio argentino no atiende por un dominio de otro país.
     // El `.cl` está en la lista por un caso real: una ferretería de Paraná
@@ -228,14 +269,16 @@ for (const { fila, motivos } of sospechosos) {
     patch.whatsapp_phone = null;
     patch.whatsapp_source = null;
   }
-  if (motivos.some((m) => m.includes("dominio") || m.includes("guía comercial"))) patch.email = null;
+  if (motivos.some((m) => m.includes("dominio") || m.includes("guía comercial") || m.includes("basura de URL"))) {
+    patch.email = null;
+  }
   if (motivos.some((m) => m.includes("guía comercial"))) {
     patch.whatsapp_phone = null;
     patch.whatsapp_source = null;
   }
   // Un teléfono con área inexistente ya no lo escribiría el validador nuevo,
   // pero el que se guardó antes sigue ahí.
-  if (motivos.some((m) => m.startsWith("área inexistente"))) patch.phone = null;
+  if (motivos.some((m) => m.startsWith("área inexistente") || m.includes("de relleno"))) patch.phone = null;
 
   const { error: e } = await db.from("crm_contacts").update(patch).eq("id", fila.id);
   if (e) {
