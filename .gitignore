@@ -43,3 +43,6 @@ next-env.d.ts
 
 # vista previa de correos (scripts/preview-email.mjs)
 .preview-email.html
+
+# Fotos del antes/despues de compare-level3.mjs
+.compare/

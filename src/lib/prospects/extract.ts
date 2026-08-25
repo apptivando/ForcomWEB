@@ -58,10 +58,53 @@ const ENTITIES: Array<[RegExp, string]> = [
 ];
 
 /**
+ * Un `<script>` cuyo `type` declara JSON: `application/json`,
+ * `application/ld+json`, y las variantes de los frameworks
+ * (`application/x-…+json`). Un `<script>` sin `type`, o con
+ * `text/javascript`, NO matchea — que es exactamente el punto.
+ */
+const JSON_SCRIPT_RE =
+  /<script\b[^>]*\btype\s*=\s*["']application\/(?:[a-z0-9.-]*\+)?(?:ld\+)?json["'][^>]*>([\s\S]*?)<\/script>/gi;
+
+/**
+ * Saca el contenido de los `<script type="application/json">` y lo pega al
+ * final del HTML, fuera de cualquier etiqueta, para que `prepareText` no se lo
+ * lleve puesto.
+ *
+ * POR QUÉ EXISTE
+ * `prepareText` borra todos los `<script>`, y hace bien: de ahí salen los
+ * mails de Sentry, Wix y Google Tag Manager. Pero las páginas que renderizan
+ * del lado del cliente dejan sus datos justamente ahí. Linktree y Beacons son
+ * el caso que importa: los links que el comercio publicó viven SOLO dentro de
+ * su `__NEXT_DATA__`, así que sin esto se las visita y se sale con las manos
+ * vacías.
+ *
+ * **Solo los de tipo JSON, nunca todos.** Conservar los `<script>` en general
+ * resucita exactamente la basura que el filtro de emails existe para sacar.
+ *
+ * Se aplica en el punto de entrada (una sola llamada en `enrich.ts`) y no
+ * dentro de `prepareText`, así los cinco extractores siguen recibiendo un
+ * string de HTML y no hay que pasarles una opción a cada uno.
+ */
+export function inlineJsonScripts(html: string): string {
+  let rescued = "";
+  for (const m of html.matchAll(JSON_SCRIPT_RE)) {
+    // En el JSON las barras vienen escapadas (`https:\/\/wa.me\/549…`, y en
+    // algunos frameworks `https://wa.me`). Sin desescapar, ni el
+    // extractor de WhatsApp ni el de links reconocen una URL.
+    rescued += ` ${m[1].replace(/\\u002[fF]/g, "/").replace(/\\\//g, "/")}`;
+  }
+  return rescued ? `${html}\n${rescued}` : html;
+}
+
+/**
  * Deja el texto en condiciones de que las regex encuentren lo que hay y no
  * basura. Sacar `<script>` y `<style>` es lo que más rinde: de ahí salen los
  * mails de Sentry, Google Tag Manager y Wix, que si no se cuelan en todos los
  * resultados.
+ *
+ * Si hace falta leer un `<script type="application/json">` —las páginas tipo
+ * Linktree—, se pasa el HTML por `inlineJsonScripts` ANTES de llegar acá.
  */
 export function prepareText(html: string): { text: string; cfEmails: string[] } {
   const cfEmails: string[] = [];
@@ -120,6 +163,9 @@ const INFRA_DOMAINS = [
 const PLACEHOLDER_LOCALS = new Set([
   "email", "correo", "mail", "nombre", "name", "test", "demo", "sample",
   "user", "usuario", "tuemail", "tucorreo", "youremail", "ejemplo", "example",
+  // "prueba" salió de una medición real: un comercio publicaba
+  // `prueba@prueba.com` en su sitio y quedó guardado como su email.
+  "prueba", "pruebas", "asd", "aaa", "xxx",
 ]);
 
 /** Buzones de sistema: existen, pero nadie los lee. */

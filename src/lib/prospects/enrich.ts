@@ -7,7 +7,7 @@
  *      ↓  (si no hay sitio, o el sitio no dio nada)
  *   Nivel 2  Redes enlazadas      → NO se visitan. Solo se guarda la URL.
  *      ↓
- *   Nivel 3  Google Search (CSE)  → snippets + hasta 2 directorios
+ *   Nivel 3  Búsqueda web         → resúmenes + hasta 3 páginas visitadas
  *      ↓
  *   Nivel 4  Sin contacto         → queda para resolver a mano
  *
@@ -28,6 +28,7 @@ import {
   extractWhatsapp,
   extractSocials,
   extractInternalLinks,
+  inlineJsonScripts,
 } from "./extract";
 import { webSearch, buildQueries, searchConfigured, dailyLimit, SearchQuotaExceeded } from "./search";
 import { toWhatsappNumber } from "@/lib/phone";
@@ -38,18 +39,174 @@ const MAX_PAGES_PER_SITE = 4;
 /** Presupuesto de tiempo por prospecto, para que un lote no se pase del límite. */
 const SITE_BUDGET_MS = 20_000;
 /** Resultados de búsqueda que se abren como máximo en el nivel 3. */
-const MAX_SEARCH_VISITS = 2;
+const MAX_SEARCH_VISITS = 3;
 
 /**
- * Dominios de directorios comerciales argentinos. Se prioriza abrirlos cuando
- * el snippet no alcanzó: son los que publican el email que el comercio no pone
- * en ningún otro lado.
+ * Presupuesto de tiempo del nivel 3, el gemelo de `SITE_BUDGET_MS`.
+ *
+ * Sin esto el nivel 3 no tenía ningún reloj: cuatro consultas lentas más tres
+ * visitas se comían el lote entero de seis prospectos. El worker tiene 240 s
+ * para seis, o sea 40 s cada uno, y el nivel 1 ya se lleva 20.
  */
-const DIRECTORY_DOMAINS = [
-  "paginasamarillas.com.ar", "cylex.com.ar", "guialocal.com.ar",
-  "infoisinfo.com.ar", "opendi.com.ar", "tuugo.com.ar",
-  "hotfrog.com.ar", "yalwa.com.ar", "dateas.com",
-];
+const SEARCH_BUDGET_MS = 18_000;
+
+/**
+ * Peso de un dominio propio del comercio, cuando la búsqueda encuentra un
+ * sitio que Google Places no tenía.
+ *
+ * ────────────────────────────────────────────────────────────────────────────
+ * POR QUÉ ACÁ NO HAY UNA LISTA DE DIRECTORIOS COMERCIALES
+ *
+ * La había, y era la idea original del nivel 3: "los directorios publican el
+ * email que el comercio no pone en ningún otro lado". Se probó contra
+ * prospectos reales y NO FUNCIONA. Lo que devuelve abrir la ficha de un
+ * comercio en un directorio son los contactos DEL DIRECTORIO: el mail de la
+ * agencia web que arma esas fichas (apareció idéntico en dos comercios
+ * distintos), un WhatsApp de CABA para comercios de Paraná, la casilla de la
+ * redacción de un diario, dos correos chilenos.
+ *
+ * Es obvio en retrospectiva: una página de directorio es 90 % plantilla y pie
+ * de página, y el extractor no distingue el contacto del comercio del contacto
+ * de quien publica la página.
+ *
+ * Por eso el nivel 3 hoy **solo abre páginas del propio comercio** — su "link
+ * in bio" o un dominio que lleva su nombre. De los directorios se lee
+ * únicamente el resumen que devuelve el buscador, que sí está acotado al
+ * resultado.
+ *
+ * Si alguna vez se quiere volver a abrirlos, el problema a resolver primero es
+ * ese: extraer solo lo que está CERCA del nombre del comercio en la página, no
+ * lo que está en cualquier parte de ella.
+ * ────────────────────────────────────────────────────────────────────────────
+ */
+const DIRECTORY_WEIGHTS: Record<string, number> = {};
+
+/**
+ * Guías y directorios comerciales. La lista sigue existiendo, pero cambió de
+ * signo: ya no dice qué abrir, dice **de dónde no creerle a los contactos**.
+ *
+ * Hace falta también en el nivel 1, no solo en el 3: Google Places a veces
+ * publica como "sitio web" del comercio la ficha que un directorio le armó. El
+ * caso que lo destapó fue una ferretería de Paraná cuyo `website` era una guía
+ * de ferreterías: el crawler entró creyendo que era el sitio propio y se trajo
+ * `hola@guiaferreterias.com.ar`, que es el mail de la guía.
+ *
+ * De estas páginas se siguen guardando las **redes sociales** —esas son la URL
+ * del perfil del comercio y se identifican solas— y se descartan el correo y
+ * el teléfono.
+ */
+const DIRECTORY_HOSTS = new Set([
+  "guiaferreterias.com.ar", "paginasamarillas.com.ar", "cylex.com.ar",
+  "guialocal.com.ar", "infoisinfo.com.ar", "opendi.com.ar", "tuugo.com.ar",
+  "hotfrog.com.ar", "yalwa.com.ar", "dateas.com", "kompass.com",
+  "guiaindustrial.com.ar", "elferretero.com.ar", "dir.ar", "empresite.com",
+  "argentina.acambiode.com", "solomaquinaria.com.ar", "clasificados.com.ar",
+]);
+
+/**
+ * ¿Este dominio es del comercio? Se le pide que lleve su nombre: "GTM
+ * Ferretería" → `gtmferreteria.com.ar`. Es el único caso en que abrir una
+ * página que Places no conocía vale un request.
+ */
+function dominioDelComercio(domain: string, contact: CrmContact): boolean {
+  const raiz = normalizar(domain.split(".")[0] ?? "").replace(/ /g, "");
+  if (raiz.length < 4) return false;
+  const tokens = tokensDistintivos(contact.business_name);
+  if (tokens.length === 0) return false;
+  return tokens.some((t) => t.length >= 4 && raiz.includes(t));
+}
+
+/**
+ * Peso de una página "link in bio" (Linktree y parecidas).
+ *
+ * Por encima de cualquier directorio: es una página que el propio comercio
+ * armó para publicar sus contactos, contra una ficha que un tercero copió de
+ * algún lado.
+ */
+const LINK_IN_BIO_WEIGHT = 200;
+
+/**
+ * Palabras que no distinguen a un comercio de otro. Se sacan del nombre antes
+ * de usarlo para decidir si un resultado de búsqueda habla de este prospecto.
+ */
+const GENERICOS = new Set([
+  "ferreteria", "corralon", "pintureria", "bulonera", "buloneria", "distribuidora",
+  "comercial", "mayorista", "deposito", "sucursal", "casa", "centro", "grupo",
+  "srl", "sa", "sas", "sh", "scs", "cia", "hnos", "hermanos", "hijos", "eirl",
+  "the", "los", "las", "del", "san", "santa", "don", "todo", "super", "mega",
+]);
+
+/** Sin acentos, sin puntuación, en minúsculas. */
+function normalizar(s: string): string {
+  return s
+    .normalize("NFD")
+    // Se saca la categoría Marca de Unicode: son los acentos que `NFD` acaba
+    // de separar. Va por categoría y no por un rango de caracteres literales,
+    // que en el editor son invisibles y se pierden al reformatear el archivo.
+    .replace(/\p{M}/gu, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+/**
+ * Los pedazos del nombre que de verdad identifican al comercio.
+ * "Ferretería San José" → ["jose"]. "Ferretería y Corralón" → [].
+ */
+function tokensDistintivos(name: string | null): string[] {
+  if (!name) return [];
+  return normalizar(name)
+    .split(" ")
+    .filter((t) => t.length >= 3 && !GENERICOS.has(t));
+}
+
+/**
+ * El área telefónica, para exigir coherencia geográfica.
+ *
+ * Los códigos argentinos son de 2, 3 o 4 dígitos. Con los tres primeros del
+ * nacional alcanza para distinguir una provincia de otra, que es lo único que
+ * se le pide acá; el 11 se trata aparte porque es de dos.
+ */
+function areaDe(e164: string | null | undefined): string | null {
+  if (!e164) return null;
+  const nacional = e164.replace(/^54(9)?/, "");
+  if (nacional.length !== 10) return null;
+  return nacional.startsWith("11") ? "11" : nacional.slice(0, 3);
+}
+
+/**
+ * ¿Este resultado de búsqueda habla de ESTE comercio?
+ *
+ * POR QUÉ HACE FALTA
+ * El nivel 3 le pasaba al extractor el resumen de los diez resultados, sin
+ * preguntarse de quién eran. Con un nombre como "Ferretería Miguel" el
+ * buscador devuelve ferreterías de todo el país, y se guardaba el primer
+ * correo o teléfono que apareciera. Medido contra prospectos reales salieron
+ * cosas como un mail alemán para una ferretería de Paraná y el WhatsApp de un
+ * comercio de San Juan para uno de Jujuy.
+ *
+ * Ante la duda NO se absorbe. Un prospecto sin correo se resuelve a mano; uno
+ * con el correo de otra empresa se descubre cuando la campaña ya salió.
+ */
+function hitEsDelProspecto(
+  hit: { title: string; snippet: string; structured: string; url: string },
+  contact: CrmContact,
+  nationalPhone: string | null
+): boolean {
+  const texto = `${hit.title} ${hit.snippet} ${hit.structured} ${hit.url}`;
+
+  // La evidencia más fuerte: el resultado repite el teléfono que buscamos.
+  if (nationalPhone && texto.replace(/\D/g, "").includes(nationalPhone)) return true;
+
+  // Si no, tienen que aparecer TODOS los pedazos distintivos del nombre.
+  // Con "todos" y no "alguno": "Ferretería El Tornillo" no puede quedar
+  // satisfecha con una página que solo dice "tornillo".
+  const tokens = tokensDistintivos(contact.business_name);
+  if (tokens.length === 0) return false;
+
+  const plano = normalizar(texto);
+  return tokens.every((t) => plano.includes(t));
+}
 
 /** Lo que la cascada logró averiguar de un prospecto. */
 interface Findings {
@@ -78,17 +235,95 @@ function emptyFindings(): Findings {
   };
 }
 
-/** ¿Ya alcanzó? El objetivo es email + WhatsApp; con los dos no se sigue gastando. */
-function isSatisfied(f: Findings): boolean {
+/**
+ * Los dos predicados de corte, que NO son el mismo.
+ *
+ * Hubo uno solo (`isSatisfied`, email + WhatsApp) para las dos decisiones, y
+ * eso confundía dos cosas de costo muy distinto: leer una página más del sitio
+ * cuesta 1,5 segundos de espera, y una consulta al buscador cuesta plata y
+ * tiempo del lote.
+ */
+
+/**
+ * Nivel 1: el ideal completo. Acá conviene ser ambicioso —el WhatsApp vale
+ * prioridad 1 y una página más es barata—, así que el objetivo sigue siendo
+ * email + WhatsApp.
+ */
+function isComplete(f: Findings): boolean {
   return Boolean(f.email && f.whatsapp);
 }
 
-/** Vuelca lo encontrado en una página sobre el acumulado, sin pisar lo que ya había. */
+/**
+ * Nivel 3: cuándo dejar de gastar consultas.
+ *
+ * El objetivo es **email + una vía de voz**, sea WhatsApp o teléfono, porque
+ * son los dos canales que se usan para contactar. Perseguir el WhatsApp con
+ * consultas pagas cuando ya hay teléfono es gastar por un dato que hoy no
+ * mueve nada.
+ *
+ * Mira `contact` además de `f` porque lo que ya estaba en la ficha cuenta
+ * igual: si Google ya dio el teléfono, la vía de voz está resuelta antes de
+ * empezar.
+ */
+function hasEnoughForSearch(f: Findings, contact: CrmContact): boolean {
+  const email = f.email ?? contact.email;
+  const voz = f.whatsapp ?? contact.whatsapp_phone ?? f.phoneE164 ?? contact.phone;
+  return Boolean(email && voz);
+}
+
+/**
+ * Vuelca lo encontrado en una página sobre el acumulado, sin pisar lo que ya
+ * había.
+ *
+ * El `inlineJsonScripts` de la primera línea rescata el contenido de los
+ * `<script type="application/json">` antes de que los extractores lo pierdan.
+ * Sirve para dos cosas distintas:
+ *
+ * - **Las páginas tipo Linktree**, que renderizan del lado del cliente: sus
+ *   links viven SOLO en ese bloque, así que sin esto se las visitaba y se
+ *   salía con las manos vacías.
+ * - **El JSON-LD de cualquier sitio.** `extractEmails` ya tenía una regla que
+ *   puntúa `"email": "…"` con 60 justamente para leer schema.org — pero era
+ *   código muerto, porque el JSON-LD vive dentro de un `<script>` y se
+ *   descartaba antes de llegar ahí. Un bloque `Organization` o `LocalBusiness`
+ *   trae teléfono, email y perfiles ya separados: es el dato más limpio que
+ *   publica un sitio.
+ *
+ * Solo los `<script>` con `type` de JSON. Los demás siguen descartándose, que
+ * es lo que mantiene afuera los mails de Sentry, Wix y Google Tag Manager.
+ */
 function absorb(
   f: Findings,
-  html: string,
-  opts: { siteDomain?: string; fromContactPage?: boolean; waSource?: "link" | "texto" | "busqueda" }
+  raw: string,
+  opts: {
+    siteDomain?: string;
+    fromContactPage?: boolean;
+    waSource?: "link" | "texto" | "busqueda";
+    /**
+     * La página es de un directorio: se toman las redes y nada más. El correo
+     * y el teléfono de una ficha de directorio son los del directorio.
+     */
+    soloRedes?: boolean;
+    /**
+     * Área telefónica que se espera. Solo lo usa el nivel 3: en el sitio propio
+     * del comercio cualquier teléfono es suyo, pero en una página traída por
+     * una búsqueda un número de otra provincia es casi seguro de otro comercio
+     * con nombre parecido.
+     */
+    expectArea?: string | null;
+  }
 ): void {
+  const html = inlineJsonScripts(raw);
+  const areaOk = (e164: string) => !opts.expectArea || areaDe(e164) === opts.expectArea;
+
+  // Las redes se leen siempre: la URL de un perfil se identifica sola, incluso
+  // en una ficha de directorio. Lo que no se cree son el correo y el teléfono.
+  const socials = extractSocials(html);
+  f.instagram ??= socials.instagram;
+  f.facebook ??= socials.facebook;
+  f.linkedin ??= socials.linkedin;
+  if (opts.soloRedes) return;
+
   if (!f.email) {
     const best = extractEmails(html, opts)[0];
     if (best) f.email = best.email;
@@ -96,7 +331,7 @@ function absorb(
 
   if (!f.whatsapp) {
     const wa = extractWhatsapp(html);
-    if (wa?.phone) {
+    if (wa?.phone && areaOk(wa.phone)) {
       f.whatsapp = wa.phone;
       f.whatsappSource = opts.waSource ?? wa.source;
     } else if (wa?.unresolvedLinks.length) {
@@ -109,14 +344,9 @@ function absorb(
   }
 
   if (!f.phoneE164) {
-    const best = extractPhones(html)[0];
+    const best = extractPhones(html).find((p) => areaOk(p.e164));
     if (best) f.phoneE164 = best.e164;
   }
-
-  const socials = extractSocials(html);
-  f.instagram ??= socials.instagram;
-  f.facebook ??= socials.facebook;
-  f.linkedin ??= socials.linkedin;
 }
 
 // ─── Nivel 1: el sitio del prospecto ─────────────────────────────────────────
@@ -145,8 +375,21 @@ async function runLevel1(
   }
   if (!site.url || !site.host) return { error: "el sitio publicado no es una URL válida" };
 
+  // Un "link in bio" (Linktree y parecidas) sí se visita: no pide login, sus
+  // términos no lo prohíben, y es literalmente la página que el comercio armó
+  // para publicar sus contactos. Lo que cambia es que no se le siguen links
+  // internos — ver abajo.
+  const isLinkInBio = site.kind === "linkinbio";
+
   const started = Date.now();
   const siteDomain = registrableDomain(site.host);
+
+  // Google Places a veces publica como "sitio web" del comercio la ficha que
+  // un directorio le armó. De ahí salen los contactos del directorio, no los
+  // del comercio: se entra igual (las redes sirven) pero no se le cree el
+  // correo ni el teléfono.
+  const esDirectorio = DIRECTORY_HOSTS.has(siteDomain);
+  if (esDirectorio) f.notes.push(`el sitio publicado en Google es una guía comercial (${siteDomain})`);
   const visited = new Set<string>();
   const queue: Array<{ url: string; isContactPage: boolean }> = [
     { url: site.url, isContactPage: /contact/i.test(site.url) },
@@ -183,14 +426,20 @@ async function runLevel1(
     }
 
     pagesRead++;
-    absorb(f, res.ok.body, { siteDomain, fromContactPage: next.isContactPage });
+    absorb(f, res.ok.body, { siteDomain, fromContactPage: next.isContactPage, soloRedes: esDirectorio });
     if (res.ok.truncated) f.notes.push("la página era muy grande y se leyó parcial");
 
-    if (isSatisfied(f)) break;
+    if (isComplete(f)) break;
 
     // Solo desde la home se eligen más páginas: seguir links desde una página
     // interna llevaría a recorrer el sitio entero.
-    if (visited.size === 1) {
+    //
+    // Y nunca desde un "link in bio": ahí los links del mismo host son las
+    // páginas de OTROS comercios (`linktr.ee/otra-ferretería`). Hoy no pasa
+    // por casualidad —esas rutas no matchean ningún patrón de "contacto" y
+    // quedan en puntaje 0—, pero depender de una casualidad para no scrapear
+    // el perfil de un tercero no es aceptable.
+    if (visited.size === 1 && !isLinkInBio) {
       for (const link of extractInternalLinks(res.ok.body, res.ok.url).slice(0, MAX_PAGES_PER_SITE - 1)) {
         queue.push({ url: link.url, isContactPage: true });
       }
@@ -228,18 +477,33 @@ async function runLevel3(
 ): Promise<{ error: string | null; quotaHit: boolean }> {
   if (!searchConfigured()) return { error: null, quotaHit: false };
 
+  const started = Date.now();
   const nationalPhone = contact.phone?.replace(/^54(9)?/, "") ?? null;
   const queries = buildQueries({
     businessName: contact.business_name,
     locality: contact.locality,
     nationalPhone,
+    // La consulta a redes solo si no le conocemos ningún perfil. Si ya
+    // tenemos su Instagram, buscarlo es tirar un crédito.
+    wantsSocial: !f.instagram && !f.facebook && !contact.instagram_url && !contact.facebook_url,
   });
   if (queries.length === 0) return { error: null, quotaHit: false };
 
   const ownDomain = contact.website ? registrableDomain(classifyUrl(contact.website).host ?? "") : null;
-  const candidates: string[] = [];
+  // Coherencia geográfica: si Google ya nos dio un teléfono, lo que encontremos
+  // tiene que ser de la misma zona. Si no hay ninguno, no se exige nada — no
+  // sería un filtro sino una adivinanza.
+  const expectArea = areaDe(contact.phone) ?? areaDe(contact.whatsapp_phone) ?? null;
+  // Peso, no orden de llegada: con tres visitas disponibles importa más cuál
+  // se abre que si está o no en la lista.
+  const candidates = new Map<string, number>();
 
   for (const query of queries) {
+    if (Date.now() - started > SEARCH_BUDGET_MS) {
+      f.notes.push("se agotó el tiempo asignado a la búsqueda");
+      break;
+    }
+
     let hits;
     try {
       hits = await webSearch(query, { onQuota });
@@ -251,31 +515,65 @@ async function runLevel3(
     f.level = Math.max(f.level, 3);
 
     for (const hit of hits) {
-      // Lo primero y lo más barato: el resumen que Google ya indexó. Para los
-      // perfiles de redes esto es TODO lo que hacemos — el link nunca se abre.
-      absorb(f, `${hit.title} ${hit.snippet} ${hit.structured} ${hit.url}`, {
-        waSource: "busqueda",
-      });
+      const texto = `${hit.title} ${hit.snippet} ${hit.structured} ${hit.url}`;
+
+      // ¿El resultado habla de este comercio? Y sobre todo: ¿con qué fuerza?
+      const eco = Boolean(nationalPhone && texto.replace(/\D/g, "").includes(nationalPhone));
+      const porNombre = hitEsDelProspecto(hit, contact, nationalPhone);
+      if (!porNombre && !eco) continue;
+
+      // Los perfiles de red se toman con la coincidencia por nombre, que es
+      // más floja, porque el dato ES la URL: un `instagram.com/eltornillo` se
+      // identifica solo, y si es de otro comercio se ve al abrirlo. El costo
+      // de equivocarse es que un vendedor pierda diez segundos.
+      const socials = extractSocials(texto);
+      f.instagram ??= socials.instagram;
+      f.facebook ??= socials.facebook;
+      f.linkedin ??= socials.linkedin;
+
+      // El correo y el teléfono, en cambio, SOLO con eco del teléfono: que el
+      // resultado repita el número que ya sabíamos de este comercio.
+      //
+      // POR QUÉ TAN ESTRICTO
+      // Medido contra prospectos reales, la coincidencia por nombre no alcanza
+      // ni de lejos. "Ferretería Avenida" matchea cualquier página que diga
+      // "avenida"; "Ferretería del Paraná", cualquiera que hable de Paraná. Con
+      // ese filtro solo salieron el mail de la agencia web que arma las fichas
+      // de un directorio (el mismo en dos comercios distintos), el de la
+      // redacción de un diario y dos correos chilenos.
+      // Un prospecto sin correo se resuelve a mano. Uno con el correo de otra
+      // empresa se descubre cuando la campaña ya salió.
+      if (eco) absorb(f, texto, { waSource: "busqueda", expectArea });
 
       const kind = classifyUrl(hit.url);
-      if (kind.kind === "web" && kind.host) {
-        const domain = registrableDomain(kind.host);
-        if (domain !== ownDomain) {
-          const isDirectory = DIRECTORY_DOMAINS.includes(domain);
-          if (isDirectory) candidates.unshift(hit.url);
-          else candidates.push(hit.url);
-        }
+      if (!kind.host) continue;
+      const domain = registrableDomain(kind.host);
+      if (domain === ownDomain) continue;
+
+      // Solo se abren páginas que son DEL COMERCIO: su "link in bio", o un
+      // dominio que lleva su nombre. Los directorios quedaron afuera — ver el
+      // comentario de `DIRECTORY_WEIGHTS`.
+      if (kind.kind === "linkinbio" && porNombre) {
+        candidates.set(hit.url, Math.max(candidates.get(hit.url) ?? 0, LINK_IN_BIO_WEIGHT));
+      } else if (kind.kind === "web" && dominioDelComercio(domain, contact)) {
+        candidates.set(hit.url, Math.max(candidates.get(hit.url) ?? 0, DIRECTORY_WEIGHTS[domain] ?? 100));
       }
     }
 
-    if (isSatisfied(f)) return { error: null, quotaHit: false };
+    if (hasEnoughForSearch(f, contact)) return { error: null, quotaHit: false };
   }
 
-  // Si el resumen no alcanzó, se abren hasta dos resultados. Nunca una red
-  // social: solo directorios y sitios propios de comercios.
+  // Si el resumen no alcanzó, se abren hasta tres páginas del propio comercio.
+  // Nunca una red social ni un directorio.
+  const ordered = [...candidates.entries()].sort((a, b) => b[1] - a[1]).map(([url]) => url);
+
   let visits = 0;
-  for (const url of candidates) {
-    if (visits >= MAX_SEARCH_VISITS || isSatisfied(f)) break;
+  for (const url of ordered) {
+    if (visits >= MAX_SEARCH_VISITS || hasEnoughForSearch(f, contact)) break;
+    if (Date.now() - started > SEARCH_BUDGET_MS) {
+      f.notes.push("se agotó el tiempo asignado a la búsqueda");
+      break;
+    }
 
     const verdict = await isAllowed(url);
     if (!verdict.allowed) continue;
@@ -284,7 +582,18 @@ async function runLevel3(
     if (!res.ok) continue;
 
     visits++;
-    absorb(f, res.ok.body, { waSource: "busqueda" });
+    // LA PRUEBA DE IDENTIDAD, y es la única que resistió medirse contra datos
+    // reales: la página tiene que repetir el teléfono que ya sabíamos de este
+    // comercio. Que el dominio lleve su nombre NO alcanza — "Ferretería
+    // Imperio" de Paraná terminó con el correo de una ferretería mexicana
+    // homónima, cuyo dominio es `ferreteriaimperio.com` y pasa cualquier
+    // control de parecido.
+    //
+    // Lo que cuesta: si el comercio no publica su teléfono en esa página, se
+    // pierde el correo que estaba ahí. Se paga con gusto — un correo perdido
+    // se resuelve a mano; uno equivocado se descubre cuando la campaña salió.
+    const confirma = Boolean(nationalPhone && res.ok.body.replace(/\D/g, "").includes(nationalPhone));
+    absorb(f, res.ok.body, { waSource: "busqueda", expectArea, soloRedes: !confirma });
     await sleep(verdict.delayMs);
   }
 
@@ -314,10 +623,14 @@ export async function enrichContact(
     const level1 = await runLevel1(contact, f);
     error = level1.error;
 
-    // El nivel 3 solo se gasta en quien todavía no tiene forma de contacto.
-    // Nunca en todos: es lo que mantiene el costo dentro de lo gratuito.
-    const stillMissing = !f.email && !f.whatsapp && !contact.email && !contact.whatsapp_phone;
-    if (stillMissing) {
+    // El nivel 3 solo se gasta en quien todavía no tiene con qué contactarlo.
+    // Nunca en todos: es lo que mantiene el costo acotado.
+    //
+    // La condición mira EMAIL + una vía de voz, no email + WhatsApp. La
+    // versión anterior dejaba afuera al prospecto que tiene WhatsApp y no
+    // tiene correo — que con el rumbo actual es justamente el que hay que
+    // buscar, porque el correo es lo que necesita la campaña.
+    if (!hasEnoughForSearch(f, contact)) {
       const level3 = await runLevel3(contact, f, onQuota);
       if (level3.quotaHit) {
         // Se agotó la cuota del día. NO es un fallo del prospecto: vuelve a la

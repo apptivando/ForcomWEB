@@ -23,9 +23,15 @@ Primera corrida real, "ferreterías en Córdoba Capital", 20 prospectos:
 | Con sitio web publicado en Google | 14 |
 | Sin ningún dato de contacto | 0 |
 
-Los 9 que quedaron en prioridad 3 (solo el teléfono de Google) son casi todos
-comercios **sin sitio web**: son justamente los que resolvería el nivel 3, que
-hoy está apagado porque Google cerró su API de búsqueda (ver esa sección).
+Los 9 que quedaron en prioridad 3 (solo el teléfono de Google) eran casi todos
+comercios **sin sitio web**. Son justamente los que ataca el nivel 3, encendido
+desde el 25/08/2026.
+
+Medido después sobre 44 ferreterías de Paraná y Córdoba, el nivel 3 sacó a la
+mitad de "solo teléfono": la mayoría a prioridad 1, por el WhatsApp que el
+comercio publica en su Instagram. **El correo es lo que menos aparece** — ver
+"Nivel 3" más abajo, y sobre todo por qué muchos de los correos que la primera
+versión encontraba eran de otra empresa.
 
 Repetir la misma búsqueda dio **0 nuevos y 20 fusionados** — no duplica.
 
@@ -56,10 +62,10 @@ cambia la prioridad.
 |---|---|---|
 | `GOOGLE_PLACES_API_KEY` | Buscar comercios en Google Maps | Sí (o el modo de prueba) |
 | `GOOGLE_PLACES_MOCK` | `1` = usa 25 comercios de ejemplo en vez de llamar a Google | No |
-| `PROSPECT_SEARCH_PROVIDER` | Nivel 3: `off` \| `google` \| `serper` \| `brave` | No — default `off` |
+| `PROSPECT_SEARCH_PROVIDER` | Nivel 3: `off` \| `google` \| `serper` \| `brave`. **No existe el valor `on`** — la variable dice *qué buscador*, no *si buscar* | No — hoy `serper` |
 | `SERPER_API_KEY` / `BRAVE_SEARCH_API_KEY` | Credencial del proveedor de búsqueda elegido | Solo si el nivel 3 está encendido |
 | `GOOGLE_CSE_API_KEY` / `GOOGLE_CSE_CX` | Nivel 3 vía Google. **Ya no sirve para proyectos nuevos** (ver abajo) | No |
-| `PROSPECT_SEARCH_DAILY_LIMIT` | Tope diario de consultas del nivel 3 (default `90`) | No |
+| `PROSPECT_SEARCH_DAILY_LIMIT` | Tope diario de consultas del nivel 3 (default `400`). Era 90 porque Google regalaba 100 por día; con Serper ese número dejaba 500 prospectos en tres semanas | No |
 | `PROSPECT_USER_AGENT` | Cómo se presenta el bot ante los sitios que visita | No (hay default) |
 | `PROSPECTS_WHATSAPP_CHECK` | `off`. El gancho de verificación por Evolution, apagado | No |
 | `WHATSAPP_TRANSPORT` | `evolution` (actual) o `meta` (Cloud API oficial) | No — default `evolution` |
@@ -75,8 +81,9 @@ cambia la prioridad.
 2. Crear una API key y restringirla a esa API. Activar facturación y poner una
    alerta de presupuesto.
 
-Eso es todo lo que hace falta. El nivel 3 **no se puede hacer con Google**; ver
-la sección correspondiente.
+Eso es todo lo que hace falta de Google. El nivel 3 **no se puede hacer con
+Google** (cerró su API de búsqueda a proyectos nuevos) y va por Serper; ver la
+sección correspondiente.
 
 ### Costos
 
@@ -86,8 +93,9 @@ la sección correspondiente.
   que son justamente el producto. **No agregar campos al FieldMask "por las
   dudas"**: agregar no encarece mientras no se pase de Enterprise, pero sacar
   abarata.
-- **Nivel 3**: hoy apagado y sin costo. Si se enciende, depende del proveedor
-  (ver esa sección). El tope diario acota el gasto en cualquier caso.
+- **Nivel 3 (Serper)**: 1 crédito por consulta con 10 resultados o menos, ~USD 1
+  el millar. Medido: entre 2 y 4 consultas por prospecto, o sea **unos USD 0,75
+  cada 500 prospectos**. El tope diario acota el gasto en cualquier caso.
 
 ### Base de datos
 
@@ -122,8 +130,8 @@ Nivel 1  Sitio web propio     → home + hasta 3 páginas · email, WA, redes
    ↓  (si no hay sitio, o el sitio no dio nada)
 Nivel 2  Redes enlazadas      → NO se visitan. Solo se guarda la URL.
    ↓
-Nivel 3  Búsqueda web         → APAGADO (Google cerró su API a proyectos
-   ↓                            nuevos; se puede encender con otro proveedor)
+Nivel 3  Búsqueda web         → hasta 4 consultas · resúmenes del buscador
+   ↓                            + hasta 3 páginas del propio comercio
 Nivel 4  Sin contacto         → queda para resolver a mano
 ```
 
@@ -152,8 +160,94 @@ el nivel 3 encendido, además saltaría a él).
 
 ### Nivel 3 — búsqueda en la web
 
-**Hoy está apagado.** No por decisión de diseño: Google cerró la puerta en dos
-tiempos.
+**Encendido desde el 25/08/2026, con Serper**, y **mucho más acotado de lo que
+se había planeado**. Lo que sigue explica por qué, porque el porqué es la parte
+importante.
+
+#### Lo que hace
+
+Cuatro consultas por prospecto como máximo, cortando apenas alcanza:
+
+1. `"<teléfono>"` — búsqueda inversa.
+2. `"<razón social>" <localidad>`.
+3. La misma con `(whatsapp OR contacto)`.
+4. `(site:instagram.com OR site:facebook.com) "<razón social>" <localidad>` —
+   solo si no le conocemos ningún perfil.
+
+De cada resultado se leen **el título y el resumen que el buscador indexó**. Los
+perfiles de red nunca se abren: leer el índice de un buscador no es scrapear
+Instagram, y es la vuelta legal al hecho de que esas redes no se pueden visitar.
+
+#### Lo que NO hace, y por qué
+
+**No abre fichas de directorios comerciales**, aunque esa era la idea original
+("los directorios publican el email que el comercio no pone en ningún otro
+lado"). Se midió contra prospectos reales y no funciona: lo que devuelve abrir
+la ficha de un comercio en un directorio son **los contactos del directorio**.
+En una corrida de 20 ferreterías salieron el mail de la agencia web que arma
+esas fichas —idéntico en dos comercios distintos—, un WhatsApp de CABA para
+comercios de Paraná, la casilla de la redacción de un diario y dos correos
+chilenos.
+
+Es obvio mirándolo: una página de directorio es plantilla y pie de página, y el
+extractor no distingue el contacto del comercio del de quien publica la página.
+Si alguna vez se quiere volver a abrirlas, **el problema a resolver primero es
+ese**: extraer solo lo que está cerca del nombre del comercio, no lo que está en
+cualquier parte de la página.
+
+#### Las tres pruebas de identidad
+
+Salieron todas de medir, no de pensar. Son lo que separa un dato de un invento:
+
+| Prueba | Qué exige | De dónde salió |
+|---|---|---|
+| **Eco del teléfono** | Para tomar un correo o un teléfono de un resumen, ese resumen tiene que repetir el número que ya sabíamos | La coincidencia por nombre no alcanza: "Ferretería Avenida" matchea cualquier página que diga "avenida" |
+| **Confirmación en la página** | Para tomar un correo de una página visitada, la página tiene que repetir nuestro teléfono | Que el dominio lleve el nombre no alcanza: "Ferretería Imperio" de Paraná quedó con el correo de una ferretería **mexicana** homónima |
+| **Coherencia de área** | Un teléfono o WhatsApp de otra provincia que la del prospecto se descarta | Una ferretería de Jujuy quedó con el WhatsApp de un comercio de San Juan |
+
+Las **redes sociales** se toman con el criterio más flojo (que aparezca el
+nombre), a propósito: el dato *es* la URL del perfil, se identifica solo, y si
+está mal se ve al abrirlo. El costo de equivocarse ahí es que un vendedor pierda
+diez segundos.
+
+**Ante la duda no se guarda.** Un prospecto sin correo se resuelve a mano; uno
+con el correo de otra empresa se descubre cuando la campaña ya salió.
+
+#### Medir si sirve, y auditar lo que trajo
+
+```bash
+node scripts/compare-level3.mjs --rubro "ferreterías" --limit 20   # antes y después
+node scripts/audit-level3.mjs                                       # revisa lo guardado
+node scripts/audit-level3.mjs --limpiar                             # borra lo dudoso
+```
+
+El primero saca la foto de antes, enriquece **solo ese grupo** y muestra cuántos
+salieron de "solo teléfono", cuántas consultas costó y cuánto tardó por
+prospecto. Con `--dry` solo mira.
+
+El segundo revisa lo que ya está guardado contra los mismos criterios y separa
+lo que **se borra** (área inexistente, WhatsApp de otra provincia, número
+repetido en dos comercios, dominio extranjero, ficha de guía comercial) de lo
+que solo **se revisa a mano** — porque un control con falsos positivos no puede
+tener la mano en el gatillo: `bdl@bld.com.ar` no se parece a "Bulonera del
+Litoral" pero es correcto, son las iniciales.
+
+#### Costo real medido
+
+Serper cobra **un crédito por consulta** mientras se pidan 10 resultados o
+menos; pedir más cuesta el doble, y por eso el código está clavado en 10. Sobre
+ferreterías de Paraná y Córdoba: **entre 2 y 4 consultas por prospecto**, unos
+9 segundos cada uno. Enriquecer 500 prospectos son ~USD 0,75.
+
+El cuello de botella **no es la plata, es el tiempo del cron**: el worker tiene
+40 segundos por prospecto y el nivel 1 ya se lleva 20. Por eso el nivel 3 tiene
+su propio presupuesto de 18 segundos y las consultas cortan a los 6.
+
+---
+
+### El antecedente: por qué no se pudo con Google
+
+Google cerró la puerta en dos tiempos.
 
 1. **20/01/2026** — eliminó la opción "buscar en toda la web" de Programmable
    Search para motores nuevos (los que ya la tenían la conservan hasta el
@@ -168,19 +262,15 @@ tiempos.
    tener. El reemplazo que Google ofrece es Vertex AI Search, un producto
    empresarial desproporcionado para esto.
 
-Los niveles 0, 1, 2 y 4 funcionan enteros sin esto. Lo que se pierde son los
-prospectos que **no tienen sitio web**: hoy quedan en prioridad 3 (solo el
-teléfono de Google Maps) y hay que trabajarlos a mano.
-
-#### Cómo encenderlo
+#### Cómo cambiar de proveedor
 
 `src/lib/prospects/search.ts` expone una sola función, `webSearch()`, y el
 proveedor se elige por variable de entorno. Aguas arriba nada cambia.
 
 | `PROSPECT_SEARCH_PROVIDER` | Credencial | Notas |
 |---|---|---|
-| `off` | — | Default. Nivel 3 apagado. |
-| `serper` | `SERPER_API_KEY` | serper.dev. 2.500 consultas gratis por única vez, después crédito prepago con vencimiento a 6 meses. Devuelve toda la web y trae el panel lateral de Google, que para un comercio local suele tener el teléfono ya separado. |
+| `off` | — | Nivel 3 apagado. |
+| `serper` | `SERPER_API_KEY` | **El que está en uso.** 2.500 consultas gratis por única vez, después crédito prepago con vencimiento a 6 meses. Devuelve toda la web y trae el panel lateral de Google, que para un comercio local suele tener el teléfono ya separado. |
 | `brave` | `BRAVE_SEARCH_API_KEY` | Brave Search API. Discontinuó su plan gratuito en febrero de 2026; hoy cobra por consulta. Devuelve toda la web. |
 | `google` | `GOOGLE_CSE_API_KEY` + `GOOGLE_CSE_CX` | Solo sirve en proyectos que ya tenían acceso antes del cierre. |
 
@@ -192,31 +282,15 @@ Si el proveedor devuelve un error permanente (como el 403 de Google), el nivel 3
 se apaga solo para el resto de la corrida en vez de gastar tres llamadas
 condenadas a fallar por cada prospecto.
 
-#### Qué haría, cuando esté encendido
+#### A quién se le aplica
 
-Tres consultas por prospecto, cortando apenas alcanza:
+Solo a los prospectos **a los que todavía les falta correo o una vía de voz**.
+Los que ya tienen las dos cosas no gastan ni una consulta.
 
-1. `"<teléfono>"` — búsqueda inversa. La que más rinde para el email: encuentra
-   en qué directorios comerciales está listado ese teléfono, y esos directorios
-   publican datos que el comercio no pone en ningún otro lado.
-2. `"<razón social>" <localidad>` — encuentra el perfil de red y la ficha de
-   directorio aunque no estén enlazados en ningún lado.
-3. La misma con `(whatsapp OR contacto)`, solo si la anterior trajo ruido.
-
-**Lo más valioso: no hace falta visitar nada.** El resumen que devuelve la API
-—lo que se muestra debajo de cada resultado— muy seguido ya trae el teléfono, el
-email, o la biografía de un perfil de Instagram, que es donde los comercios
-argentinos ponen su WhatsApp. Leer el índice de un buscador no es scrapear
-Instagram: es la vuelta legal al hecho de que las redes no se pueden visitar.
-
-Solo si el resumen no alcanza se abren hasta 2 resultados, y **nunca una red
-social** — solo directorios (`paginasamarillas.com.ar`, `cylex.com.ar`,
-`guialocal.com.ar`, `infoisinfo.com.ar`, `opendi.com.ar`, `tuugo.com.ar`,
-`hotfrog.com.ar`, `yalwa.com.ar`, `dateas.com`).
-
-Se aplica **únicamente a prospectos que quedaron en prioridad 3 o 4**. Nunca a
-todos: es lo que mantiene el costo acotado.
-
+Esa condición se corrigió al cambiar el rumbo: antes preguntaba por *email +
+WhatsApp*, y eso dejaba afuera al prospecto que tiene WhatsApp y no tiene
+correo — que es justo el que hace falta buscar ahora que el contacto va por
+teléfono y por mail.
 
 ### Nivel 4 — carga manual
 
@@ -386,7 +460,7 @@ Ocho de las diez piezas se prueban sin tocar Google.
 **Extractor de contactos** — es donde más se itera:
 
 ```bash
-node scripts/test-extract.mjs                        # 17 casos fijos
+node scripts/test-extract.mjs                        # 19 casos fijos
 node scripts/test-extract.mjs https://sitio.com.ar   # un sitio real
 node scripts/test-extract.mjs --file urls.txt        # varios, uno por línea
 ```
@@ -444,6 +518,23 @@ contacto: el extractor no va a sacar nada de ahí. No es un bug — es el límit
 leer HTML sin ejecutar JavaScript, y meter un navegador headless al proyecto no
 se justifica. Los prospectos reales de FORCOM son comercios chicos, cuyos sitios
 sí traen el contacto en el HTML.
+
+**Los `<script>` con JSON sí se leen, y solo esos.** El preprocesado borra todos
+los `<script>` —de ahí salen los mails de Sentry, Wix y Google Tag Manager— pero
+`inlineJsonScripts` rescata antes el contenido de los que declaran
+`type="application/json"` o `ld+json`. Son dos cosas distintas que se ganan con
+eso: las páginas tipo Linktree, que renderizan del lado del cliente y dejan sus
+links **solo** ahí, y el **JSON-LD de cualquier sitio**, que trae teléfono,
+correo y perfiles ya separados. La regla que puntúa `"email"` con 60 estaba
+escrita hace rato para leer schema.org y era código muerto por este motivo.
+
+**Áreas telefónicas que no existen.** `isValidArNational` valida los dos
+primeros dígitos del área contra la lista real (`11`, y `22 23 24 26 28 29 33 34
+35 36 37 38`). Antes alcanzaba con que empezara en `11`, `2` o `3`, y por eso un
+prospecto quedó con `+54 321 322-5899`: el `32` no existe en ninguna parte del
+país. Se validan **dos** dígitos y no tres porque la lista completa de áreas de
+cuatro dígitos pasa las trescientas entradas y una lista incompleta rechazaría
+números buenos, que es el error caro.
 
 **Lo que se aprendió probando.** Los primeros teléfonos que sacaba de sitios
 grandes eran inventados: salían de **hashes hexadecimales** como

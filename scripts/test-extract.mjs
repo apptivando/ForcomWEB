@@ -23,8 +23,10 @@ register("./ts-resolve-hook.mjs", import.meta.url);
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const lib = (f) => pathToFileURL(resolve(__dirname, "../src/lib", f)).href;
 
-const { extractEmails, extractPhones, extractWhatsapp, extractSocials, extractInternalLinks } =
-  await import(lib("prospects/extract.ts"));
+const {
+  extractEmails, extractPhones, extractWhatsapp, extractSocials, extractInternalLinks,
+  inlineJsonScripts,
+} = await import(lib("prospects/extract.ts"));
 const { classifyUrl, registrableDomain } = await import(lib("prospects/urls.ts"));
 const { formatArPhone } = await import(lib("phone.ts"));
 
@@ -33,7 +35,12 @@ const RED = "\x1b[31m";
 const DIM = "\x1b[2m";
 const OFF = "\x1b[0m";
 
-function analyze(html, { siteDomain, baseUrl, fromContactPage } = {}) {
+function analyze(raw, { siteDomain, baseUrl, fromContactPage } = {}) {
+  // Lo mismo que hace `absorb()` en el enriquecedor, y por el mismo motivo: si
+  // acá no se rescatara el JSON de los `<script>`, el banco de pruebas estaría
+  // midiendo algo distinto de lo que corre en producción.
+  const html = inlineJsonScripts(raw);
+
   const emails = extractEmails(html, { siteDomain, fromContactPage });
   const phones = extractPhones(html);
   const wa = extractWhatsapp(html);

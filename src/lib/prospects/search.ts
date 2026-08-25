@@ -103,9 +103,18 @@ export function searchConfigured(): boolean {
   return Boolean(process.env.GOOGLE_CSE_API_KEY && process.env.GOOGLE_CSE_CX);
 }
 
+/**
+ * Tope de consultas por día. Es un freno de mano, no una cuota del proveedor.
+ *
+ * El default era 90 porque Google Custom Search regalaba 100 por día y pasarse
+ * costaba. Serper es un pozo prepago sin tope diario, así que 90 dejaba el
+ * enriquecimiento de 500 prospectos en tres semanas: es el número de otro
+ * problema. A 400, la misma tanda entra en unos tres días y el gasto máximo del
+ * día sigue siendo de centavos.
+ */
 export function dailyLimit(): number {
   const raw = Number(process.env.PROSPECT_SEARCH_DAILY_LIMIT);
-  return Number.isFinite(raw) && raw > 0 ? raw : 90;
+  return Number.isFinite(raw) && raw > 0 ? raw : 400;
 }
 
 interface RawItem {
@@ -134,9 +143,16 @@ function flattenPagemap(pagemap: RawItem["pagemap"]): string {
   return parts.join(" · ");
 }
 
+/**
+ * Timeout por consulta. Corto a propósito: el worker tiene 240 s para seis
+ * prospectos, o sea 40 s cada uno, y el nivel 1 ya se lleva 20. Una consulta
+ * que tarda más de esto no vale lo que le saca al lote — se pierde y se sigue.
+ */
+const QUERY_TIMEOUT_MS = 6_000;
+
 async function timedFetch(url: string | URL, init?: RequestInit): Promise<Response> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 10_000);
+  const timer = setTimeout(() => controller.abort(), QUERY_TIMEOUT_MS);
   try {
     return await fetch(url, { ...init, signal: controller.signal, cache: "no-store" });
   } finally {
@@ -184,6 +200,11 @@ async function searchGoogle(query: string, num: number): Promise<SearchHit[]> {
 }
 
 async function searchSerper(query: string, num: number): Promise<SearchHit[]> {
+  // OJO CON `num`: Serper cobra 1 crédito hasta 10 resultados y 2 a partir de
+  // 11. El `Math.min(num, 10)` es lo que mantiene el costo en 1 — no es un
+  // tope defensivo cualquiera, es la mitad de la factura. Si algún día el
+  // consumo de créditos da el doble de las consultas que cuenta la base, es
+  // porque alguien lo subió.
   const res = await timedFetch(SERPER_ENDPOINT, {
     method: "POST",
     headers: { "X-API-KEY": process.env.SERPER_API_KEY!, "Content-Type": "application/json" },
@@ -302,6 +323,12 @@ export function buildQueries(opts: {
   businessName: string | null;
   locality: string | null;
   nationalPhone: string | null;
+  /**
+   * Agrega la consulta dirigida a redes. El enriquecedor la enciende solo
+   * cuando el prospecto no tiene ningún perfil guardado: si ya sabemos su
+   * Instagram, buscarlo es tirar un crédito.
+   */
+  wantsSocial?: boolean;
 }): string[] {
   const queries: string[] = [];
   const name = opts.businessName?.trim();
@@ -318,6 +345,25 @@ export function buildQueries(opts: {
 
   // 3. La misma, afinada, para cuando la anterior trae ruido.
   if (name) queries.push(`"${name}"${place ? ` ${place}` : ""} (whatsapp OR contacto)`);
+
+  // 4. Última y la más específica: el perfil de red del comercio.
+  //
+  //    Va al final porque es la más cara en rendimiento — muchos comercios no
+  //    tienen perfil, o lo tienen con otro nombre — y porque para cuando se
+  //    llega acá las tres baratas ya fallaron.
+  //
+  //    Lo que se lee es el RESUMEN que el buscador indexó del perfil, nunca el
+  //    perfil. Es la vuelta legal al hecho de que Instagram y Facebook no se
+  //    pueden visitar, y en Argentina rinde: la bio del Instagram es donde un
+  //    comercio chico publica su WhatsApp.
+  //
+  //    Una sola consulta con los dos `site:` y no dos separadas: cuesta la
+  //    mitad y Google acepta el `OR` sin degradar los resultados.
+  if (opts.wantsSocial && name) {
+    queries.push(
+      `(site:instagram.com OR site:facebook.com) "${name}"${place ? ` ${place}` : ""}`
+    );
+  }
 
   return queries;
 }

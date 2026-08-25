@@ -213,11 +213,60 @@ export const CASES = [
         </script>
       </head><body><p>Farmacia del Sol</p></body></html>`,
     siteDomain: "farmaciadelsol.ar",
-    // El JSON-LD va dentro de un <script>, que el preprocesado borra para
-    // evitar la basura de Sentry/Wix. Es una decisión deliberada: se pierde
-    // este caso a cambio de no ensuciar todos los demás. Los datos suelen
-    // estar también en el texto visible.
-    expect: { email: null, phone: null },
+    // Durante mucho tiempo esto esperaba `null`: el JSON-LD vive dentro de un
+    // <script> y el preprocesado los borraba todos para no arrastrar la basura
+    // de Sentry/Wix. La regla que puntúa `"email"` con 60 estaba escrita para
+    // este caso y era código muerto.
+    // Ahora `inlineJsonScripts` rescata SOLO los <script> con type de JSON, así
+    // que el bloque schema.org se lee y la basura sigue afuera (ver el caso
+    // "Basura de infraestructura", que no se movió).
+    // El teléfono sale sin el `9` de celular: el extractor de teléfonos no lo
+    // captura nunca (el `9` es cosa de WhatsApp y lo maneja `toWhatsappNumber`
+    // aparte). No es una pérdida de este caso, es cómo funciona.
+    expect: { email: "info@farmaciadelsol.ar", phone: "543514813320" },
+  },
+
+  {
+    name: "Linktree: los links viven solo en el JSON del <script>",
+    // El HTML visible de un "link in bio" no tiene nada: la página se arma en
+    // el navegador desde este bloque. Antes se la visitaba y se salía con las
+    // manos vacías, que es lo peor de los dos mundos — se gastaba el request y
+    // no se traía el dato.
+    // Las barras vienen escapadas, como las manda Next.js de verdad.
+    html: `
+      <html><head><title>Ferretería El Tornillo</title></head>
+      <body><div id="__next"></div>
+      <script id="__NEXT_DATA__" type="application/json">
+      {"props":{"pageProps":{"account":{"username":"eltornillo"},"links":[
+        {"title":"Escribinos por WhatsApp","url":"https:\\u002F\\u002Fwa.me\\u002F5493514440011"},
+        {"title":"Mandanos un mail","url":"mailto:ventas@eltornillo.com.ar"},
+        {"title":"Instagram","url":"https:\\u002F\\u002Fwww.instagram.com\\u002Feltornillo"}
+      ]}}}
+      </script></body></html>`,
+    siteDomain: "eltornillo.com.ar",
+    expect: {
+      whatsapp: "5493514440011",
+      whatsappSource: "link",
+      email: "ventas@eltornillo.com.ar",
+      instagram: "https://www.instagram.com/eltornillo",
+    },
+  },
+
+  {
+    name: "Un <script> sin type de JSON sigue descartándose",
+    // El contrapeso del caso anterior. Si algún día alguien "simplifica"
+    // `inlineJsonScripts` para conservar todos los <script>, este caso rompe
+    // — que es exactamente para lo que está.
+    html: `
+      <html><body>
+        <p>Contacto: hola@ferreteriareal.com.ar</p>
+        <script>
+          window.SENTRY_DSN = "https://abc123@o447951.ingest.sentry.io/5428562";
+          var soporte = "soporte@wixpress.com";
+        </script>
+      </body></html>`,
+    siteDomain: "ferreteriareal.com.ar",
+    expect: { email: "hola@ferreteriareal.com.ar" },
   },
 
   {

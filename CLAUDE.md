@@ -20,6 +20,28 @@ Sitio web B2B de presentación y generación de leads para FORCOM, fabricante de
 >
 > Lo que sigue vigente de esta sección es el contexto histórico y las lecciones (sobre todo `normalizeArgentinePhone`). Lo que **ya no** aplica: el proxy `/admin/crm/*`, las variables `WACRM_*`, y el dominio `crm-dev.forcom.tech`.
 >
+> ## ⚠️ SEGUNDO CAMBIO DE RUMBO (25/08/2026): el WhatsApp se congela
+>
+> **El Track E deja de recibir trabajo.** No se borra ni se desarma: la Bandeja,
+> las plantillas, la ventana de 24 h, las líneas de vendedores y el análisis de
+> conversaciones siguen funcionando exactamente como están. Las `EVOLUTION_*`
+> siguen sin cablear en Vercel y eso **ya no es urgente**. La verificación
+> pendiente (conectar una línea real y confirmar que sus mensajes van a la ficha
+> y no a la Bandeja) queda sin hacer, por tiempo indefinido.
+>
+> **La prioridad pasa a la prospección**: sacarle más vías de contacto a los
+> comercios que trae Google, y contactarlos **por teléfono y por correo**. El
+> WhatsApp deja de ser el canal de salida.
+>
+> Lo que se hizo primero: **encender el nivel 3 con Serper y medir si sirve**
+> (`scripts/compare-level3.mjs`). Ver `docs/PROSPECTOS.md` → "Nivel 3", y sobre
+> todo la sección de las tres pruebas de identidad: la primera medición trajo
+> correos de otras empresas y eso reescribió el diseño del nivel 3.
+>
+> Planificado y **sin empezar**: derivar a los vendedores los prospectos que
+> quedan solo con teléfono (con el Registro Nacional "No Llame" de por medio,
+> que es obligación legal) y las campañas de correo con EnvíaloSimple de DonWeb.
+>
 > **Estado del Track E (21/08/2026):** cerrado. Fase 1 roles · 2 tablas CRM + webhook · 3 bandeja · 4 asistente IA · 5 pipelines · 6 automatizaciones · 7 el formulario entra al CRM · 8 clientes unificados + buscador de prospectos · 9 ficha de cliente con línea de tiempo · 10 líneas de vendedores y análisis de conversaciones. Migraciones 010 a 014 corridas en Supabase. Falta cablear las `EVOLUTION_*` en Vercel.
 >
 > **Documentación**: `docs/PROSPECTOS.md` (buscador de prospectos, enriquecimiento, contacto en frío, ficha de cliente) , `docs/WHATSAPP.md` (las dos líneas, captura desde el celular, análisis de vendedores) y `docs/ACCESOS.md` (invitaciones al panel y contraseñas).
@@ -234,6 +256,19 @@ scripts/
 │                             Escribe .preview-email.html (ignorado por git). --resent muestra
 │                             la invitación reenviada y --reset el correo de recuperación
 │                             de contraseña. Ver docs/ACCESOS.md.
+├── compare-level3.mjs      — ¿cuánto aporta el nivel 3? Saca la foto del antes, enriquece
+│                             SOLO ese grupo (no la cola global, para que el costo medido
+│                             sea el de ese grupo) y muestra cuántos salieron de "solo
+│                             teléfono", cuántas consultas costó y cuánto tardó cada uno.
+│                             Escribe en la base de verdad; con --dry solo mira.
+│                             node scripts/compare-level3.mjs --rubro "ferreterías" --limit 20
+├── audit-level3.mjs        — revisa lo que guardó el enriquecedor contra los criterios de
+│                             coherencia y separa lo que SE BORRA (área inexistente,
+│                             WhatsApp de otra provincia, número repetido en dos comercios,
+│                             dominio extranjero, ficha de guía comercial) de lo que solo
+│                             SE REVISA a mano. Existe porque la primera corrida con Serper
+│                             guardó correos de otras empresas.
+│                             node scripts/audit-level3.mjs [--limpiar]
 ├── test-extract.mjs        — banco de pruebas del extractor de contactos del scraper de
 │                             prospectos. Sin API key ni base de datos.
 │                             Casos fijos:   node scripts/test-extract.mjs

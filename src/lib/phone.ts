@@ -40,16 +40,37 @@ export function digitsOnly(raw: string): string {
 }
 
 /**
+ * Los dos primeros dígitos con los que puede empezar un código de área
+ * argentino, además del `11` del AMBA.
+ *
+ * POR QUÉ SOLO DOS DÍGITOS
+ * Las áreas argentinas son de 2, 3 o 4 dígitos y la lista completa de las de 4
+ * pasa las trescientas entradas. Una lista incompleta sería peor que ninguna:
+ * rechazaría números buenos, que es el error caro. Los dos primeros dígitos, en
+ * cambio, son un conjunto chico y cerrado — cubre todas las áreas reales sin
+ * excepciones — y alcanza para tirar la basura.
+ *
+ * Lo encontró una medición: un prospecto salió con `+54 321 322-5899`, y el
+ * `32` no existe como comienzo de área en ninguna parte del país. El chequeo
+ * anterior (`^(11|[23])`) lo dejaba pasar porque empieza con 3.
+ */
+const AR_AREA_PREFIXES = new Set([
+  // Buenos Aires provincia, La Pampa, Patagonia, Cuyo.
+  "22", "23", "24", "26", "28", "29",
+  // Litoral, Centro, NEA y NOA.
+  "33", "34", "35", "36", "37", "38",
+]);
+
+/**
  * ¿Es un número nacional significativo argentino válido?
- * Son exactamente 10 dígitos (código de área de 2 a 4 + abonado) y el área
- * arranca en `11` (AMBA), `2` o `3`. No existe ningún área que arranque en
- * otro dígito, así que esto descarta casi toda la basura de una.
+ * Son exactamente 10 dígitos (código de área de 2 a 4 + abonado), y el área
+ * es `11` (AMBA) o empieza con uno de los prefijos reales de arriba.
  */
 export function isValidArNational(digits: string): boolean {
   if (digits.length !== 10) return false;
-  if (!/^(11|[23])/.test(digits)) return false;
   if (/^(\d)\1{9}$/.test(digits)) return false; // 1111111111 y compañía
-  return true;
+  if (digits.startsWith("11")) return true;
+  return AR_AREA_PREFIXES.has(digits.slice(0, 2));
 }
 
 /**
