@@ -198,6 +198,7 @@ npm run dev
 
 ### Gotchas críticos
 
+- **Los cron de GitHub Actions solo se disparan desde `main`.** Un workflow con `schedule` corre **únicamente** desde la rama por defecto, sin importar en cuál lo estés editando. El paso que enriquece prospectos se agregó solo en `develop` y por eso **nunca corrió**: 240 prospectos quedaron cuatro días sin tocar y el síntoma parecía ser del enriquecedor. Corregido el 25/08/2026 llevando `.github/workflows/automations-cron.yml` a `main` con cherry-pick. **Cada vez que se toque ese archivo hay que repetirlo.** Tenerlo en `main` no despliega nada: las URL apuntan a `dev.forcom.tech`, o sea al deploy de `develop`.
 - **Framework Preset en Vercel** debe ser "Next.js" (no "Other") — si queda en Other, 404 en todas las rutas.
 - **`src/lib/supabase/server.ts`** tiene try-catch en `setAll` — requerido porque App Router no permite setear cookies desde Server Components; sin él falla en producción.
 - **El "middleware" de Next.js se llama "Proxy" desde la v16, y el archivo TIENE que llamarse `proxy.ts` en la raíz de `src/`** (`src/proxy.ts`) — es la única ubicación que reconoce el framework. Antes vivía en `src/lib/supabase/middleware-proxy.ts`, que **nunca se ejecutaba** (código muerto, nada lo importaba) — `/admin/*` solo estaba protegido por el chequeo de sesión en `admin/(panel)/layout.tsx`, que no corre para rutas reescritas con `rewrites()` (ver más abajo, el proxy del CRM de WhatsApp). Corregido el 30/07/2026. Si se agrega lógica nueva de auth/redirects a nivel de toda la app, va acá, no en un archivo con otro nombre.

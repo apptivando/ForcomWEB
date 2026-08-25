@@ -1,5 +1,21 @@
 name: Automations cron
 
+# ⚠️ ESTE ARCHIVO TIENE QUE ESTAR IGUAL EN `main`, SIEMPRE.
+#
+# GitHub dispara los workflows programados (`schedule`) ÚNICAMENTE desde la
+# rama por defecto, que acá es `main`. La copia que vive en `develop` no corre
+# nunca, por más que sea la que uno está editando.
+#
+# Costó cuatro días descubrirlo: el paso que enriquece prospectos se agregó
+# solo en `develop`, así que el cron real —el de `main`— seguía llamando
+# únicamente a las automatizaciones. 240 prospectos quedaron sin tocar y el
+# síntoma era "el enriquecimiento no anda", que apuntaba al lugar equivocado.
+#
+# Si tocás este archivo, llevalo a `main` con un cherry-pick del commit (no un
+# merge de `develop`, que arrastraría el Track E entero). Las URL apuntan a
+# `dev.forcom.tech`, o sea que tenerlo en `main` NO despliega nada de la app:
+# solo hace que el programador de GitHub llame al deploy de `develop`.
+
 # Reemplaza a los Cron Jobs de Vercel (ocupados por otro proyecto).
 # Cada 5 minutos le pega a dos endpoints:
 #   - /api/cron/automations → las automatizaciones con pasos "wait"
