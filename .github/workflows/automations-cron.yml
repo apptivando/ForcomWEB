@@ -1,10 +1,30 @@
 name: Automations cron
 
+# ⚠️ ESTE ARCHIVO TIENE QUE ESTAR IGUAL EN `main`, SIEMPRE.
+#
+# GitHub dispara los workflows programados (`schedule`) ÚNICAMENTE desde la
+# rama por defecto, que acá es `main`. La copia que vive en `develop` no corre
+# nunca, por más que sea la que uno está editando.
+#
+# Costó cuatro días descubrirlo: el paso que enriquece prospectos se agregó
+# solo en `develop`, así que el cron real —el de `main`— seguía llamando
+# únicamente a las automatizaciones. 240 prospectos quedaron sin tocar y el
+# síntoma era "el enriquecimiento no anda", que apuntaba al lugar equivocado.
+#
+# Si tocás este archivo, llevalo a `main` con un cherry-pick del commit (no un
+# merge de `develop`, que arrastraría el Track E entero). Las URL apuntan a
+# `dev.forcom.tech`, o sea que tenerlo en `main` NO despliega nada de la app:
+# solo hace que el programador de GitHub llame al deploy de `develop`.
+
 # Reemplaza a los Cron Jobs de Vercel (ocupados por otro proyecto).
-# Le pega a /api/cron/automations cada 5 minutos para que las
-# automatizaciones con pasos "wait" sigan solas donde quedaron.
+# Cada 5 minutos le pega a dos endpoints:
+#   - /api/cron/automations → las automatizaciones con pasos "wait"
+#     siguen solas donde quedaron.
+#   - /api/cron/prospects   → enriquece un lote de prospectos (visita
+#     sus sitios para sacarles email, WhatsApp y redes).
 # GitHub no garantiza el minuto exacto bajo carga — está bien, no es
-# un caso de uso que necesite precisión al segundo.
+# un caso de uso que necesite precisión al segundo. El enriquecedor ya
+# está preparado para corridas solapadas (reclama con SKIP LOCKED).
 
 on:
   schedule:
@@ -17,7 +37,26 @@ jobs:
     steps:
       - name: Llamar al endpoint de automatizaciones
         run: |
-          curl -sf -X GET "https://dev.forcom.tech/api/cron/automations" \
+          curl -sf --max-time 120 -X GET "https://dev.forcom.tech/api/cron/automations" \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
         # TODO: cambiar a https://www.forcom.tech/api/cron/automations
         # cuando el Track E se mergee de develop a main.
+
+      # Va después y con `if: always()` para que un fallo de las
+      # automatizaciones no deje la cola de prospectos sin procesar.
+      # El --max-time acompaña al presupuesto de 240s del endpoint.
+      - name: Enriquecer prospectos
+        if: always()
+        run: |
+          curl -sf --max-time 300 -X GET "https://dev.forcom.tech/api/cron/prospects" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
+
+      # El endpoint decide solo cuándo encolar el día anterior (pasada cierta
+      # hora) y en cada corrida procesa un lote chico. Así el análisis se
+      # reparte a lo largo de la mañana en vez de intentar hacer 200
+      # conversaciones en una sola llamada.
+      - name: Analizar conversaciones de vendedores
+        if: always()
+        run: |
+          curl -sf --max-time 300 -X GET "https://dev.forcom.tech/api/cron/reviews" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
