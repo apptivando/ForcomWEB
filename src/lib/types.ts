@@ -162,7 +162,7 @@ export interface CrmContact {
 
   /** Solo se completa con evidencia real; nunca por parecerse a un celular. */
   whatsapp_phone: string | null;
-  whatsapp_source: "link" | "texto" | "busqueda" | "manual" | null;
+  whatsapp_source: "link" | "texto" | "busqueda" | "manual" | "formulario" | null;
   /** El teléfono de Google venía marcado como celular (+54 9). No es evidencia. */
   whatsapp_likely: boolean;
 

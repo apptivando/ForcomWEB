@@ -94,7 +94,7 @@ export async function POST(request: Request) {
           { phone: normalizedPhone, contact_name: cleanName },
           { onConflict: "phone", ignoreDuplicates: false }
         )
-        .select("id, email, business_name")
+        .select("id, email, business_name, whatsapp_phone")
         .single();
 
       if (data) {
@@ -102,6 +102,20 @@ export async function POST(request: Request) {
         const patch: Record<string, string> = {};
         if (!data.email) patch.email = cleanEmail;
         if (!data.business_name && cleanCompany) patch.business_name = cleanCompany;
+        // El campo del formulario dice "Teléfono (WhatsApp)" y aclara que por
+        // ahí lo vamos a contactar: es la propia persona declarando su
+        // WhatsApp, evidencia más fuerte que cualquier cosa que saque el
+        // enriquecedor. Sin esto, la Bandeja del formulario ofrecía
+        // "Responder por WhatsApp" y la ficha del mismo cliente mostraba el
+        // canal apagado.
+        //
+        // Solo si estaba vacío: un WhatsApp ya confirmado por otra vía (un
+        // enlace wa.me en su sitio, por ejemplo) puede ser un número distinto
+        // del que acaba de escribir, y ese no se pisa.
+        if (!data.whatsapp_phone) {
+          patch.whatsapp_phone = normalizedPhone;
+          patch.whatsapp_source = "formulario";
+        }
         if (Object.keys(patch).length > 0) {
           await admin.from("crm_contacts").update(patch).eq("id", data.id);
         }

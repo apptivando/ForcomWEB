@@ -770,11 +770,13 @@ ALTER TABLE crm_contacts ADD CONSTRAINT crm_contacts_enrichment_level_check
 -- De dónde salió la evidencia de WhatsApp. 'link' = enlace wa.me en el
 -- sitio; 'texto' = un teléfono junto a la palabra WhatsApp; 'busqueda'
 -- = del resultado de Google del nivel 3; 'manual' = lo cargó una
--- persona. NUNCA se infiere de que el número parezca celular: eso va
+-- persona; 'formulario' = lo escribió la propia persona en el campo
+-- "Teléfono (WhatsApp)" del sitio, que es la evidencia más fuerte de
+-- todas. NUNCA se infiere de que el número parezca celular: eso va
 -- en whatsapp_likely y no cuenta como contacto confirmado.
 ALTER TABLE crm_contacts DROP CONSTRAINT IF EXISTS crm_contacts_whatsapp_source_check;
 ALTER TABLE crm_contacts ADD CONSTRAINT crm_contacts_whatsapp_source_check
-  CHECK (whatsapp_source IS NULL OR whatsapp_source IN ('link', 'texto', 'busqueda', 'manual'));
+  CHECK (whatsapp_source IS NULL OR whatsapp_source IN ('link', 'texto', 'busqueda', 'manual', 'formulario'));
 
 -- Nada de filas fantasma sin ningún identificador.
 ALTER TABLE crm_contacts DROP CONSTRAINT IF EXISTS crm_contacts_needs_identity;

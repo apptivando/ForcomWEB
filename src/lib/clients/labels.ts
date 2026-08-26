@@ -48,4 +48,5 @@ export const WHATSAPP_SOURCE_LABEL: Record<string, string> = {
   texto: "por un número junto a la palabra WhatsApp",
   busqueda: "por un resultado de búsqueda",
   manual: "cargado a mano",
+  formulario: "porque lo dejó en el formulario de la web",
 };
