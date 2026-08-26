@@ -3,15 +3,70 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { clientLabel, clientSubLabel } from "@/lib/types";
-import { formatArPhone } from "@/lib/phone";
 import { requeueClient, exportClients } from "@/app/admin/actions";
 import type { ClientFilters } from "@/app/admin/actions";
-import { openConversation } from "@/app/admin/outreach-actions";
 import { downloadClientsCsv } from "@/lib/clients/csv";
 import { ORIGIN_STYLE, TIER_LABEL, STATUS_LABEL } from "@/lib/clients/labels";
 import ContactDots from "@/components/admin/ContactDots";
-import ClientDrawer from "@/components/admin/ClientDrawer";
+import { IconResumen, IconActividad, IconDatos, IconRefresh, IconLock } from "@/components/admin/icons";
+import ClientDrawer, { type Tab } from "@/components/admin/ClientDrawer";
 import type { CrmContact, ContactTier, PipelineStage } from "@/lib/types";
+
+/**
+ * Cuánto contenido queda fuera de la vista a cada lado del scroll horizontal.
+ *
+ * La tabla mide ~1200 px dentro de un contenedor de ~740 px: 460 px ocultos,
+ * sin barra visible, sin sombra y sin ninguna señal de que hubiera más
+ * columnas. Un usuario nuevo concluía que la lista era de solo lectura.
+ */
+function useHorizontalOverflow() {
+  const ref = useRef<HTMLDivElement>(null);
+  const [edges, setEdges] = useState({ left: false, right: false });
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    const update = () => {
+      const hidden = el.scrollWidth - el.clientWidth;
+      setEdges({
+        left: el.scrollLeft > 4,
+        right: hidden > 4 && el.scrollLeft < hidden - 4,
+      });
+    };
+
+    update();
+    el.addEventListener("scroll", update, { passive: true });
+    // El ancho cambia al colapsar un grupo o al filtrar, no solo al
+    // redimensionar la ventana.
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => {
+      el.removeEventListener("scroll", update);
+      observer.disconnect();
+    };
+  }, []);
+
+  return { ref, ...edges };
+}
+
+/** Los tres atajos de la fila. En el mismo orden que las pestañas de la ficha. */
+const ATAJOS = [
+  { tab: "resumen" as const, label: "Resumen", Icon: IconResumen },
+  { tab: "actividad" as const, label: "Actividad", Icon: IconActividad },
+  { tab: "datos" as const, label: "Datos", Icon: IconDatos },
+];
+
+/**
+ * Botón de acción de la fila, ya sin texto.
+ *
+ * Gris apagado en reposo y con color solo al pasar por encima: son acciones
+ * secundarias que no tienen que competir con el nombre del cliente, que es lo
+ * que uno viene a leer. El área de 28×28 alcanza para tocarlo en el teléfono.
+ */
+const ACCION_CLS =
+  "inline-flex items-center justify-center p-1.5 rounded-sm text-[#8A8A8A] " +
+  "hover:text-white hover:bg-[#2A2A2E] transition-colors";
 
 export default function ClientsTable({
   clients,
@@ -41,7 +96,12 @@ export default function ClientsTable({
   // El grupo 4 arranca colapsado: son los que no tienen nada y no se trabajan
   // hasta que el enriquecimiento termine.
   const [collapsed, setCollapsed] = useState<Set<ContactTier>>(new Set<ContactTier>([4]));
+  const scroll = useHorizontalOverflow();
   const [openId, setOpenId] = useState<string | null>(initialClientId);
+  // La pestaña visible de la ficha vive acá y no adentro del panel: es lo que
+  // hace que los atajos de la fila funcionen también sobre el cliente que ya
+  // está abierto (mismo id, pestaña distinta).
+  const [openTab, setOpenTab] = useState<Tab>("resumen");
   const [exporting, setExporting] = useState(false);
   const [, startTransition] = useTransition();
   const router = useRouter();
@@ -60,7 +120,8 @@ export default function ClientsTable({
    * re-renderizar el Server Component. Efecto secundario bueno: la barra de
    * filtros no se toca, así que su borrado de `page` nunca entra en juego.
    */
-  function openClient(id: string) {
+  function openClient(id: string, tab: Tab = "resumen") {
+    setOpenTab(tab);
     const next = new URLSearchParams(window.location.search);
     next.set("cliente", id);
     if (openId) {
@@ -149,27 +210,38 @@ export default function ClientsTable({
   return (
     <div className="bg-[#141416] border border-[#2A2A2E] rounded-sm overflow-hidden">
       <div className="flex items-center justify-between px-5 py-2.5 border-b border-[#2A2A2E]">
-        <p className="text-[11px] text-[#8A8A8A]">{clients.length} en esta página</p>
+        <p className="text-[13px] text-[#8A8A8A]">{clients.length} en esta página</p>
         <button
           onClick={handleExport}
           disabled={exporting}
-          className="px-3 py-1.5 text-[11px] font-display font-semibold text-[#B0B0B0] hover:text-white bg-[#1A1A1E] hover:bg-[#2A2A2E] border border-[#2A2A2E] rounded-sm disabled:opacity-40 transition-colors"
+          className="px-3 py-1.5 text-[13px] font-semibold text-[#B0B0B0] hover:text-white bg-[#1A1A1E] hover:bg-[#2A2A2E] border border-[#6A6A70] rounded-sm disabled:opacity-40 transition-colors"
           title="Descarga todos los clientes que coincidan con los filtros actuales, ordenados por prioridad de contacto"
         >
           {exporting ? "Preparando…" : "Exportar CSV"}
         </button>
       </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+      {/* El contenedor lleva las dos señales de que hay más columnas: la sombra
+          del borde derecho mientras quede contenido oculto, y la primera
+          columna fija para que al scrollear no se pierda de vista a qué cliente
+          pertenece la fila (era lo que dejaba "Eliminar" a un clic sin saber de
+          quién). */}
+      <div className="relative">
+        {scroll.right && (
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-y-0 right-0 w-10 z-20 bg-gradient-to-l from-[#0D0D0F] to-transparent"
+          />
+        )}
+        <div ref={scroll.ref} className="overflow-x-auto">
+        <table className="w-full text-[15px]">
           <thead>
             <tr className="border-b border-[#2A2A2E]">
-              <th className="text-left px-5 py-3 text-[10px] font-display font-semibold tracking-[0.15em] uppercase text-[#8A8A8A]">Cliente</th>
-              <th className="text-left px-5 py-3 text-[10px] font-display font-semibold tracking-[0.15em] uppercase text-[#8A8A8A]">Origen</th>
-              <th className="text-left px-5 py-3 text-[10px] font-display font-semibold tracking-[0.15em] uppercase text-[#8A8A8A]">Contacto</th>
-              <th className="text-left px-5 py-3 text-[10px] font-display font-semibold tracking-[0.15em] uppercase text-[#8A8A8A] hidden md:table-cell">Localidad</th>
-              <th className="text-left px-5 py-3 text-[10px] font-display font-semibold tracking-[0.15em] uppercase text-[#8A8A8A] hidden lg:table-cell">Google</th>
-              <th className="text-right px-5 py-3 text-[10px] font-display font-semibold tracking-[0.15em] uppercase text-[#8A8A8A]">Enlaces</th>
-              <th className="text-right px-5 py-3 text-[10px] font-display font-semibold tracking-[0.15em] uppercase text-[#8A8A8A]">Acciones</th>
+              <th className="text-left px-5 py-3 text-[12px] font-semibold tracking-[0.15em] uppercase text-[#8A8A8A] sticky left-0 z-10 bg-[#141416]">Cliente</th>
+              <th className="text-left px-5 py-3 text-[12px] font-semibold tracking-[0.15em] uppercase text-[#8A8A8A]">Origen</th>
+              <th className="text-left px-5 py-3 text-[12px] font-semibold tracking-[0.15em] uppercase text-[#8A8A8A]">Contacto</th>
+              <th className="text-left px-5 py-3 text-[12px] font-semibold tracking-[0.15em] uppercase text-[#8A8A8A] hidden md:table-cell">Localidad</th>
+              <th className="text-left px-5 py-3 text-[12px] font-semibold tracking-[0.15em] uppercase text-[#8A8A8A] hidden lg:table-cell">Google</th>
+              <th className="text-right px-5 py-3 text-[12px] font-semibold tracking-[0.15em] uppercase text-[#8A8A8A]">Acciones</th>
             </tr>
           </thead>
           <tbody>
@@ -178,10 +250,10 @@ export default function ClientsTable({
                 const isCollapsed = collapsed.has(item.tier);
                 return (
                   <tr key={`h-${item.tier}`} className="bg-[#0D0D0F] border-y border-[#2A2A2E]">
-                    <td colSpan={7} className="px-5 py-2">
+                    <td colSpan={6} className="px-5 py-2">
                       <button
                         onClick={() => toggle(item.tier)}
-                        className="flex items-center gap-2 text-[11px] font-display font-bold tracking-[0.15em] uppercase text-[#B0B0B0] hover:text-white transition-colors"
+                        className="sticky left-0 flex items-center gap-2 text-[13px] font-bold tracking-[0.15em] uppercase text-[#B0B0B0] hover:text-white transition-colors"
                       >
                         <span className="text-[#8A8A8A]">{isCollapsed ? "▸" : "▾"}</span>
                         {item.tier} · {TIER_LABEL[item.tier]}
@@ -211,20 +283,33 @@ export default function ClientsTable({
                   // adentro paran la propagación, así que copiar un mail no
                   // dispara también la apertura del panel.
                   onClick={() => openClient(c.id)}
-                  className={`border-b border-[#2A2A2E] last:border-0 cursor-pointer transition-colors ${
+                  className={`group border-b border-[#2A2A2E] last:border-0 cursor-pointer transition-colors ${
                     c.id === openId ? "bg-[#1A1A1E]" : i % 2 === 0 ? "hover:bg-[#141416]" : "bg-[#1A1A1E]/30 hover:bg-[#141416]"
                   }`}
                 >
-                  <td className="px-5 py-3 max-w-[280px]">
+                  {/* Celda fija: necesita fondo OPACO propio, si no el
+                      contenido de las otras columnas se le ve por debajo al
+                      scrollear. Los valores replican el color efectivo de la
+                      fila (la banda impar es #1A1A1E al 30% sobre #141416, que
+                      compone #161618). */}
+                  <td
+                    className={`px-5 py-3 max-w-[280px] sticky left-0 z-10 transition-colors ${
+                      c.id === openId
+                        ? // La fila abierta no cambia con el hover, así que la
+                          // celda fija tampoco: si no, se despareja del resto.
+                          "bg-[#1A1A1E]"
+                        : `group-hover:bg-[#141416] ${i % 2 === 0 ? "bg-[#141416]" : "bg-[#161618]"}`
+                    }`}
+                  >
                     <p className="text-white font-semibold truncate">{clientLabel(c)}</p>
-                    <p className="text-[#8A8A8A] text-xs truncate">
+                    <p className="text-[#8A8A8A] text-[13px] truncate">
                       {[c.rubro, sub].filter(Boolean).join(" · ") || "—"}
                     </p>
                   </td>
 
                   <td className="px-5 py-3">
                     <span
-                      className={`px-2 py-0.5 text-[10px] font-display font-bold tracking-wider uppercase border rounded-sm ${origin.className}`}
+                      className={`px-2 py-0.5 text-[12px] font-bold tracking-wider uppercase border rounded-sm ${origin.className}`}
                     >
                       {origin.label}
                     </span>
@@ -233,17 +318,17 @@ export default function ClientsTable({
                   <td className="px-5 py-3">
                     <ContactDots c={c} />
                     {status && (
-                      <p className={`text-[10px] mt-1 ${status.className}`} title={c.enrichment_error ?? undefined}>
+                      <p className={`text-[12px] mt-1 ${status.className}`} title={c.enrichment_error ?? undefined}>
                         {status.text}
                       </p>
                     )}
                   </td>
 
-                  <td className="px-5 py-3 text-[#B0B0B0] text-xs hidden md:table-cell">
+                  <td className="px-5 py-3 text-[#B0B0B0] text-[13px] hidden md:table-cell">
                     {c.locality ?? "—"}
                   </td>
 
-                  <td className="px-5 py-3 text-xs hidden lg:table-cell whitespace-nowrap">
+                  <td className="px-5 py-3 text-[13px] hidden lg:table-cell whitespace-nowrap">
                     {c.rating != null ? (
                       <span className="text-[#B0B0B0]">
                         ★ {c.rating}
@@ -255,115 +340,37 @@ export default function ClientsTable({
                       <span className="text-[#8A8A8A]">—</span>
                     )}
                   </td>
-
                   <td className="px-5 py-3" onClick={(e) => e.stopPropagation()}>
-                    <div className="flex items-center justify-end gap-2 text-xs">
-                      {c.whatsapp_phone && (
-                        <a
-                          href={`https://wa.me/${c.whatsapp_phone}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          title={`Abrir WhatsApp con ${formatArPhone(c.whatsapp_phone)}`}
-                          className="text-green-400 hover:text-green-300"
-                        >
-                          WhatsApp
-                        </a>
-                      )}
-                      {c.email && (
-                        <a
-                          href={`mailto:${c.email}`}
-                          title={c.email}
-                          className="text-blue-400 hover:text-blue-300"
-                        >
-                          Email
-                        </a>
-                      )}
-                      {/* El teléfono también es accionable desde el celular, y
-                          en la compu al menos permite copiarlo de un click. */}
-                      {c.phone && (
-                        <a
-                          href={`tel:+${c.phone}`}
-                          title={formatArPhone(c.phone)}
-                          className="text-[#8A8A8A] hover:text-white"
-                        >
-                          Tel
-                        </a>
-                      )}
-                      {c.website && (
-                        <a
-                          href={c.website}
-                          target="_blank"
-                          rel="noopener noreferrer nofollow"
-                          className="text-[#8A8A8A] hover:text-white"
-                        >
-                          Sitio
-                        </a>
-                      )}
-                      {/* Clave para el grupo 4: si no hay ningún dato de contacto,
-                          el perfil de la red es lo único accionable que queda. */}
-                      {c.instagram_url && (
-                        <a
-                          href={c.instagram_url}
-                          target="_blank"
-                          rel="noopener noreferrer nofollow"
-                          className="text-[#8A8A8A] hover:text-white"
-                        >
-                          IG
-                        </a>
-                      )}
-                      {c.facebook_url && (
-                        <a
-                          href={c.facebook_url}
-                          target="_blank"
-                          rel="noopener noreferrer nofollow"
-                          className="text-[#8A8A8A] hover:text-white"
-                        >
-                          FB
-                        </a>
-                      )}
-                      {c.google_maps_url && (
-                        <a
-                          href={c.google_maps_url}
-                          target="_blank"
-                          rel="noopener noreferrer nofollow"
-                          className="text-[#8A8A8A] hover:text-white"
-                        >
-                          Maps
-                        </a>
-                      )}
-                    </div>
-                  </td>
-
-                  <td className="px-5 py-3" onClick={(e) => e.stopPropagation()}>
-                    <div className="flex items-center justify-end gap-2 text-[11px] whitespace-nowrap">
+                    <div className="flex items-center justify-end gap-1 whitespace-nowrap">
                       {c.manual_lock && (
                         <span
                           title="Cargado a mano — ningún proceso automático toca esta ficha"
-                          className="text-[#8A8A8A]"
+                          aria-label="Ficha cargada a mano"
+                          className="inline-flex items-center justify-center p-1.5 text-[#6E6E76]"
                         >
-                          🔒
+                          <IconLock />
                         </span>
                       )}
-                      {/* Todo el envío vive en la Bandeja: acá solo se abre la
-                          conversación y se navega hasta el hilo. Es lo que evita
-                          tener dos lugares desde donde mandar mensajes, con
-                          reglas distintas. */}
-                      {(c.whatsapp_phone || c.phone) && (
+                      {/* Atajos a las tres pestañas de la ficha.
+                          La fila entera ya abre el Resumen; estos llevan
+                          directo a la pestaña que interesa sin pasar por ahí.
+                          Reemplazan al viejo botón "Escribir": el camino a la
+                          conversación interna sigue estando, en el Resumen
+                          ("Abrir en la Bandeja"), y el chip de WhatsApp de la
+                          columna CONTACTO abre wa.me directo. */}
+                      {ATAJOS.map(({ tab, label, Icon }) => (
                         <button
-                          onClick={() =>
-                            startTransition(async () => {
-                              const conversationId = await openConversation(c.id);
-                              router.push(`/admin/inbox?c=${conversationId}`);
-                            })
-                          }
-                          className="text-green-400 hover:text-green-300"
+                          key={tab}
+                          onClick={() => openClient(c.id, tab)}
+                          title={label}
+                          aria-label={`${label} de ${clientLabel(c)}`}
+                          className={ACCION_CLS}
                         >
-                          Escribir
+                          <Icon />
                         </button>
-                      )}
+                      ))}
                       {/* Editar y eliminar viven en la ficha: son acciones que
-                          piden ver el cliente entero, no una fila de siete
-                          columnas. */}
+                          piden ver el cliente entero, no una fila de la tabla. */}
                       {!c.manual_lock && c.enrichment_status !== "pending" && (
                         <button
                           onClick={() =>
@@ -372,10 +379,11 @@ export default function ClientsTable({
                               router.refresh();
                             })
                           }
-                          className="text-[#8A8A8A] hover:text-white"
-                          title="Vuelve a ponerlo en la cola y reintenta desde cero"
+                          title="Re-buscar — vuelve a ponerlo en la cola y reintenta desde cero"
+                          aria-label={`Re-buscar datos de ${clientLabel(c)}`}
+                          className={ACCION_CLS}
                         >
-                          Re-buscar
+                          <IconRefresh />
                         </button>
                       )}
                     </div>
@@ -385,6 +393,7 @@ export default function ClientsTable({
             })}
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* Fuera de la tabla a propósito: renderizar un panel dentro de <tbody>
@@ -395,6 +404,8 @@ export default function ClientsTable({
         members={members}
         currentUserId={currentUserId}
         canModerate={canDelete}
+        tab={openTab}
+        onTabChange={setOpenTab}
         onClose={closeClient}
         onPrev={openIndex > 0 ? () => openClient(clients[openIndex - 1].id) : undefined}
         onNext={

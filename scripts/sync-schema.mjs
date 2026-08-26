@@ -40,6 +40,8 @@ const MIRRORED = [
   ["014_analisis_conversaciones.sql", "análisis de conversaciones de vendedores (20/08/2026)"],
   ["015_invitaciones_propias.sql", "invitaciones con token propio (22/08/2026)"],
   ["016_recuperar_contrasena.sql", "recuperación de contraseña (24/08/2026)"],
+  ["017_antispam.sql", "anti-spam del formulario web (26/08/2026)"],
+  ["018_fix_rls_formulario.sql", "restaurar el INSERT público del formulario (26/08/2026)"],
 ];
 
 /** El cuerpo de una migración: de la sección 1 hasta antes de la verificación. */

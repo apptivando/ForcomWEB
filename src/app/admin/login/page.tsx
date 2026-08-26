@@ -57,7 +57,7 @@ function LoginPageInner() {
               FORCOM
             </span>
           </div>
-          <p className="text-[#8A8A8A] text-sm">Panel de administración</p>
+          <p className="text-[#8A8A8A] text-[15px]">Panel de administración</p>
         </div>
 
         <div className="bg-[#141416] border border-[#2A2A2E] rounded-sm p-8">
@@ -67,7 +67,7 @@ function LoginPageInner() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs font-display font-semibold tracking-[0.15em] uppercase text-[#8A8A8A] mb-2">
+              <label className="block text-[13px] font-semibold text-[#D4D4D4] mb-2">
                 Email
               </label>
               <input
@@ -76,13 +76,13 @@ function LoginPageInner() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 autoComplete="email"
-                className="w-full bg-[#0D0D0F] border border-[#2A2A2E] rounded-sm px-4 py-3 text-white placeholder:text-[#8A8A8A]/50 focus:border-[#E8231A] focus:outline-none transition-colors"
+                className="w-full bg-[#0D0D0F] border border-[#6A6A70] rounded-sm px-4 py-3 text-white placeholder:text-[#6A6A70] focus:border-[#4A4A52] focus:ring-2 focus:ring-[#FF6A5C]/60 focus:ring-offset-1 focus:ring-offset-[#0D0D0F] focus:outline-none transition-colors"
                 placeholder="admin@forcom.com.ar"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-display font-semibold tracking-[0.15em] uppercase text-[#8A8A8A] mb-2">
+              <label className="block text-[13px] font-semibold text-[#D4D4D4] mb-2">
                 Contraseña
               </label>
               <input
@@ -91,13 +91,13 @@ function LoginPageInner() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 autoComplete="current-password"
-                className="w-full bg-[#0D0D0F] border border-[#2A2A2E] rounded-sm px-4 py-3 text-white placeholder:text-[#8A8A8A]/50 focus:border-[#E8231A] focus:outline-none transition-colors"
+                className="w-full bg-[#0D0D0F] border border-[#6A6A70] rounded-sm px-4 py-3 text-white placeholder:text-[#6A6A70] focus:border-[#4A4A52] focus:ring-2 focus:ring-[#FF6A5C]/60 focus:ring-offset-1 focus:ring-offset-[#0D0D0F] focus:outline-none transition-colors"
                 placeholder="••••••••"
               />
             </div>
 
             {error && (
-              <p className="text-sm text-[#E8231A] bg-[#E8231A]/10 border border-[#E8231A]/20 rounded-sm px-3 py-2">
+              <p className="text-[15px] text-[#FF6A5C] bg-[#E8231A]/10 border border-[#E8231A]/20 rounded-sm px-3 py-2">
                 {error}
               </p>
             )}
@@ -105,16 +105,16 @@ function LoginPageInner() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 bg-[#E8231A] text-white font-display font-bold text-sm tracking-widest uppercase rounded-sm hover:bg-[#C41D16] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-3.5 bg-[#C41D16] text-white font-bold text-[16px] tracking-[0.3px] rounded-sm hover:bg-[#E8231A] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? "Ingresando..." : "Ingresar"}
             </button>
 
             {/* Se lleva el email ya tipeado para no hacerlo escribir de nuevo. */}
-            <p className="text-center text-sm">
+            <p className="text-center text-[15px]">
               <Link
                 href={`/admin/recuperar${email ? `?email=${encodeURIComponent(email)}` : ""}`}
-                className="text-[#8A8A8A] hover:text-[#E8231A] transition-colors"
+                className="text-[#A8A8A8] underline underline-offset-4 hover:text-[#FF6A5C] transition-colors"
               >
                 ¿Olvidaste tu contraseña?
               </Link>

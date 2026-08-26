@@ -19,7 +19,7 @@ const TIERS: { value: ContactTier; label: string }[] = [
 ];
 
 const selectClass =
-  "bg-[#0D0D0F] border border-[#2A2A2E] rounded-sm px-2.5 py-2 text-xs text-white focus:border-[#E8231A] focus:outline-none";
+  "bg-[#0D0D0F] border border-[#6A6A70] rounded-sm px-2.5 py-2 text-[13px] text-white focus:border-[#4A4A52] focus:ring-2 focus:ring-[#FF6A5C]/60 focus:ring-offset-1 focus:ring-offset-[#0D0D0F] focus:outline-none";
 
 /**
  * Filtros de /admin/clientes. Todo va a la querystring en vez de a estado de
@@ -72,7 +72,7 @@ export default function ClientsToolbar({
         value={q}
         onChange={(e) => setQ(e.target.value)}
         placeholder="Buscar por nombre, email, teléfono…"
-        className="flex-1 min-w-[200px] bg-[#0D0D0F] border border-[#2A2A2E] rounded-sm px-3 py-2 text-xs text-white placeholder:text-[#8A8A8A] focus:border-[#E8231A] focus:outline-none"
+        className="flex-1 min-w-[200px] bg-[#0D0D0F] border border-[#6A6A70] rounded-sm px-3 py-2 text-[13px] text-white placeholder:text-[#8A8A8A] focus:border-[#4A4A52] focus:ring-2 focus:ring-[#FF6A5C]/60 focus:ring-offset-1 focus:ring-offset-[#0D0D0F] focus:outline-none"
       />
 
       <select
@@ -132,7 +132,7 @@ export default function ClientsToolbar({
       )}
 
       {searchLabel && (
-        <span className="flex items-center gap-2 px-2.5 py-1.5 text-[11px] rounded-sm bg-[#E8231A]/10 text-[#E8231A] border border-[#E8231A]/20">
+        <span className="flex items-center gap-2 px-2.5 py-1.5 text-[13px] rounded-sm bg-[#E8231A]/10 text-[#FF6A5C] border border-[#E8231A]/20">
           Búsqueda: {searchLabel}
           <button onClick={() => apply("search", "")} className="hover:text-white" title="Quitar">
             ✕
@@ -143,7 +143,7 @@ export default function ClientsToolbar({
       {activeFilters.length > 0 && (
         <button
           onClick={() => startTransition(() => router.replace(pathname, { scroll: false }))}
-          className="px-3 py-2 text-xs font-display font-semibold text-[#8A8A8A] hover:text-white transition-colors"
+          className="px-3 py-2 text-[13px] font-semibold text-[#8A8A8A] hover:text-white transition-colors"
         >
           Limpiar
         </button>

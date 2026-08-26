@@ -1,3 +1,4 @@
+import { sectionTitle } from "@/lib/admin/sections";
 import Link from "next/link";
 import {
   listClients,
@@ -17,6 +18,8 @@ import ClientsTable from "@/components/admin/ClientsTable";
 import ProspectSearchPanel from "@/components/admin/ProspectSearchPanel";
 import { CLIENTS_PAGE_SIZE } from "@/lib/types";
 import type { ClientOrigin, ContactTier } from "@/lib/types";
+
+export const metadata = { title: sectionTitle("clientes") };
 
 // En Next 16 `searchParams` es una Promise y hay que await-earla.
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
@@ -96,15 +99,15 @@ export default async function ClientesPage({ searchParams }: { searchParams: Sea
         <div className="flex items-start justify-between gap-4">
           <div>
             <h1 className="font-display font-extrabold text-2xl text-white tracking-tight">Clientes</h1>
-            <p className="text-sm text-[#8A8A8A] mt-1">
+            <p className="text-[15px] text-[#8A8A8A] mt-1 max-w-prose">
               Todos los clientes, vengan de donde vengan. Ordenados por prioridad de contacto.
             </p>
           </div>
           <div className="text-right shrink-0">
-            <p className="text-sm text-white font-display font-semibold">
+            <p className="text-[15px] text-white font-display font-semibold">
               {totalAll.toLocaleString("es-AR")} clientes
             </p>
-            <p className="text-xs text-green-400">
+            <p className="text-[13px] text-green-400">
               {tierCounts[1].toLocaleString("es-AR")} con WhatsApp
             </p>
           </div>
@@ -138,7 +141,7 @@ export default async function ClientesPage({ searchParams }: { searchParams: Sea
         />
 
         {totalPages > 1 && (
-          <div className="flex items-center justify-between mt-4 text-xs text-[#8A8A8A]">
+          <div className="flex items-center justify-between mt-4 text-[13px] text-[#8A8A8A]">
             <span>
               {total.toLocaleString("es-AR")} resultados · página {filters.page} de {totalPages}
             </span>
@@ -165,7 +168,7 @@ export default async function ClientesPage({ searchParams }: { searchParams: Sea
 
         {/* Atribución exigida por los términos de Google Maps Platform al
             mostrar datos de Places sin un mapa, incluso puertas adentro. */}
-        <p className="mt-6 text-[10px] text-[#8A8A8A]">
+        <p className="mt-6 text-[12px] text-[#8A8A8A]">
           Datos de establecimientos: Google Maps Platform.
         </p>
       </div>

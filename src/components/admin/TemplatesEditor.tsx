@@ -9,11 +9,11 @@ const STATUS_STYLE: Record<OutreachTemplate["status"], { label: string; classNam
   borrador: { label: "Borrador", className: "bg-[#2A2A2E] text-[#B0B0B0] border-[#2A2A2E]" },
   enviada: { label: "Esperando a Meta", className: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20" },
   aprobada: { label: "Aprobada", className: "bg-green-500/10 text-green-400 border-green-500/20" },
-  rechazada: { label: "Rechazada", className: "bg-[#E8231A]/10 text-[#E8231A] border-[#E8231A]/20" },
+  rechazada: { label: "Rechazada", className: "bg-[#E8231A]/10 text-[#FF6A5C] border-[#E8231A]/20" },
 };
 
 const field =
-  "bg-[#0D0D0F] border border-[#2A2A2E] rounded-sm px-3 py-2 text-sm text-white placeholder:text-[#8A8A8A] focus:border-[#E8231A] focus:outline-none";
+  "bg-[#0D0D0F] border border-[#6A6A70] rounded-sm px-3 py-2 text-[15px] text-white placeholder:text-[#8A8A8A] focus:border-[#4A4A52] focus:ring-2 focus:ring-[#FF6A5C]/60 focus:ring-offset-1 focus:ring-offset-[#0D0D0F] focus:outline-none";
 
 const EMPTY = {
   id: undefined as string | undefined,
@@ -96,7 +96,7 @@ export default function TemplatesEditor({
       {canEdit && !form && (
         <button
           onClick={() => setForm({ ...EMPTY })}
-          className="px-5 py-2.5 bg-[#E8231A] text-white font-display font-bold text-xs tracking-widest uppercase rounded-sm hover:bg-[#C41D16] transition-colors"
+          className="px-5 py-2.5 bg-[#C41D16] text-white font-display font-bold text-xs tracking-widest uppercase rounded-sm hover:bg-[#E8231A] transition-colors"
         >
           + Nueva plantilla
         </button>
@@ -157,7 +157,7 @@ export default function TemplatesEditor({
             onChange={(e) => setForm({ ...form, variablesText: e.target.value })}
           />
 
-          <div className="text-[11px] text-[#8A8A8A] space-y-1">
+          <div className="text-[13px] text-[#8A8A8A] space-y-1">
             <p>
               Se completan solos desde la ficha del cliente cuando la descripción menciona{" "}
               <span className="text-[#B0B0B0]">nombre de contacto</span>,{" "}
@@ -183,7 +183,7 @@ export default function TemplatesEditor({
             />
           )}
 
-          <label className="flex items-center gap-2 text-xs text-[#B0B0B0]">
+          <label className="flex items-center gap-2 text-[13px] text-[#B0B0B0]">
             <input
               type="checkbox"
               checked={form.active}
@@ -192,19 +192,19 @@ export default function TemplatesEditor({
             Activa — aparece al escribirle a un cliente
           </label>
 
-          {error && <p className="text-xs text-[#E8231A]">{error}</p>}
+          {error && <p className="text-[13px] text-[#FF6A5C]">{error}</p>}
 
           <div className="flex gap-2">
             <button
               onClick={save}
               disabled={saving || !form.name.trim() || !form.body.trim()}
-              className="px-5 py-2 bg-[#E8231A] text-white font-display font-bold text-xs tracking-widest uppercase rounded-sm hover:bg-[#C41D16] disabled:opacity-40 transition-colors"
+              className="px-5 py-2 bg-[#C41D16] text-white font-display font-bold text-xs tracking-widest uppercase rounded-sm hover:bg-[#E8231A] disabled:opacity-40 transition-colors"
             >
               {saving ? "Guardando…" : "Guardar"}
             </button>
             <button
               onClick={() => setForm(null)}
-              className="px-4 py-2 text-xs font-display font-semibold text-[#8A8A8A] hover:text-white transition-colors"
+              className="px-4 py-2 text-[13px] font-semibold text-[#8A8A8A] hover:text-white transition-colors"
             >
               Cancelar
             </button>
@@ -230,32 +230,32 @@ export default function TemplatesEditor({
                 <div className="flex flex-wrap items-center gap-2 mb-2">
                   <p className="font-display font-semibold text-white">{t.name}</p>
                   <span
-                    className={`px-2 py-0.5 text-[10px] font-display font-bold tracking-wider uppercase border rounded-sm ${style.className}`}
+                    className={`px-2 py-0.5 text-[12px] font-bold tracking-wider uppercase border rounded-sm ${style.className}`}
                   >
                     {style.label}
                   </span>
-                  <span className="text-[10px] text-[#8A8A8A] uppercase tracking-wider">
+                  <span className="text-[12px] text-[#8A8A8A] uppercase tracking-wider">
                     {t.category} · {t.language}
                   </span>
-                  {!t.active && <span className="text-[10px] text-[#8A8A8A]">inactiva</span>}
+                  {!t.active && <span className="text-[12px] text-[#8A8A8A]">inactiva</span>}
                   {t.meta_template_name && (
-                    <code className="text-[10px] text-[#8A8A8A]">{t.meta_template_name}</code>
+                    <code className="text-[12px] text-[#8A8A8A]">{t.meta_template_name}</code>
                   )}
                 </div>
 
-                <pre className="text-xs text-[#B0B0B0] whitespace-pre-wrap font-sans">{t.body}</pre>
+                <pre className="text-[13px] text-[#B0B0B0] whitespace-pre-wrap font-sans">{t.body}</pre>
 
                 {t.variables.length > 0 && (
-                  <p className="text-[10px] text-[#8A8A8A] mt-2">
+                  <p className="text-[12px] text-[#8A8A8A] mt-2">
                     {t.variables.map((v, i) => `{{${i + 1}}} = ${v}`).join(" · ")}
                   </p>
                 )}
                 {t.rejection_reason && (
-                  <p className="text-[11px] text-[#E8231A] mt-2">Rechazo: {t.rejection_reason}</p>
+                  <p className="text-[13px] text-[#FF6A5C] mt-2">Rechazo: {t.rejection_reason}</p>
                 )}
 
                 {canEdit && (
-                  <div className="flex gap-3 mt-3 text-xs">
+                  <div className="flex gap-3 mt-3 text-[13px]">
                     <button
                       onClick={() => setForm(toForm(t))}
                       className="text-[#B0B0B0] hover:text-white"
@@ -270,7 +270,7 @@ export default function TemplatesEditor({
                             setConfirmDelete(null);
                             router.refresh();
                           }}
-                          className="text-[#E8231A] hover:text-white"
+                          className="text-[#FF6A5C] hover:text-white"
                         >
                           Confirmar
                         </button>
@@ -284,7 +284,7 @@ export default function TemplatesEditor({
                     ) : (
                       <button
                         onClick={() => setConfirmDelete(t.id)}
-                        className="text-[#8A8A8A] hover:text-[#E8231A]"
+                        className="text-[#8A8A8A] hover:text-[#FF6A5C]"
                       >
                         Eliminar
                       </button>

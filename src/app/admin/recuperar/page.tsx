@@ -21,12 +21,12 @@ function LinkVencido({ titulo, detalle }: { titulo: string; detalle: string }) {
   return (
     <>
       <h1 className="font-display font-bold text-xl text-white mb-3">{titulo}</h1>
-      <p className="text-sm text-[#8A8A8A] mb-6">{detalle}</p>
+      <p className="text-[15px] text-[#8A8A8A] mb-6">{detalle}</p>
       <div className="flex flex-col gap-2">
-        <Link href="/admin/recuperar" className="text-sm text-[#E8231A] hover:underline">
+        <Link href="/admin/recuperar" className="text-[15px] text-[#FF6A5C] hover:underline">
           Pedir un link nuevo
         </Link>
-        <Link href="/admin/login" className="text-sm text-[#8A8A8A] hover:text-white transition-colors">
+        <Link href="/admin/login" className="text-[15px] text-[#8A8A8A] hover:text-white transition-colors">
           Volver al inicio de sesión
         </Link>
       </div>
@@ -86,7 +86,7 @@ export default async function RecuperarPage({ searchParams }: { searchParams: Se
   return (
     <AuthShell subtitle="Recuperar contraseña">
       <h1 className="font-display font-bold text-xl text-white mb-2">Elegí una contraseña nueva</h1>
-      <p className="text-sm text-[#8A8A8A] mb-6">
+      <p className="text-[15px] text-[#8A8A8A] mb-6">
         Al guardarla entrás al panel directo.
       </p>
       <PasswordForm mode="reset" email={reset.email} token={token} />

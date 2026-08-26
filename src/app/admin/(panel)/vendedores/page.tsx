@@ -1,8 +1,11 @@
+import { sectionTitle } from "@/lib/admin/sections";
 import { getSellerStats, listReviews, getReviewQueue } from "@/app/admin/review-actions";
 import { listMembersForAssignment } from "@/app/admin/actions";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentRole } from "@/lib/auth/roles";
 import SellersView from "@/components/admin/SellersView";
+
+export const metadata = { title: sectionTitle("vendedores") };
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
@@ -20,7 +23,7 @@ export default async function VendedoresPage({ searchParams }: { searchParams: S
     return (
       <div className="p-8">
         <h1 className="font-display font-extrabold text-3xl text-white">Vendedores</h1>
-        <p className="text-[#8A8A8A] mt-2">Solo un owner o un admin puede ver esta pantalla.</p>
+        <p className="text-[#8A8A8A] mt-2 max-w-prose">Solo un owner o un admin puede ver esta pantalla.</p>
       </div>
     );
   }
@@ -39,13 +42,13 @@ export default async function VendedoresPage({ searchParams }: { searchParams: S
     <div className="p-8">
       <div className="mb-6">
         <h1 className="font-display font-extrabold text-3xl text-white">Vendedores</h1>
-        <p className="text-[#8A8A8A] mt-1 max-w-3xl">
+        <p className="text-[#8A8A8A] mt-1 max-w-prose">
           Cómo se está atendiendo por las líneas conectadas, y qué conviene revisar.
         </p>
       </div>
 
       {sinLineas && (
-        <div className="bg-[#141416] border border-[#2A2A2E] rounded-sm p-5 mb-6 max-w-3xl text-sm text-[#B0B0B0]">
+        <div className="bg-[#141416] border border-[#2A2A2E] rounded-sm p-5 mb-6 max-w-3xl text-[15px] text-[#B0B0B0]">
           <p>
             Todavía no hay actividad registrada. Conectá la línea de un vendedor en{" "}
             <a href="/admin/lineas" className="text-white underline underline-offset-4">

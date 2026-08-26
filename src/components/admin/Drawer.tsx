@@ -142,7 +142,7 @@ export default function Drawer({
         <div className="flex items-start justify-between gap-3 px-6 py-4 border-b border-[#2A2A2E] shrink-0">
           <div className="min-w-0">
             <div className="font-display font-semibold text-white truncate">{title}</div>
-            {subtitle && <div className="text-xs text-[#8A8A8A] mt-0.5 truncate">{subtitle}</div>}
+            {subtitle && <div className="text-[13px] text-[#8A8A8A] mt-0.5 truncate">{subtitle}</div>}
           </div>
           <button
             onClick={onClose}

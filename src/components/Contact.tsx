@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import { HONEYPOT_FIELD } from "@/lib/antispam";
 
 interface ContactInfo {
   email: string;
@@ -13,6 +14,17 @@ export default function Contact({ info }: { info?: ContactInfo }) {
   const phone = info?.phone ?? "+54 11 xxxx-xxxx";
   const schedule = info?.schedule ?? "Lun — Vie, 9:00 a 18:00";
   const [status, setStatus] = useState<"idle" | "sending" | "success" | "error">("idle");
+  // Marca de cuándo se pintó el formulario. Un bot postea en milisegundos; una
+  // persona no. Ver `src/lib/antispam`.
+  //
+  // Se sella en un efecto y no durante el render: `Date.now()` es impura y
+  // llamarla en el cuerpo del componente da resultados inestables. El efecto
+  // corre una sola vez, apenas el formulario es visible, que es justo el
+  // momento que hay que medir.
+  const renderedAt = useRef(0);
+  useEffect(() => {
+    renderedAt.current = Date.now();
+  }, []);
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -26,6 +38,9 @@ export default function Contact({ info }: { info?: ContactInfo }) {
       phone: (form.elements.namedItem("phone") as HTMLInputElement).value,
       industry: (form.elements.namedItem("industry") as HTMLSelectElement).value,
       message: (form.elements.namedItem("message") as HTMLTextAreaElement).value,
+      // Señales anti-bot. El servidor decide; acá solo se reportan.
+      [HONEYPOT_FIELD]: (form.elements.namedItem(HONEYPOT_FIELD) as HTMLInputElement)?.value ?? "",
+      elapsedMs: Date.now() - renderedAt.current,
     };
 
     try {
@@ -118,6 +133,29 @@ export default function Contact({ info }: { info?: ContactInfo }) {
                 </div>
               ) : (
                 <form onSubmit={handleSubmit} className="space-y-5">
+                  {/* Campo trampa. No se ve, no se tabula y no lo lee un lector
+                      de pantalla; un bot que completa todo lo que encuentra en
+                      el DOM sí lo llena, y ahí se descarta el envío.
+                      `left-[-9999px]` en vez de `display:none` porque algunos
+                      bots saltean lo que está oculto por CSS. */}
+                  <div className="absolute left-[-9999px] top-auto w-px h-px overflow-hidden" aria-hidden="true">
+                    <label htmlFor="contact-fc-ref">No completar este campo</label>
+                    <input
+                      id="contact-fc-ref"
+                      name={HONEYPOT_FIELD}
+                      type="text"
+                      tabIndex={-1}
+                      autoComplete="off"
+                      // `autocomplete="off"` lo ignoran varios gestores de
+                      // contraseñas; estos dos atributos sí los respetan
+                      // 1Password y LastPass. Que el autofill llene la trampa
+                      // descartaría el mensaje de una persona real en silencio.
+                      data-1p-ignore="true"
+                      data-lpignore="true"
+                      data-form-type="other"
+                      defaultValue=""
+                    />
+                  </div>
                   <div>
                     <label htmlFor="contact-name" className="block font-display font-semibold text-xs tracking-[0.15em] uppercase text-forcom-gray mb-2">
                       Nombre completo

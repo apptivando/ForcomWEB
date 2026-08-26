@@ -14,7 +14,7 @@ import { openConversation } from "@/app/admin/outreach-actions";
 import { getClient } from "@/app/admin/client-actions";
 import type { CrmContact, PipelineStage } from "@/lib/types";
 
-type Tab = "resumen" | "actividad" | "datos";
+export type Tab = "resumen" | "actividad" | "datos";
 
 function fmtDate(iso: string | null): string {
   if (!iso) return "—";
@@ -30,8 +30,8 @@ function fmtDate(iso: string | null): string {
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex gap-3 py-1.5 border-b border-[#1F1F23] last:border-0">
-      <span className="w-32 shrink-0 text-[11px] text-[#8A8A8A] pt-0.5">{label}</span>
-      <div className="flex-1 min-w-0 text-xs text-[#B0B0B0] break-words">{children}</div>
+      <span className="w-32 shrink-0 text-[13px] text-[#8A8A8A] pt-0.5">{label}</span>
+      <div className="flex-1 min-w-0 text-[13px] text-[#B0B0B0] break-words">{children}</div>
     </div>
   );
 }
@@ -59,6 +59,8 @@ export default function ClientDrawer({
   onPrev,
   onNext,
   position,
+  tab,
+  onTabChange,
 }: {
   client: CrmContact | null;
   stages: PipelineStage[];
@@ -70,8 +72,17 @@ export default function ClientDrawer({
   onNext?: () => void;
   /** "3 de 50" — para saber dónde estás sin cerrar la ficha. */
   position?: { index: number; total: number };
+  /**
+   * La pestaña visible la maneja el PADRE, no la ficha.
+   *
+   * Es lo que permite que los atajos de la fila (Resumen · Actividad · Datos)
+   * funcionen también sobre el cliente que ya está abierto: si el estado
+   * viviera acá, pedir otra pestaña del mismo cliente no cambiaría el `id` y
+   * no habría nada que disparara el cambio.
+   */
+  tab: Tab;
+  onTabChange: (t: Tab) => void;
 }) {
-  const [tab, setTab] = useState<Tab>("resumen");
   const [shownId, setShownId] = useState(client?.id ?? null);
   /**
    * La ficha es dueña de su copia del cliente.
@@ -89,13 +100,12 @@ export default function ClientDrawer({
   const [, startTransition] = useTransition();
   const router = useRouter();
 
-  // Ajuste durante el render, no en un efecto: al cambiar de cliente se vuelve
-  // al Resumen. Quedarse en "Datos" con el formulario de otro cliente a medio
-  // llenar es la peor sorpresa posible.
+  // Ajuste durante el render, no en un efecto. La pestaña la resetea el padre
+  // al abrir otro cliente: quedarse en "Datos" con el formulario de otro
+  // cliente a medio llenar es la peor sorpresa posible.
   if (client && client.id !== shownId) {
     setShownId(client.id);
     setCurrent(client);
-    setTab("resumen");
   }
 
   // Al cerrar, `client` pasa a null pero se conserva el último para que el
@@ -127,7 +137,7 @@ export default function ClientDrawer({
         <div className="flex items-center gap-2 flex-wrap">
           <span>{clientLabel(shown)}</span>
           <span
-            className={`px-2 py-0.5 text-[10px] font-display font-bold tracking-wider uppercase border rounded-sm ${origin.className}`}
+            className={`px-2 py-0.5 text-[12px] font-bold tracking-wider uppercase border rounded-sm ${origin.className}`}
           >
             {origin.label}
           </span>
@@ -150,10 +160,10 @@ export default function ClientDrawer({
           {tabs.map(([key, label]) => (
             <button
               key={key}
-              onClick={() => setTab(key)}
-              className={`px-3 py-1.5 text-[11px] font-display font-semibold rounded-sm transition-colors ${
+              onClick={() => onTabChange(key)}
+              className={`px-3 py-1.5 text-[13px] font-semibold rounded-sm transition-colors ${
                 tab === key
-                  ? "bg-[#E8231A]/10 text-[#E8231A] border border-[#E8231A]/20"
+                  ? "bg-[#E8231A]/10 text-[#FF6A5C] border border-[#E8231A]/20"
                   : "text-[#8A8A8A] hover:text-white border border-transparent"
               }`}
             >
@@ -163,7 +173,7 @@ export default function ClientDrawer({
         </div>
 
         {position && (
-          <div className="flex items-center gap-2 text-[11px] text-[#8A8A8A]">
+          <div className="flex items-center gap-2 text-[13px] text-[#8A8A8A]">
             <button
               onClick={onPrev}
               disabled={!onPrev}
@@ -199,7 +209,7 @@ export default function ClientDrawer({
                     router.push(`/admin/inbox?c=${id}`);
                   })
                 }
-                className="text-[11px] font-display font-semibold text-green-400 hover:text-green-300"
+                className="text-[13px] font-semibold text-green-400 hover:text-green-300"
               >
                 Abrir en la Bandeja →
               </button>
@@ -207,7 +217,7 @@ export default function ClientDrawer({
           </div>
 
           <div>
-            <p className="text-[10px] font-display font-semibold tracking-[0.15em] uppercase text-[#8A8A8A] mb-1.5">
+            <p className="text-[12px] font-semibold tracking-[0.15em] uppercase text-[#8A8A8A] mb-1.5">
               Contacto
             </p>
             <Row label="WhatsApp">
@@ -245,7 +255,7 @@ export default function ClientDrawer({
           </div>
 
           <div>
-            <p className="text-[10px] font-display font-semibold tracking-[0.15em] uppercase text-[#8A8A8A] mb-1.5">
+            <p className="text-[12px] font-semibold tracking-[0.15em] uppercase text-[#8A8A8A] mb-1.5">
               En la web
             </p>
             <Row label="Sitio">
@@ -265,7 +275,7 @@ export default function ClientDrawer({
           <ClientDeals contactId={shown.id} stages={stages} />
 
           <div>
-            <p className="text-[10px] font-display font-semibold tracking-[0.15em] uppercase text-[#8A8A8A] mb-1.5">
+            <p className="text-[12px] font-semibold tracking-[0.15em] uppercase text-[#8A8A8A] mb-1.5">
               De dónde salió
             </p>
             <Row label="Origen">{origin.label}</Row>
@@ -300,7 +310,7 @@ export default function ClientDrawer({
           </div>
 
           <div>
-            <p className="text-[10px] font-display font-semibold tracking-[0.15em] uppercase text-[#8A8A8A] mb-1.5">
+            <p className="text-[12px] font-semibold tracking-[0.15em] uppercase text-[#8A8A8A] mb-1.5">
               Búsqueda de datos
             </p>
             <Row label="Hasta dónde llegó">
@@ -315,7 +325,7 @@ export default function ClientDrawer({
                 estado, así que en la práctica nadie lo leía nunca. */}
             {shown.enrichment_error && (
               <Row label="Por qué falló">
-                <span className="text-[#E8231A]">{shown.enrichment_error}</span>
+                <span className="text-[#FF6A5C]">{shown.enrichment_error}</span>
               </Row>
             )}
             {shown.notes && (

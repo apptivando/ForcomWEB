@@ -24,7 +24,7 @@ function formatExpiry(iso: string): string {
 }
 
 const inputCls =
-  "w-full bg-[#0D0D0F] border border-[#2A2A2E] rounded-sm px-4 py-3 text-white focus:border-[#E8231A] focus:outline-none transition-colors";
+  "w-full bg-[#0D0D0F] border border-[#6A6A70] rounded-sm px-4 py-3 text-white focus:border-[#4A4A52] focus:ring-2 focus:ring-[#FF6A5C]/60 focus:ring-offset-1 focus:ring-offset-[#0D0D0F] focus:outline-none transition-colors";
 const labelCls =
   "block text-xs font-display font-semibold tracking-[0.15em] uppercase text-[#8A8A8A] mb-1.5";
 
@@ -114,7 +114,7 @@ export default function MembersEditor({
   }
 
   return (
-    <div className="max-w-2xl space-y-6">
+    <div className="max-w-form space-y-6">
       {/* Invitar */}
       <form onSubmit={handleInvite} className="bg-[#141416] border border-[#2A2A2E] rounded-sm p-6">
         <h3 className="text-xs font-display font-semibold tracking-[0.15em] uppercase text-[#8A8A8A] mb-4">
@@ -122,8 +122,8 @@ export default function MembersEditor({
         </h3>
         <div className="flex gap-3 items-end flex-wrap">
           <div className="flex-1 min-w-[220px]">
-            <label className={labelCls}>Email</label>
-            <input
+            <label htmlFor="email" className={labelCls}>Email</label>
+            <input id="email"
               type="email"
               required
               value={email}
@@ -133,8 +133,8 @@ export default function MembersEditor({
             />
           </div>
           <div>
-            <label className={labelCls}>Rol</label>
-            <select
+            <label htmlFor="rol" className={labelCls}>Rol</label>
+            <select id="rol"
               value={role}
               onChange={(e) => setRole(e.target.value as AdminMember["role"])}
               className={inputCls}
@@ -147,14 +147,14 @@ export default function MembersEditor({
           <button
             type="submit"
             disabled={sending}
-            className="px-6 py-3 bg-[#E8231A] text-white font-display font-bold text-sm tracking-widest uppercase rounded-sm hover:bg-[#C41D16] transition-colors disabled:opacity-50 whitespace-nowrap"
+            className="px-6 py-3 bg-[#C41D16] text-white font-display font-bold text-[15px] tracking-widest uppercase rounded-sm hover:bg-[#E8231A] transition-colors disabled:opacity-50 whitespace-nowrap"
           >
             {sending ? "Enviando..." : "Invitar"}
           </button>
         </div>
-        {sent && <p className="text-sm text-green-400 mt-3">✓ Invitación enviada</p>}
+        {sent && <p className="text-[15px] text-green-400 mt-3">✓ Invitación enviada</p>}
         {error && (
-          <p className="text-sm text-[#E8231A] bg-[#E8231A]/10 border border-[#E8231A]/20 rounded-sm px-4 py-3 mt-3">
+          <p className="text-[15px] text-[#FF6A5C] bg-[#E8231A]/10 border border-[#E8231A]/20 rounded-sm px-4 py-3 mt-3">
             {error}
           </p>
         )}
@@ -170,8 +170,8 @@ export default function MembersEditor({
             {invitations.map((inv) => (
               <div key={inv.id} className="flex items-center justify-between gap-3 py-2 border-b border-[#2A2A2E] last:border-0">
                 <div className="min-w-0">
-                  <p className="text-sm text-white truncate">{inv.email}</p>
-                  <p className="text-[11px] text-[#8A8A8A]">
+                  <p className="text-[15px] text-white truncate">{inv.email}</p>
+                  <p className="text-[13px] text-[#8A8A8A]">
                     {ROLE_LABEL[inv.role]}
                     {" · "}
                     {new Date(inv.expires_at) < new Date()
@@ -179,7 +179,7 @@ export default function MembersEditor({
                       : `vence el ${formatExpiry(inv.expires_at)}`}
                   </p>
                   {resent === inv.id && (
-                    <p className="text-[11px] text-green-400 mt-0.5">
+                    <p className="text-[13px] text-green-400 mt-0.5">
                       ✓ Correo reenviado con un link nuevo
                     </p>
                   )}
@@ -188,13 +188,13 @@ export default function MembersEditor({
                   <button
                     onClick={() => handleResendInvitation(inv.id)}
                     disabled={resending === inv.id}
-                    className="text-xs text-[#8A8A8A] hover:text-white transition-colors disabled:opacity-50"
+                    className="text-[13px] text-[#8A8A8A] hover:text-white transition-colors disabled:opacity-50"
                   >
                     {resending === inv.id ? "Enviando..." : "Reenviar"}
                   </button>
                   <button
                     onClick={() => handleCancelInvitation(inv.id)}
-                    className="text-xs text-[#8A8A8A] hover:text-[#E8231A] transition-colors"
+                    className="text-[13px] text-[#8A8A8A] hover:text-[#FF6A5C] transition-colors"
                   >
                     Cancelar
                   </button>
@@ -214,7 +214,7 @@ export default function MembersEditor({
           {members.map((m) => (
             <div key={m.user_id} className="flex items-center justify-between py-2 border-b border-[#2A2A2E] last:border-0">
               <div>
-                <p className="text-sm text-white">
+                <p className="text-[15px] text-white">
                   {emailByUserId[m.user_id] ?? m.user_id}
                   {m.user_id === currentUserId && (
                     <span className="text-[#8A8A8A]"> (vos)</span>
@@ -226,7 +226,7 @@ export default function MembersEditor({
                   value={m.role}
                   onChange={(e) => handleRoleChange(m.user_id, e.target.value as AdminMember["role"])}
                   disabled={m.user_id === currentUserId}
-                  className="bg-[#0D0D0F] border border-[#2A2A2E] rounded-sm px-2 py-1.5 text-xs text-white focus:border-[#E8231A] focus:outline-none disabled:opacity-50"
+                  className="bg-[#0D0D0F] border border-[#6A6A70] rounded-sm px-2 py-1.5 text-[13px] text-white focus:border-[#4A4A52] focus:ring-2 focus:ring-[#FF6A5C]/60 focus:ring-offset-1 focus:ring-offset-[#0D0D0F] focus:outline-none disabled:opacity-50"
                 >
                   <option value="agent">Agente</option>
                   <option value="admin">Admin</option>
@@ -235,7 +235,7 @@ export default function MembersEditor({
                 {m.user_id !== currentUserId && (
                   <button
                     onClick={() => handleRemove(m.user_id)}
-                    className="text-xs text-[#8A8A8A] hover:text-[#E8231A] transition-colors"
+                    className="text-[13px] text-[#8A8A8A] hover:text-[#FF6A5C] transition-colors"
                   >
                     Quitar
                   </button>

@@ -2289,3 +2289,39 @@ CREATE INDEX IF NOT EXISTS admin_password_resets_email_idx
 -- pide una recuperación justamente NO tiene sesión. Es distinto de
 -- admin_invitations, que sí se lee desde el panel con la sesión de un admin.
 ALTER TABLE admin_password_resets ENABLE ROW LEVEL SECURITY;
+
+
+-- ============================================================
+-- Migración: anti-spam del formulario web (26/08/2026)
+-- Ejecutar en Supabase Dashboard > SQL Editor
+-- Ver supabase/sql-changes/017_antispam.sql
+-- ============================================================
+
+
+-- 1. Estado 'spam' en los mensajes del formulario
+ALTER TABLE contact_messages DROP CONSTRAINT IF EXISTS contact_messages_status_check;
+ALTER TABLE contact_messages
+  ADD CONSTRAINT contact_messages_status_check
+  CHECK (status IN ('nuevo', 'leido', 'contactado', 'spam'));
+
+COMMENT ON COLUMN contact_messages.status IS
+  'nuevo | leido | contactado | spam. El spam no se borra: queda para poder revisar si el filtro se comió algo legítimo.';
+
+-- Los listados del panel filtran por estado, y el dashboard cuenta los nuevos.
+CREATE INDEX IF NOT EXISTS contact_messages_status_idx ON contact_messages (status);
+
+
+-- ============================================================
+-- Migración: restaurar el INSERT público del formulario (26/08/2026)
+-- Ejecutar en Supabase Dashboard > SQL Editor
+-- Ver supabase/sql-changes/018_fix_rls_formulario.sql
+-- ============================================================
+
+
+-- 1. Volver a habilitar el envío público del formulario
+-- Es la única operación que el rol anon necesita sobre esta tabla: no puede
+-- leer, ni actualizar, ni borrar. Solo dejar un mensaje.
+DROP POLICY IF EXISTS "Anyone can submit contact" ON contact_messages;
+CREATE POLICY "Anyone can submit contact" ON contact_messages
+  FOR INSERT TO anon, authenticated
+  WITH CHECK (true);

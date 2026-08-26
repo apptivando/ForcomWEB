@@ -81,48 +81,48 @@ export default function ClientDeals({
   }
 
   const field =
-    "bg-[#0D0D0F] border border-[#2A2A2E] rounded-sm px-2.5 py-1.5 text-xs text-white placeholder:text-[#8A8A8A] focus:border-[#E8231A] focus:outline-none";
+    "bg-[#0D0D0F] border border-[#6A6A70] rounded-sm px-2.5 py-1.5 text-[13px] text-white placeholder:text-[#8A8A8A] focus:border-[#4A4A52] focus:ring-2 focus:ring-[#FF6A5C]/60 focus:ring-offset-1 focus:ring-offset-[#0D0D0F] focus:outline-none";
 
   return (
     <div>
       <div className="flex items-center justify-between mb-1.5">
-        <p className="text-[10px] font-display font-semibold tracking-[0.15em] uppercase text-[#8A8A8A]">
+        <p className="text-[12px] font-semibold tracking-[0.15em] uppercase text-[#8A8A8A]">
           Pipeline de ventas
         </p>
         {!adding && (
           <button
             onClick={() => setAdding(true)}
-            className="text-[11px] text-[#8A8A8A] hover:text-white"
+            className="text-[13px] text-[#8A8A8A] hover:text-white"
           >
             + Nueva oportunidad
           </button>
         )}
       </div>
 
-      {error && <p className="text-[11px] text-[#E8231A] mb-2">{error}</p>}
+      {error && <p className="text-[13px] text-[#FF6A5C] mb-2">{error}</p>}
 
-      {loading && <p className="text-xs text-[#8A8A8A]">Cargando…</p>}
+      {loading && <p className="text-[13px] text-[#8A8A8A]">Cargando…</p>}
 
       {!loading && deals.length === 0 && !adding && (
-        <p className="text-xs text-[#8A8A8A]">Sin oportunidades abiertas.</p>
+        <p className="text-[13px] text-[#8A8A8A]">Sin oportunidades abiertas.</p>
       )}
 
       <div className="space-y-2">
         {deals.map((d) => (
           <div
             key={d.id}
-            className="flex items-center gap-2 bg-[#0D0D0F] border border-[#2A2A2E] rounded-sm px-3 py-2"
+            className="flex items-center gap-2 bg-[#0D0D0F] border border-[#6A6A70] rounded-sm px-3 py-2"
           >
             <div className="flex-1 min-w-0">
-              <p className="text-xs text-white truncate">{d.title}</p>
+              <p className="text-[13px] text-white truncate">{d.title}</p>
               {d.value != null && (
-                <p className="text-[11px] text-[#E8231A]">{formatValue(d.value)}</p>
+                <p className="text-[13px] text-[#FF6A5C]">{formatValue(d.value)}</p>
               )}
             </div>
             <select
               value={d.stage_id}
               onChange={(e) => handleMove(d.id, e.target.value)}
-              className="bg-[#141416] border border-[#2A2A2E] rounded-sm px-2 py-1 text-[11px] text-white focus:border-[#E8231A] focus:outline-none"
+              className="bg-[#141416] border border-[#2A2A2E] rounded-sm px-2 py-1 text-[13px] text-white focus:border-[#4A4A52] focus:ring-2 focus:ring-[#FF6A5C]/60 focus:ring-offset-1 focus:ring-offset-[#0D0D0F] focus:outline-none"
               title={`Etapa actual: ${stageName(d.stage_id)}`}
             >
               {stages.map((s) => (
@@ -136,7 +136,7 @@ export default function ClientDeals({
       </div>
 
       {adding && (
-        <div className="mt-2 space-y-2 bg-[#0D0D0F] border border-[#2A2A2E] rounded-sm p-3">
+        <div className="mt-2 space-y-2 bg-[#0D0D0F] border border-[#6A6A70] rounded-sm p-3">
           <input
             className={`${field} w-full`}
             placeholder="Qué se le está vendiendo"
@@ -150,11 +150,11 @@ export default function ClientDeals({
             value={value}
             onChange={(e) => setValue(e.target.value.replace(/[^\d]/g, ""))}
           />
-          <div className="flex gap-3 text-[11px]">
+          <div className="flex gap-3 text-[13px]">
             <button
               onClick={handleCreate}
               disabled={!title.trim()}
-              className="text-[#E8231A] hover:text-white font-display font-semibold disabled:opacity-40"
+              className="text-[#FF6A5C] hover:text-white font-display font-semibold disabled:opacity-40"
             >
               Crear en {stages[0]?.name ?? "la primera etapa"}
             </button>

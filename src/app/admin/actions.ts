@@ -40,6 +40,7 @@ import type {
   HeroSlide,
   Product,
   CompanyInfo,
+  ContactMessage,
   CrmContact,
   ClientOrigin,
   ContactTier,
@@ -246,7 +247,7 @@ export async function toggleProductActive(id: string, active: boolean) {
 
 export async function updateMessageStatus(
   id: string,
-  status: "nuevo" | "leido" | "contactado"
+  status: ContactMessage["status"]
 ) {
   const supabase = await requireAuth();
   const { error } = await supabase
@@ -274,6 +275,188 @@ export async function deleteMessage(id: string) {
   if (error) throw new Error(error.message);
   revalidatePath("/admin/crm");
   revalidatePath("/admin/dashboard");
+}
+
+/**
+ * Marca mensajes del formulario como spam, en lote.
+ *
+ * Marcar no es borrar: el registro queda, así se puede revisar si el filtro se
+ * comió algo legítimo. Lo que sí se hace es **limpiar el rastro en Clientes**,
+ * que es donde el spam hacía el daño real: los dos envíos con razón social
+ * generada al azar habían quedado clasificados en la prioridad "2 · Con email",
+ * ensuciando la base de prospectos y cualquier exportación a CSV.
+ *
+ * La ficha del cliente se borra solo si cumple las dos condiciones:
+ *
+ *   · `origin = 'formulario'` — o sea que la creó este mismo formulario. Si el
+ *     contacto ya existía como prospecto de Google o como conversación de
+ *     WhatsApp, el mensaje spam no puede llevárselo puesto.
+ *   · no tiene oportunidades en el pipeline — si alguien ya lo trabajó, no era
+ *     spam, y borrarlo cascadearía sobre `pipeline_deals`.
+ *
+ * Devuelve cuántas fichas se limpiaron, para poder decirlo en el aviso.
+ */
+export async function markMessagesSpam(ids: string[]): Promise<{ clientesLimpiados: number }> {
+  if (ids.length === 0) return { clientesLimpiados: 0 };
+  const supabase = await requireAuth();
+
+  const { data: messages, error: readError } = await supabase
+    .from("contact_messages")
+    .select("id, contact_id")
+    .in("id", ids);
+  if (readError) throw new Error(readError.message);
+
+  const { error } = await supabase
+    .from("contact_messages")
+    .update({ status: "spam", updated_at: new Date().toISOString() })
+    .in("id", ids);
+  if (error) throw new Error(error.message);
+
+  const contactIds = [...new Set((messages ?? []).map((m) => m.contact_id).filter(Boolean))] as string[];
+  let clientesLimpiados = 0;
+
+  if (contactIds.length > 0) {
+    // Los que ya tienen una oportunidad quedan afuera: alguien los trabajó.
+    const { data: withDeals } = await supabase
+      .from("pipeline_deals")
+      .select("contact_id")
+      .in("contact_id", contactIds);
+    const protegidos = new Set((withDeals ?? []).map((d) => d.contact_id));
+    const borrables = contactIds.filter((id) => !protegidos.has(id));
+
+    if (borrables.length > 0) {
+      const { data: deleted } = await supabase
+        .from("crm_contacts")
+        .delete()
+        .in("id", borrables)
+        .eq("origin", "formulario")
+        .select("id");
+      clientesLimpiados = deleted?.length ?? 0;
+    }
+  }
+
+  revalidatePath("/admin/crm");
+  revalidatePath("/admin/clientes");
+  revalidatePath("/admin/dashboard");
+  return { clientesLimpiados };
+}
+
+/** Vuelve a poner en "nuevo" mensajes marcados como spam por error. */
+export async function unmarkMessagesSpam(ids: string[]): Promise<void> {
+  if (ids.length === 0) return;
+  const supabase = await requireAuth();
+  const { error } = await supabase
+    .from("contact_messages")
+    .update({ status: "nuevo", updated_at: new Date().toISOString() })
+    .in("id", ids);
+  if (error) throw new Error(error.message);
+  revalidatePath("/admin/crm");
+  revalidatePath("/admin/dashboard");
+}
+
+/** Borrado en lote. Antes había que expandir cada mensaje y borrarlo de a uno. */
+export async function deleteMessages(ids: string[]): Promise<void> {
+  if (ids.length === 0) return;
+  const supabase = await requireAuth();
+  const { error } = await supabase.from("contact_messages").delete().in("id", ids);
+  if (error) throw new Error(error.message);
+  revalidatePath("/admin/crm");
+  revalidatePath("/admin/dashboard");
+}
+
+/**
+ * Convierte un mensaje del formulario en una oportunidad del pipeline.
+ *
+ * Es el eslabón que faltaba. Hasta ahora cada sección resolvía su parte y
+ * ninguna conectaba con la siguiente: llegaba la consulta, se podía cambiar el
+ * estado y escribir notas, y para que apareciera en el Pipeline había que ir
+ * hasta ahí y cargar todo de nuevo a mano. Por eso el Pipeline estaba en cero
+ * — no por falta de oportunidades, sino porque nada las creaba.
+ *
+ * La oportunidad nace en la primera etapa (Nuevo), con el texto de la consulta
+ * en las notas y el mensaje marcado como "contactado", que es lo que el
+ * operador iba a hacer a mano dos pantallas después.
+ *
+ * Si el mensaje todavía no tiene ficha de cliente asociada (`contact_id` en
+ * null, que pasa cuando el alta automática de la fase 7 falló), se crea acá.
+ */
+export async function createDealFromMessage(messageId: string): Promise<{ dealId: string }> {
+  const supabase = await requireAuth();
+
+  const { data: msg, error: msgError } = await supabase
+    .from("contact_messages")
+    .select("id, name, company, email, phone, message, contact_id")
+    .eq("id", messageId)
+    .single();
+  if (msgError || !msg) throw new Error(msgError?.message ?? "No se encontró el mensaje.");
+
+  let contactId = msg.contact_id as string | null;
+
+  if (!contactId) {
+    // Se busca por email antes de crear: el mismo mail puede haber entrado por
+    // otra vía y duplicar la ficha sería peor que no tenerla.
+    const { data: existing } = await supabase
+      .from("crm_contacts")
+      .select("id")
+      .eq("email", msg.email)
+      .limit(1)
+      .maybeSingle();
+
+    if (existing) {
+      contactId = existing.id;
+    } else {
+      const { data: created, error: createError } = await supabase
+        .from("crm_contacts")
+        .insert({
+          email: msg.email,
+          phone: msg.phone,
+          contact_name: msg.name,
+          business_name: msg.company,
+          origin: "formulario",
+          enrichment_status: "skipped",
+        })
+        .select("id")
+        .single();
+      if (createError || !created) {
+        throw new Error(createError?.message ?? "No se pudo crear la ficha del cliente.");
+      }
+      contactId = created.id;
+    }
+    await supabase.from("contact_messages").update({ contact_id: contactId }).eq("id", msg.id);
+  }
+
+  const { data: stage, error: stageError } = await supabase
+    .from("pipeline_stages")
+    .select("id")
+    .order("order_index")
+    .limit(1)
+    .single();
+  if (stageError || !stage) throw new Error("No hay etapas configuradas en el pipeline.");
+
+  const { data: deal, error: dealError } = await supabase
+    .from("pipeline_deals")
+    .insert({
+      contact_id: contactId,
+      stage_id: stage.id,
+      title: msg.company?.trim() || msg.name,
+      notes: msg.message,
+    })
+    .select("id")
+    .single();
+  if (dealError || !deal) throw new Error(dealError?.message ?? "No se pudo crear la oportunidad.");
+
+  // El operador ya actuó sobre la consulta: no tiene sentido dejarla en "nuevo"
+  // y obligarlo a volver a marcarla.
+  await supabase
+    .from("contact_messages")
+    .update({ status: "contactado", updated_at: new Date().toISOString() })
+    .eq("id", msg.id);
+
+  revalidatePath("/admin/crm");
+  revalidatePath("/admin/pipelines");
+  revalidatePath("/admin/clientes");
+  revalidatePath("/admin/dashboard");
+  return { dealId: deal.id };
 }
 
 // ─── Company Info ─────────────────────────────────────────────────────────────
@@ -417,9 +600,40 @@ export async function cancelInvitation(id: string) {
   revalidatePath("/admin/miembros");
 }
 
+/**
+ * Nadie puede dejar la cuenta sin dueño.
+ *
+ * Es el único rol que puede administrar miembros, así que quedarse sin ninguno
+ * deja la cuenta administrativamente muerta: no habría forma de invitar a nadie
+ * ni de recuperar el permiso desde el panel. La barrera va en el servidor y no
+ * en el botón, porque el botón se puede saltear.
+ */
+async function assertNotLastOwner(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string
+): Promise<void> {
+  const { data: target } = await supabase
+    .from("admin_members")
+    .select("role")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (target?.role !== "owner") return;
+
+  const { count } = await supabase
+    .from("admin_members")
+    .select("user_id", { count: "exact", head: true })
+    .eq("role", "owner");
+  if ((count ?? 0) <= 1) {
+    throw new Error(
+      "Es el único dueño de la cuenta. Nombrá a otra persona dueño antes de cambiarle el rol o quitarlo."
+    );
+  }
+}
+
 export async function updateMemberRole(userId: string, role: AdminRole) {
   const supabase = await requireAuth();
   await requireRole(supabase, "admin");
+  if (role !== "owner") await assertNotLastOwner(supabase, userId);
   const { error } = await supabase
     .from("admin_members")
     .update({ role, updated_at: new Date().toISOString() })
@@ -433,6 +647,7 @@ export async function removeMember(userId: string) {
   const { data: { user } } = await supabase.auth.getUser();
   await requireRole(supabase, "admin");
   if (user!.id === userId) throw new Error("No podés quitarte a vos mismo.");
+  await assertNotLastOwner(supabase, userId);
   const { error } = await supabase.from("admin_members").delete().eq("user_id", userId);
   if (error) throw new Error(error.message);
   revalidatePath("/admin/miembros");

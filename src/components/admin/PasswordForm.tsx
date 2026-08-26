@@ -24,7 +24,7 @@ import { acceptInvitation, changeOwnPassword, resetPassword } from "@/app/admin/
 import { MIN_PASSWORD_LENGTH, validatePassword } from "@/lib/auth/password";
 
 const inputCls =
-  "w-full bg-[#0D0D0F] border border-[#2A2A2E] rounded-sm px-4 py-3 pr-20 text-white placeholder:text-[#8A8A8A]/50 focus:border-[#E8231A] focus:outline-none transition-colors";
+  "w-full bg-[#0D0D0F] border border-[#6A6A70] rounded-sm px-4 py-3 pr-20 text-white placeholder:text-[#8A8A8A]/50 focus:border-[#4A4A52] focus:ring-2 focus:ring-[#FF6A5C]/60 focus:ring-offset-1 focus:ring-offset-[#0D0D0F] focus:outline-none transition-colors";
 const labelCls =
   "block text-xs font-display font-semibold tracking-[0.15em] uppercase text-[#8A8A8A] mb-2";
 
@@ -66,7 +66,7 @@ function PasswordInput({
         <button
           type="button"
           onClick={() => setVisible((v) => !v)}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-display font-semibold tracking-[0.1em] uppercase text-[#8A8A8A] hover:text-[#E8231A] transition-colors"
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-[13px] font-semibold tracking-[0.1em] uppercase text-[#8A8A8A] hover:text-[#FF6A5C] transition-colors"
         >
           {visible ? "Ocultar" : "Ver"}
         </button>
@@ -169,7 +169,7 @@ export default function PasswordForm({
         <label className={labelCls}>
           {mode === "invite" ? "Vas a entrar con" : mode === "reset" ? "La cuenta es" : "Tu cuenta"}
         </label>
-        <div className="w-full bg-[#0D0D0F] border border-[#2A2A2E] rounded-sm px-4 py-3 text-white text-sm break-all">
+        <div className="w-full bg-[#0D0D0F] border border-[#6A6A70] rounded-sm px-4 py-3 text-white text-[15px] break-all">
           {email}
         </div>
       </div>
@@ -201,17 +201,17 @@ export default function PasswordForm({
         autoComplete="new-password"
       />
 
-      <p className="text-[11px] text-[#8A8A8A]">
+      <p className="text-[13px] text-[#8A8A8A]">
         Mínimo {MIN_PASSWORD_LENGTH} caracteres.
       </p>
 
       {error && (
-        <p className="text-sm text-[#E8231A] bg-[#E8231A]/10 border border-[#E8231A]/20 rounded-sm px-3 py-2">
+        <p className="text-[15px] text-[#FF6A5C] bg-[#E8231A]/10 border border-[#E8231A]/20 rounded-sm px-3 py-2">
           {error}
         </p>
       )}
       {(done || entering) && (
-        <p className="text-sm text-green-400 bg-green-400/10 border border-green-400/20 rounded-sm px-3 py-2">
+        <p className="text-[15px] text-green-400 bg-green-400/10 border border-green-400/20 rounded-sm px-3 py-2">
           {entering
             ? "✓ Contraseña guardada. Entrando al panel..."
             : "✓ Listo, tu contraseña quedó cambiada."}
@@ -221,7 +221,7 @@ export default function PasswordForm({
       <button
         type="submit"
         disabled={submitting || entering}
-        className="w-full py-3 bg-[#E8231A] text-white font-display font-bold text-sm tracking-widest uppercase rounded-sm hover:bg-[#C41D16] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        className="w-full py-3 bg-[#C41D16] text-white font-display font-bold text-[15px] tracking-widest uppercase rounded-sm hover:bg-[#E8231A] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {entering
           ? "Entrando al panel..."

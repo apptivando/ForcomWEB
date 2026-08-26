@@ -1,5 +1,8 @@
+import { sectionTitle } from "@/lib/admin/sections";
 import { listPipelineStages, listPipelineDeals, listCrmContacts } from "@/app/admin/actions";
 import PipelineBoard from "@/components/admin/PipelineBoard";
+
+export const metadata = { title: sectionTitle("pipelines") };
 
 export default async function PipelinesPage() {
   const [stages, deals, contacts] = await Promise.all([
@@ -14,7 +17,7 @@ export default async function PipelinesPage() {
         <h1 className="font-display font-extrabold text-2xl text-white tracking-tight">
           Pipeline de ventas
         </h1>
-        <p className="text-sm text-[#8A8A8A] mt-1">
+        <p className="text-[15px] text-[#8A8A8A] mt-1 max-w-prose">
           Seguimiento de oportunidades por contacto.
         </p>
       </div>

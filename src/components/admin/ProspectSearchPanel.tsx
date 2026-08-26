@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { searchProspects, enrichNow } from "@/app/admin/actions";
 import { INCLUDED_TYPES, MAX_RESULTS, PAGE_SIZE } from "@/lib/prospects/config";
 import type { ProspectSearch } from "@/lib/types";
 
 const inputClass =
-  "bg-[#0D0D0F] border border-[#2A2A2E] rounded-sm px-3 py-2 text-sm text-white placeholder:text-[#8A8A8A] focus:border-[#E8231A] focus:outline-none";
+  "bg-[#0D0D0F] border border-[#6A6A70] rounded-sm px-3 py-2 text-[15px] text-white placeholder:text-[#8A8A8A] focus:border-[#4A4A52] focus:ring-2 focus:ring-[#FF6A5C]/60 focus:ring-offset-1 focus:ring-offset-[#0D0D0F] focus:outline-none";
 
 function timeAgo(iso: string): string {
   const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
@@ -31,6 +31,25 @@ export default function ProspectSearchPanel({
   configured: boolean;
 }) {
   const router = useRouter();
+
+  /**
+   * El historial mostraba "ferreterías · Córdoba Capital" dos veces seguidas
+   * con el mismo conteo: no deduplicaba por criterio de búsqueda. Es cosmético,
+   * pero contradice el mensaje de la sección, que explica con orgullo que los
+   * resultados repetidos se fusionan solos.
+   *
+   * Se queda la más reciente de cada rubro+localidad — vienen ordenadas por
+   * fecha descendente, así que alcanza con quedarse con la primera de cada par.
+   */
+  const busquedasUnicas = useMemo(() => {
+    const vistas = new Set<string>();
+    return searches.filter((s) => {
+      const clave = `${s.rubro?.trim().toLowerCase()}|${s.locality?.trim().toLowerCase()}`;
+      if (vistas.has(clave)) return false;
+      vistas.add(clave);
+      return true;
+    });
+  }, [searches]);
   const [open, setOpen] = useState(false);
   const [rubro, setRubro] = useState("");
   const [locality, setLocality] = useState("");
@@ -94,14 +113,14 @@ export default function ProspectSearchPanel({
           Buscar prospectos
         </button>
 
-        <div className="flex items-center gap-4 text-[11px] text-[#8A8A8A]">
+        <div className="flex items-center gap-4 text-[13px] text-[#8A8A8A]">
           <span>
             Cola de enriquecimiento:{" "}
             <span className={queueCount > 0 ? "text-white" : ""}>{queueCount}</span>
           </span>
           <span title="Consultas a la API de búsqueda de Google usadas hoy (nivel 3)">
             Google Search hoy:{" "}
-            <span className={cseUsage.used >= cseUsage.limit ? "text-[#E8231A]" : "text-white"}>
+            <span className={cseUsage.used >= cseUsage.limit ? "text-[#FF6A5C]" : "text-white"}>
               {cseUsage.used}/{cseUsage.limit}
             </span>
           </span>
@@ -109,7 +128,7 @@ export default function ProspectSearchPanel({
             <button
               onClick={handleEnrich}
               disabled={enriching}
-              className="px-3 py-1.5 text-[11px] font-display font-semibold text-[#B0B0B0] hover:text-white bg-[#1A1A1E] hover:bg-[#2A2A2E] border border-[#2A2A2E] rounded-sm disabled:opacity-40 transition-colors"
+              className="px-3 py-1.5 text-[13px] font-semibold text-[#B0B0B0] hover:text-white bg-[#1A1A1E] hover:bg-[#2A2A2E] border border-[#6A6A70] rounded-sm disabled:opacity-40 transition-colors"
               title="Procesa un lote chico al instante. El resto lo hace el cron cada 5 minutos."
             >
               {enriching ? "Enriqueciendo…" : "Enriquecer ahora"}
@@ -119,13 +138,13 @@ export default function ProspectSearchPanel({
       </div>
 
       {enrichResult && (
-        <p className="px-8 pb-3 text-[11px] text-[#B0B0B0]">{enrichResult}</p>
+        <p className="px-8 pb-3 text-[13px] text-[#B0B0B0]">{enrichResult}</p>
       )}
 
       {open && (
         <div className="px-8 pb-5 space-y-3">
           {!configured && (
-            <p className="text-xs text-[#E8231A] bg-[#E8231A]/5 border border-[#E8231A]/20 rounded-sm px-3 py-2">
+            <p className="text-[13px] text-[#FF6A5C] bg-[#E8231A]/5 border border-[#E8231A]/20 rounded-sm px-3 py-2">
               Falta cargar <code>GOOGLE_PLACES_API_KEY</code>. Para probar sin key, poné{" "}
               <code>GOOGLE_PLACES_MOCK=1</code> en <code>.env.local</code> y reiniciá{" "}
               <code>npm run dev</code>.
@@ -171,44 +190,44 @@ export default function ProspectSearchPanel({
             <button
               onClick={handleSearch}
               disabled={pending || !rubro.trim() || !locality.trim()}
-              className="px-6 py-2 bg-[#E8231A] text-white font-display font-bold text-xs tracking-widest uppercase rounded-sm hover:bg-[#C41D16] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="px-6 py-2 bg-[#C41D16] text-white font-display font-bold text-xs tracking-widest uppercase rounded-sm hover:bg-[#E8231A] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               {pending ? "Buscando…" : "Buscar"}
             </button>
           </div>
 
-          <p className="text-[11px] text-[#8A8A8A]">
+          <p className="text-[13px] text-[#8A8A8A]">
             Google devuelve como máximo {MAX_RESULTS} resultados por búsqueda. Para cubrir una
             ciudad grande, conviene repetir por barrio — los repetidos se fusionan solos, no se
             duplican.
           </p>
 
           {error && (
-            <p className="text-xs text-[#E8231A] bg-[#E8231A]/5 border border-[#E8231A]/20 rounded-sm px-3 py-2 whitespace-pre-line">
+            <p className="text-[13px] text-[#FF6A5C] bg-[#E8231A]/5 border border-[#E8231A]/20 rounded-sm px-3 py-2 whitespace-pre-line">
               {error}
             </p>
           )}
           {result && (
-            <p className="text-xs text-green-400 bg-green-500/5 border border-green-500/20 rounded-sm px-3 py-2">
+            <p className="text-[13px] text-green-400 bg-green-500/5 border border-green-500/20 rounded-sm px-3 py-2">
               {result}
             </p>
           )}
 
-          {searches.length > 0 && (
+          {busquedasUnicas.length > 0 && (
             <div className="pt-1">
-              <p className="text-[10px] font-display font-semibold tracking-[0.15em] uppercase text-[#8A8A8A] mb-1.5">
+              <p className="text-[12px] font-semibold tracking-[0.15em] uppercase text-[#8A8A8A] mb-1.5">
                 Últimas búsquedas
               </p>
               <div className="flex flex-wrap gap-2">
-                {searches.map((s) => (
+                {busquedasUnicas.map((s) => (
                   <a
                     key={s.id}
                     href={`/admin/clientes?search=${s.id}`}
-                    className="px-2.5 py-1 text-[11px] rounded-sm border border-[#2A2A2E] text-[#B0B0B0] hover:text-white hover:border-[#3A3A3E] transition-colors"
+                    className="px-2.5 py-1 text-[13px] rounded-sm border border-[#2A2A2E] text-[#B0B0B0] hover:text-white hover:border-[#3A3A3E] transition-colors"
                     title={s.error ?? undefined}
                   >
                     {s.rubro} · {s.locality}{" "}
-                    <span className={s.status === "error" ? "text-[#E8231A]" : "text-[#8A8A8A]"}>
+                    <span className={s.status === "error" ? "text-[#FF6A5C]" : "text-[#8A8A8A]"}>
                       ({s.status === "error" ? "falló" : s.results_count}) {timeAgo(s.created_at)}
                     </span>
                   </a>

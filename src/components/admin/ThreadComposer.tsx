@@ -152,7 +152,7 @@ export default function ThreadComposer({
   return (
     <div className="border-t border-[#2A2A2E]">
       {/* Estado de la ventana: es lo que decide qué se puede mandar */}
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 px-6 pt-3 text-[11px]">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 px-6 pt-3 text-[13px]">
         {!ctx ? (
           <span className="text-[#8A8A8A]">Cargando estado…</span>
         ) : windowOpen ? (
@@ -171,7 +171,7 @@ export default function ThreadComposer({
         {ctx && !windowOpen && (
           <span className="text-[#8A8A8A]">
             Mensajes en frío hoy:{" "}
-            <span className={quotaLeft <= 0 ? "text-[#E8231A]" : "text-white"}>
+            <span className={quotaLeft <= 0 ? "text-[#FF6A5C]" : "text-white"}>
               {ctx.quota.used}/{ctx.quota.limit}
             </span>
           </span>
@@ -183,7 +183,7 @@ export default function ThreadComposer({
           </span>
         )}
 
-        {ctx && !ctx.phone && <span className="text-[#E8231A]">Sin número al que escribir</span>}
+        {ctx && !ctx.phone && <span className="text-[#FF6A5C]">Sin número al que escribir</span>}
 
         {ctx?.phone && (
           <a
@@ -200,7 +200,7 @@ export default function ThreadComposer({
 
       <form onSubmit={handleSend} className="px-6 py-4">
         {error && (
-          <p className="text-sm text-[#E8231A] bg-[#E8231A]/10 border border-[#E8231A]/20 rounded-sm px-3 py-2 mb-3 whitespace-pre-line">
+          <p className="text-[15px] text-[#FF6A5C] bg-[#E8231A]/10 border border-[#E8231A]/20 rounded-sm px-3 py-2 mb-3 whitespace-pre-line">
             {error}
           </p>
         )}
@@ -209,7 +209,7 @@ export default function ThreadComposer({
         {windowOpen && showQuickReplies && (
           <div className="mb-3 bg-[#141416] border border-[#2A2A2E] rounded-sm p-3 max-h-48 overflow-y-auto">
             {quickReplies.length === 0 && !showNewQuickReply && (
-              <p className="text-xs text-[#8A8A8A] px-2 py-1">Todavía no hay respuestas rápidas.</p>
+              <p className="text-[13px] text-[#8A8A8A] px-2 py-1">Todavía no hay respuestas rápidas.</p>
             )}
             {quickReplies.map((qr) => (
               <div
@@ -224,13 +224,13 @@ export default function ThreadComposer({
                   }}
                   className="flex-1 text-left"
                 >
-                  <p className="text-xs font-display font-semibold text-white">{qr.title}</p>
-                  <p className="text-[11px] text-[#8A8A8A] truncate">{qr.body}</p>
+                  <p className="text-[13px] font-semibold text-white">{qr.title}</p>
+                  <p className="text-[13px] text-[#8A8A8A] truncate">{qr.body}</p>
                 </button>
                 <button
                   type="button"
                   onClick={() => handleDeleteQuickReply(qr.id)}
-                  className="text-[#8A8A8A] hover:text-[#E8231A] text-xs shrink-0"
+                  className="text-[#8A8A8A] hover:text-[#FF6A5C] text-[13px] shrink-0"
                 >
                   Borrar
                 </button>
@@ -243,27 +243,27 @@ export default function ThreadComposer({
                   value={newQrTitle}
                   onChange={(e) => setNewQrTitle(e.target.value)}
                   placeholder="Título (ej. Horario)"
-                  className="w-full bg-[#0D0D0F] border border-[#2A2A2E] rounded-sm px-3 py-2 text-xs text-white focus:border-[#E8231A] focus:outline-none"
+                  className="w-full bg-[#0D0D0F] border border-[#6A6A70] rounded-sm px-3 py-2 text-[13px] text-white focus:border-[#4A4A52] focus:ring-2 focus:ring-[#FF6A5C]/60 focus:ring-offset-1 focus:ring-offset-[#0D0D0F] focus:outline-none"
                 />
                 <textarea
                   value={newQrBody}
                   onChange={(e) => setNewQrBody(e.target.value)}
                   placeholder="Texto del mensaje"
                   rows={2}
-                  className="w-full bg-[#0D0D0F] border border-[#2A2A2E] rounded-sm px-3 py-2 text-xs text-white focus:border-[#E8231A] focus:outline-none resize-none"
+                  className="w-full bg-[#0D0D0F] border border-[#6A6A70] rounded-sm px-3 py-2 text-[13px] text-white focus:border-[#4A4A52] focus:ring-2 focus:ring-[#FF6A5C]/60 focus:ring-offset-1 focus:ring-offset-[#0D0D0F] focus:outline-none resize-none"
                 />
                 <div className="flex gap-2">
                   <button
                     type="button"
                     onClick={handleCreateQuickReply}
-                    className="px-3 py-1.5 bg-[#E8231A] text-white text-xs font-display font-bold rounded-sm hover:bg-[#C41D16]"
+                    className="px-3 py-1.5 bg-[#C41D16] text-white text-[13px] font-bold rounded-sm hover:bg-[#E8231A]"
                   >
                     Guardar
                   </button>
                   <button
                     type="button"
                     onClick={() => setShowNewQuickReply(false)}
-                    className="px-3 py-1.5 text-xs text-[#8A8A8A] hover:text-white"
+                    className="px-3 py-1.5 text-[13px] text-[#8A8A8A] hover:text-white"
                   >
                     Cancelar
                   </button>
@@ -273,7 +273,7 @@ export default function ThreadComposer({
               <button
                 type="button"
                 onClick={() => setShowNewQuickReply(true)}
-                className="w-full text-left px-2 py-1.5 mt-1 text-xs text-[#E8231A] hover:bg-[#1A1A1E] rounded-sm"
+                className="w-full text-left px-2 py-1.5 mt-1 text-[13px] text-[#FF6A5C] hover:bg-[#1A1A1E] rounded-sm"
               >
                 + Agregar respuesta rápida
               </button>
@@ -287,7 +287,7 @@ export default function ThreadComposer({
         {ctx && !windowOpen && (
           <div className="mb-3">
             {ctx.previews.length === 0 ? (
-              <p className="text-xs text-[#8A8A8A] bg-[#141416] border border-[#2A2A2E] rounded-sm px-3 py-3">
+              <p className="text-[13px] text-[#8A8A8A] bg-[#141416] border border-[#2A2A2E] rounded-sm px-3 py-3">
                 No hay plantillas activas.{" "}
                 <a
                   href="/admin/plantillas"
@@ -301,7 +301,7 @@ export default function ThreadComposer({
                 <select
                   value={templateId ?? ""}
                   onChange={(e) => setTemplateId(e.target.value)}
-                  className="bg-[#0D0D0F] border border-[#2A2A2E] rounded-sm px-3 py-2 text-xs text-white focus:border-[#E8231A] focus:outline-none mb-2"
+                  className="bg-[#0D0D0F] border border-[#6A6A70] rounded-sm px-3 py-2 text-[13px] text-white focus:border-[#4A4A52] focus:ring-2 focus:ring-[#FF6A5C]/60 focus:ring-offset-1 focus:ring-offset-[#0D0D0F] focus:outline-none mb-2"
                 >
                   {ctx.previews.map((p) => (
                     <option key={p.template.id} value={p.template.id}>
@@ -310,7 +310,7 @@ export default function ThreadComposer({
                     </option>
                   ))}
                 </select>
-                <pre className="text-xs text-[#B0B0B0] bg-[#141416] border border-[#2A2A2E] rounded-sm p-3 whitespace-pre-wrap font-sans max-h-40 overflow-y-auto">
+                <pre className="text-[13px] text-[#B0B0B0] bg-[#141416] border border-[#2A2A2E] rounded-sm p-3 whitespace-pre-wrap font-sans max-h-40 overflow-y-auto">
                   {preview?.text ?? ""}
                 </pre>
                 {/* Limpiar los espacios sobrantes disimula el hueco pero no
@@ -318,7 +318,7 @@ export default function ThreadComposer({
                     estando mal escrita. Por eso se avisa en vez de confiar en
                     que alguien lea la vista previa con atención. */}
                 {preview && preview.missing.length > 0 && (
-                  <p className="text-[11px] text-yellow-400 mt-2">
+                  <p className="text-[13px] text-yellow-400 mt-2">
                     A la ficha le falta {preview.missing.join(" y ")}, así que esa parte del
                     mensaje queda incompleta. Convendría completar el dato antes de enviar.
                   </p>
@@ -347,10 +347,10 @@ export default function ThreadComposer({
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               placeholder="Escribí una respuesta..."
-              className="flex-1 bg-[#0D0D0F] border border-[#2A2A2E] rounded-sm px-4 py-3 text-white placeholder:text-[#8A8A8A]/50 focus:border-[#E8231A] focus:outline-none transition-colors"
+              className="flex-1 bg-[#0D0D0F] border border-[#6A6A70] rounded-sm px-4 py-3 text-white placeholder:text-[#8A8A8A]/50 focus:border-[#4A4A52] focus:ring-2 focus:ring-[#FF6A5C]/60 focus:ring-offset-1 focus:ring-offset-[#0D0D0F] focus:outline-none transition-colors"
             />
           ) : (
-            <p className="flex-1 self-center text-xs text-[#8A8A8A]">
+            <p className="flex-1 self-center text-[13px] text-[#8A8A8A]">
               {quotaLeft <= 0
                 ? "Llegaste al tope de mensajes en frío del día. El tope existe para que WhatsApp no limite la línea."
                 : "Se va a enviar la plantilla de arriba, tal como se ve."}
@@ -360,7 +360,7 @@ export default function ThreadComposer({
           <button
             type="submit"
             disabled={!canSend}
-            className="px-6 py-3 bg-[#E8231A] text-white font-display font-bold text-sm tracking-widest uppercase rounded-sm hover:bg-[#C41D16] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="px-6 py-3 bg-[#C41D16] text-white font-display font-bold text-[15px] tracking-widest uppercase rounded-sm hover:bg-[#E8231A] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {sending ? "..." : "Enviar"}
           </button>

@@ -8,6 +8,7 @@ import {
   reorderHeroSlides,
 } from "@/app/admin/actions";
 import HeroSlideForm from "./HeroSlideForm";
+import Toggle from "@/components/admin/Toggle";
 
 export default function HeroSlidesManager({ initial }: { initial: HeroSlide[] }) {
   const [slides, setSlides] = useState<HeroSlide[]>(initial);
@@ -109,12 +110,12 @@ export default function HeroSlidesManager({ initial }: { initial: HeroSlide[] })
     <div>
       {/* Header row */}
       <div className="flex items-center justify-between mb-6">
-        <p className="text-sm text-[#8A8A8A]">
+        <p className="text-[15px] text-[#8A8A8A]">
           Arrastrá las filas para reordenar · {slides.filter((s) => s.active).length} de {slides.length} activos
         </p>
         <button
           onClick={openCreate}
-          className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#E8231A] text-white font-display font-bold text-sm tracking-wider uppercase rounded-sm hover:bg-[#C41D16] transition-colors"
+          className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#C41D16] text-white font-display font-bold text-[15px] tracking-wider uppercase rounded-sm hover:bg-[#E8231A] transition-colors"
         >
           <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
@@ -124,9 +125,9 @@ export default function HeroSlidesManager({ initial }: { initial: HeroSlide[] })
       </div>
 
       {error && (
-        <div className="mb-4 px-4 py-3 bg-[#E8231A]/10 border border-[#E8231A]/30 rounded-sm text-sm text-[#E8231A] flex items-center justify-between">
+        <div className="mb-4 px-4 py-3 bg-[#E8231A]/10 border border-[#E8231A]/30 rounded-sm text-[15px] text-[#FF6A5C] flex items-center justify-between">
           {error}
-          <button onClick={() => setError(null)} className="text-[#E8231A] hover:text-white">
+          <button onClick={() => setError(null)} className="text-[#FF6A5C] hover:text-white">
             <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -140,7 +141,7 @@ export default function HeroSlidesManager({ initial }: { initial: HeroSlide[] })
           <svg className="w-10 h-10 text-[#2A2A2E]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
           </svg>
-          <p className="text-[#8A8A8A] text-sm">No hay slides. Creá el primero.</p>
+          <p className="text-[#8A8A8A] text-[15px]">No hay slides. Creá el primero.</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -160,19 +161,49 @@ export default function HeroSlidesManager({ initial }: { initial: HeroSlide[] })
                   : "border-[#2A2A2E]"
               }`}
             >
-              {/* Drag handle */}
-              <div className="cursor-grab active:cursor-grabbing text-[#2A2A2E] hover:text-[#8A8A8A] transition-colors flex-shrink-0">
-                <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              {/* Agarradera de arrastre.
+                  Estaba pintada en #2A2A2E —el mismo gris que los bordes
+                  invisibles— a 16 px: 1,29:1 contra el fondo. Reordenar el
+                  carrusel es LA razón por la que existe esta pantalla (define
+                  qué producto ve primero un visitante), así que el control no
+                  puede ser lo menos visible de la fila.
+                  El área agarrable cubre el alto de la fila aunque el dibujo
+                  siga siendo chico. */}
+              <div
+                className="cursor-grab active:cursor-grabbing text-[#8A8A8A] hover:text-[#D4D4D4] transition-colors flex-shrink-0 flex items-center justify-center w-8 h-11 -my-2"
+                title="Arrastrar para reordenar"
+              >
+                <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path d="M8 6a2 2 0 1 0 0-4 2 2 0 0 0 0 4ZM8 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4ZM8 22a2 2 0 1 0 0-4 2 2 0 0 0 0 4ZM16 6a2 2 0 1 0 0-4 2 2 0 0 0 0 4ZM16 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4ZM16 22a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z" />
                 </svg>
               </div>
+              {/* El número de orden va junto a la agarradera y no en el extremo
+                  opuesto de la fila: así se entiende qué se está reordenando. */}
+              <span className="text-[13px] text-[#8A8A8A] tabular-nums w-4 shrink-0 text-center">
+                {i + 1}
+              </span>
 
-              {/* Thumbnail */}
-              <div className="w-16 h-12 flex-shrink-0 bg-[#0D0D0F] border border-[#2A2A2E] rounded-sm overflow-hidden flex items-center justify-center">
+              {/* Miniatura.
+                  Cuadrada (72×72) y no 64×48: la imagen original ES cuadrada,
+                  así que el recuadro apaisado dejaba el producto en ~48 px de
+                  alto y una terminal, una impresora y un lector se veían como
+                  tres siluetas oscuras equivalentes.
+                  `sizes` evita descargar los ~900 px del original para
+                  mostrarlos a 72: el navegador pide la variante chica. */}
+              <div className="w-[72px] h-[72px] flex-shrink-0 bg-[#0D0D0F] border border-[#2A2A2E] rounded-sm overflow-hidden flex items-center justify-center">
                 {slide.image_url ? (
-                  <img src={slide.image_url} alt={slide.image_alt} className="w-full h-full object-contain p-1" />
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={slide.image_url}
+                    alt={slide.image_alt}
+                    width={144}
+                    height={144}
+                    sizes="72px"
+                    loading="lazy"
+                    className="w-full h-full object-contain p-1"
+                  />
                 ) : (
-                  <svg className="w-5 h-5 text-[#2A2A2E]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <svg className="w-6 h-6 text-[#6A6A70]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5z" />
                   </svg>
                 )}
@@ -180,34 +211,25 @@ export default function HeroSlidesManager({ initial }: { initial: HeroSlide[] })
 
               {/* Info */}
               <div className="flex-1 min-w-0">
-                <p className="font-display font-bold text-sm text-white truncate">
+                <p className="font-display font-bold text-[15px] text-white truncate">
                   {slide.headline_line1} {slide.headline_line2}{" "}
-                  <span className="text-[#E8231A]">{slide.headline_accent}</span>
+                  <span className="text-[#FF6A5C]">{slide.headline_accent}</span>
                 </p>
-                <p className="text-xs text-[#8A8A8A] truncate mt-0.5">{slide.badge_text}</p>
+                <p className="text-[13px] text-[#8A8A8A] truncate mt-0.5">{slide.badge_text}</p>
               </div>
 
               {/* Order index badge */}
-              <span className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full bg-[#0D0D0F] text-[#8A8A8A] text-xs font-display font-bold border border-[#2A2A2E]">
+              <span className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full bg-[#0D0D0F] text-[#8A8A8A] text-[13px] font-bold border border-[#2A2A2E]">
                 {i + 1}
               </span>
 
               {/* Active toggle */}
-              <button
-                type="button"
+              <Toggle
+                checked={slide.active}
                 disabled={busyId === slide.id}
-                onClick={() => handleToggle(slide)}
-                className={`relative flex-shrink-0 w-11 h-6 rounded-full transition-colors disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E8231A] ${
-                  slide.active ? "bg-[#E8231A]" : "bg-[#2A2A2E]"
-                }`}
-                title={slide.active ? "Activo — click para desactivar" : "Inactivo — click para activar"}
-              >
-                <span
-                  className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${
-                    slide.active ? "translate-x-6" : "translate-x-1"
-                  }`}
-                />
-              </button>
+                onChange={() => handleToggle(slide)}
+                label={`${slide.badge_text}: ${slide.active ? "activo" : "inactivo"}`}
+              />
 
               {/* Edit */}
               <button
@@ -226,7 +248,7 @@ export default function HeroSlidesManager({ initial }: { initial: HeroSlide[] })
                 type="button"
                 disabled={busyId === slide.id}
                 onClick={() => handleDelete(slide)}
-                className="flex-shrink-0 p-2 text-[#8A8A8A] hover:text-[#E8231A] hover:bg-[#E8231A]/10 rounded-sm transition-colors disabled:opacity-50"
+                className="flex-shrink-0 p-2 text-[#8A8A8A] hover:text-[#FF6A5C] hover:bg-[#E8231A]/10 rounded-sm transition-colors disabled:opacity-50"
                 title="Eliminar slide"
               >
                 <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>

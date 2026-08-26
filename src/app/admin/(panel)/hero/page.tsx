@@ -1,5 +1,8 @@
+import { sectionTitle } from "@/lib/admin/sections";
 import { createClient } from "@/lib/supabase/server";
 import HeroSlidesManager from "@/components/admin/HeroSlidesManager";
+
+export const metadata = { title: sectionTitle("hero") };
 
 export default async function HeroPage() {
   const supabase = await createClient();
@@ -11,8 +14,8 @@ export default async function HeroPage() {
   return (
     <div className="p-8">
       <div className="mb-8">
-        <h1 className="font-display font-extrabold text-3xl text-white">Carrusel Hero</h1>
-        <p className="text-[#8A8A8A] mt-1 text-sm">
+        <h1 className="font-display font-extrabold text-3xl text-white">Sección Hero</h1>
+        <p className="text-[#8A8A8A] mt-1 text-[15px] max-w-prose">
           Gestioná los slides del carrusel principal · El sitio muestra los slides activos en el orden definido aquí
         </p>
       </div>

@@ -11,7 +11,7 @@ import { clientLabel } from "@/lib/types";
 import type { PipelineStage, PipelineDeal, CrmContact } from "@/lib/types";
 
 const inputCls =
-  "w-full bg-[#0D0D0F] border border-[#2A2A2E] rounded-sm px-3 py-2 text-sm text-white placeholder:text-[#8A8A8A]/50 focus:border-[#E8231A] focus:outline-none transition-colors";
+  "w-full bg-[#0D0D0F] border border-[#6A6A70] rounded-sm px-3 py-2 text-[15px] text-white placeholder:text-[#8A8A8A]/50 focus:border-[#4A4A52] focus:ring-2 focus:ring-[#FF6A5C]/60 focus:ring-offset-1 focus:ring-offset-[#0D0D0F] focus:outline-none transition-colors";
 
 function formatValue(v: number | null): string | null {
   if (v == null) return null;
@@ -57,24 +57,41 @@ export default function PipelineBoard({
   }
 
   return (
-    <div className="h-full flex gap-4 p-6 min-w-max">
+    <div className="h-full flex items-start gap-4 p-6 min-w-max">
       {error && (
-        <div className="fixed top-20 right-6 bg-[#E8231A]/10 border border-[#E8231A]/20 text-[#E8231A] text-sm px-4 py-3 rounded-sm z-10">
+        <div className="fixed top-20 right-6 bg-[#E8231A]/10 border border-[#E8231A]/20 text-[#FF6A5C] text-[15px] px-4 py-3 rounded-sm z-10">
           {error}
         </div>
       )}
       {initialStages.map((stage) => {
         const stageDeals = deals.filter((d) => d.stage_id === stage.id);
         return (
-          <div key={stage.id} className="w-72 shrink-0 flex flex-col">
+          // La columna es una superficie, no un título flotando sobre el vacío:
+          // sin fondo ni borde no se leía como una zona a la que algo pertenece.
+          // Y va `items-start` en el contenedor para que la altura la marque el
+          // contenido — antes la columna medía toda la pantalla y "+ Nueva
+          // oportunidad" quedaba a unos 600 px de su propio encabezado.
+          <div
+            key={stage.id}
+            className="w-72 shrink-0 flex flex-col bg-[#141416] border border-[#2A2A2E] rounded-sm p-3 max-h-full"
+          >
             <div className="flex items-center justify-between mb-3 px-1">
-              <h3 className="font-display font-semibold text-sm text-white">{stage.name}</h3>
-              <span className="text-[10px] text-[#8A8A8A] bg-[#1A1A1E] px-2 py-0.5 rounded-sm">
+              <h3 className="font-display font-semibold text-[15px] text-white">{stage.name}</h3>
+              <span className="text-[12px] text-[#8A8A8A] bg-[#1A1A1E] px-2 py-0.5 rounded-sm tabular-nums">
                 {stageDeals.length}
               </span>
             </div>
 
-            <div className="flex-1 space-y-2 overflow-y-auto min-h-[100px]">
+            <div className="space-y-2 overflow-y-auto min-h-[72px]">
+              {stageDeals.length === 0 && (
+                <div className="h-[72px] flex items-center justify-center border border-dashed border-[#2A2A2E] rounded-sm px-3 text-center">
+                  <p className="text-[13px] text-[#6E6E76] leading-snug">
+                    {stage.order_index === 0
+                      ? "Las oportunidades entran acá desde un mensaje del formulario."
+                      : "Movés una oportunidad con el desplegable de su tarjeta."}
+                  </p>
+                </div>
+              )}
               {stageDeals.map((deal) =>
                 editingId === deal.id ? (
                   <DealEditForm
@@ -89,18 +106,18 @@ export default function PipelineBoard({
                   />
                 ) : (
                   <div key={deal.id} className="bg-[#141416] border border-[#2A2A2E] rounded-sm p-3">
-                    <p className="text-sm font-display font-semibold text-white truncate">
+                    <p className="text-[15px] font-display font-semibold text-white truncate">
                       {deal.contact ? clientLabel(deal.contact) : "—"}
                     </p>
-                    <p className="text-xs text-[#8A8A8A] truncate">{deal.title}</p>
+                    <p className="text-[13px] text-[#8A8A8A] truncate">{deal.title}</p>
                     {deal.value != null && (
-                      <p className="text-xs text-[#E8231A] font-semibold mt-1">{formatValue(deal.value)}</p>
+                      <p className="text-[13px] text-[#FF6A5C] font-semibold mt-1">{formatValue(deal.value)}</p>
                     )}
                     <div className="flex items-center justify-between mt-2 gap-2">
                       <select
                         value={deal.stage_id}
                         onChange={(e) => handleMove(deal.id, e.target.value)}
-                        className="bg-[#0D0D0F] border border-[#2A2A2E] rounded-sm px-2 py-1 text-[11px] text-white focus:border-[#E8231A] focus:outline-none"
+                        className="bg-[#0D0D0F] border border-[#6A6A70] rounded-sm px-2 py-1 text-[13px] text-white focus:border-[#4A4A52] focus:ring-2 focus:ring-[#FF6A5C]/60 focus:ring-offset-1 focus:ring-offset-[#0D0D0F] focus:outline-none"
                       >
                         {initialStages.map((s) => (
                           <option key={s.id} value={s.id}>
@@ -108,11 +125,11 @@ export default function PipelineBoard({
                           </option>
                         ))}
                       </select>
-                      <div className="flex gap-2 text-[11px] shrink-0">
+                      <div className="flex gap-2 text-[13px] shrink-0">
                         <button onClick={() => setEditingId(deal.id)} className="text-[#8A8A8A] hover:text-white">
                           Editar
                         </button>
-                        <button onClick={() => handleDelete(deal.id)} className="text-[#8A8A8A] hover:text-[#E8231A]">
+                        <button onClick={() => handleDelete(deal.id)} className="text-[#8A8A8A] hover:text-[#FF6A5C]">
                           Borrar
                         </button>
                       </div>
@@ -136,7 +153,7 @@ export default function PipelineBoard({
             ) : (
               <button
                 onClick={() => setAddingToStage(stage.id)}
-                className="mt-2 text-xs text-[#8A8A8A] hover:text-[#E8231A] text-left px-1"
+                className="mt-2 text-[13px] text-[#8A8A8A] hover:text-[#FF6A5C] text-left px-1"
               >
                 + Nueva oportunidad
               </button>
@@ -144,6 +161,10 @@ export default function PipelineBoard({
           </div>
         );
       })}
+      {/* El padding derecho del contenedor no se respeta cuando el contenido
+          desborda: la última columna quedaba pegada al borde. Este espaciador
+          sí ocupa lugar en el flujo horizontal. */}
+      <div className="w-2 shrink-0" aria-hidden="true" />
     </div>
   );
 }
@@ -202,7 +223,7 @@ function NewDealForm({
 
   if (contacts.length === 0) {
     return (
-      <p className="text-xs text-[#8A8A8A] mt-2 px-1">
+      <p className="text-[13px] text-[#8A8A8A] mt-2 px-1">
         Todavía no hay contactos (van a aparecer solos cuando entren mensajes por WhatsApp).
       </p>
     );
@@ -229,11 +250,11 @@ function NewDealForm({
         <button
           type="submit"
           disabled={saving}
-          className="px-3 py-1.5 bg-[#E8231A] text-white text-xs font-display font-bold rounded-sm hover:bg-[#C41D16] disabled:opacity-50"
+          className="px-3 py-1.5 bg-[#C41D16] text-white text-[13px] font-bold rounded-sm hover:bg-[#E8231A] disabled:opacity-50"
         >
           Guardar
         </button>
-        <button type="button" onClick={onCancel} className="px-3 py-1.5 text-xs text-[#8A8A8A] hover:text-white">
+        <button type="button" onClick={onCancel} className="px-3 py-1.5 text-[13px] text-[#8A8A8A] hover:text-white">
           Cancelar
         </button>
       </div>
@@ -283,11 +304,11 @@ function DealEditForm({
         <button
           type="submit"
           disabled={saving}
-          className="px-3 py-1.5 bg-[#E8231A] text-white text-xs font-display font-bold rounded-sm hover:bg-[#C41D16] disabled:opacity-50"
+          className="px-3 py-1.5 bg-[#C41D16] text-white text-[13px] font-bold rounded-sm hover:bg-[#E8231A] disabled:opacity-50"
         >
           Guardar
         </button>
-        <button type="button" onClick={onCancel} className="px-3 py-1.5 text-xs text-[#8A8A8A] hover:text-white">
+        <button type="button" onClick={onCancel} className="px-3 py-1.5 text-[13px] text-[#8A8A8A] hover:text-white">
           Cancelar
         </button>
       </div>

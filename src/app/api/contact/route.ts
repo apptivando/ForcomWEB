@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { toWhatsappNumber } from "@/lib/phone";
+import { spamReason } from "@/lib/antispam";
 
 export async function POST(request: Request) {
   let body: unknown;
@@ -12,6 +13,18 @@ export async function POST(request: Request) {
   }
 
   const { name, company, email, phone, industry, message } = body as Record<string, string>;
+
+  // Descarte anti-bot ANTES de tocar la base: el spam no tiene que llegar ni a
+  // `contact_messages` ni, sobre todo, a `crm_contacts`.
+  //
+  // Se responde `ok: true`, igual que un envío bueno, a propósito. Un mensaje
+  // de error sería exactamente la señal que el bot necesita para ajustar el
+  // ataque hasta pasar el filtro.
+  const rejected = spamReason(body as Record<string, unknown>);
+  if (rejected) {
+    console.warn(`contact spam descartado (${rejected}):`, { name, email });
+    return NextResponse.json({ ok: true });
+  }
 
   if (!name?.trim() || !email?.trim() || !message?.trim()) {
     return NextResponse.json({ error: "Faltan campos obligatorios" }, { status: 400 });

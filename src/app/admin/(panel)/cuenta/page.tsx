@@ -1,3 +1,4 @@
+import { sectionTitle } from "@/lib/admin/sections";
 /**
  * Mi cuenta: cambiar la propia contraseña.
  *
@@ -10,6 +11,8 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentRole, ROLE_LABEL } from "@/lib/auth/roles";
 import PasswordForm from "@/components/admin/PasswordForm";
+
+export const metadata = { title: sectionTitle("cuenta") };
 
 export default async function CuentaPage() {
   const supabase = await createClient();
@@ -26,12 +29,12 @@ export default async function CuentaPage() {
         <h1 className="font-display font-extrabold text-2xl text-white tracking-tight">
           Mi cuenta
         </h1>
-        <p className="text-sm text-[#8A8A8A] mt-1">
+        <p className="text-[15px] text-[#8A8A8A] mt-1 max-w-prose">
           Tu acceso al panel{role ? ` — entrás como ${ROLE_LABEL[role]}` : ""}.
         </p>
       </div>
 
-      <div className="max-w-sm bg-[#141416] border border-[#2A2A2E] rounded-sm p-6">
+      <div className="max-w-form bg-[#141416] border border-[#2A2A2E] rounded-sm p-6">
         <h3 className="text-xs font-display font-semibold tracking-[0.15em] uppercase text-[#8A8A8A] mb-4">
           Cambiar contraseña
         </h3>

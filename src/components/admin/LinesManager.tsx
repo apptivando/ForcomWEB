@@ -18,7 +18,7 @@ import type { WaLine } from "@/lib/types";
 const STATE_STYLE: Record<string, { label: string; className: string }> = {
   open: { label: "Conectada", className: "bg-green-500/10 text-green-400 border-green-500/20" },
   connecting: { label: "Conectando…", className: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20" },
-  close: { label: "Desconectada", className: "bg-[#E8231A]/10 text-[#E8231A] border-[#E8231A]/20" },
+  close: { label: "Desconectada", className: "bg-[#E8231A]/10 text-[#FF6A5C] border-[#E8231A]/20" },
 };
 
 function when(iso: string | null): string {
@@ -30,7 +30,7 @@ function when(iso: string | null): string {
 }
 
 const field =
-  "bg-[#0D0D0F] border border-[#2A2A2E] rounded-sm px-3 py-2 text-sm text-white placeholder:text-[#8A8A8A] focus:border-[#E8231A] focus:outline-none";
+  "bg-[#0D0D0F] border border-[#6A6A70] rounded-sm px-3 py-2 text-[15px] text-white placeholder:text-[#8A8A8A] focus:border-[#4A4A52] focus:ring-2 focus:ring-[#FF6A5C]/60 focus:ring-offset-1 focus:ring-offset-[#0D0D0F] focus:outline-none";
 
 export default function LinesManager({
   lines,
@@ -68,7 +68,7 @@ export default function LinesManager({
   return (
     <div className="space-y-5">
       {error && (
-        <p className="text-xs text-[#E8231A] bg-[#E8231A]/5 border border-[#E8231A]/20 rounded-sm px-3 py-2 whitespace-pre-line">
+        <p className="text-[13px] text-[#FF6A5C] bg-[#E8231A]/5 border border-[#E8231A]/20 rounded-sm px-3 py-2 whitespace-pre-line">
           {error}
         </p>
       )}
@@ -77,7 +77,7 @@ export default function LinesManager({
         {!adding && (
           <button
             onClick={() => setAdding(true)}
-            className="px-5 py-2.5 bg-[#E8231A] text-white font-display font-bold text-xs tracking-widest uppercase rounded-sm hover:bg-[#C41D16] transition-colors"
+            className="px-5 py-2.5 bg-[#C41D16] text-white font-display font-bold text-xs tracking-widest uppercase rounded-sm hover:bg-[#E8231A] transition-colors"
           >
             + Conectar una línea
           </button>
@@ -85,7 +85,7 @@ export default function LinesManager({
         <button
           onClick={() => run(refreshLineStates)}
           disabled={busy}
-          className="px-4 py-2.5 text-xs font-display font-semibold text-[#B0B0B0] hover:text-white bg-[#1A1A1E] hover:bg-[#2A2A2E] border border-[#2A2A2E] rounded-sm disabled:opacity-40 transition-colors"
+          className="px-4 py-2.5 text-[13px] font-semibold text-[#B0B0B0] hover:text-white bg-[#1A1A1E] hover:bg-[#2A2A2E] border border-[#6A6A70] rounded-sm disabled:opacity-40 transition-colors"
         >
           {busy ? "Consultando…" : "Actualizar estados"}
         </button>
@@ -115,7 +115,7 @@ export default function LinesManager({
               ))}
             </select>
           </div>
-          <p className="text-[11px] text-[#8A8A8A]">
+          <p className="text-[13px] text-[#8A8A8A]">
             Asociar el usuario hace que los mensajes que esa persona escriba desde su celular
             queden a su nombre en la ficha del cliente.
           </p>
@@ -131,13 +131,13 @@ export default function LinesManager({
                 })
               }
               disabled={busy || !name.trim()}
-              className="px-5 py-2 bg-[#E8231A] text-white font-display font-bold text-xs tracking-widest uppercase rounded-sm hover:bg-[#C41D16] disabled:opacity-40 transition-colors"
+              className="px-5 py-2 bg-[#C41D16] text-white font-display font-bold text-xs tracking-widest uppercase rounded-sm hover:bg-[#E8231A] disabled:opacity-40 transition-colors"
             >
               {busy ? "Creando…" : "Crear"}
             </button>
             <button
               onClick={() => setAdding(false)}
-              className="px-4 py-2 text-xs font-display font-semibold text-[#8A8A8A] hover:text-white"
+              className="px-4 py-2 text-[13px] font-semibold text-[#8A8A8A] hover:text-white"
             >
               Cancelar
             </button>
@@ -158,7 +158,7 @@ export default function LinesManager({
                   <div className="flex items-center gap-2 flex-wrap">
                     <p className="font-display font-semibold text-white">{l.name}</p>
                     <span
-                      className={`px-2 py-0.5 text-[10px] font-display font-bold tracking-wider uppercase border rounded-sm ${
+                      className={`px-2 py-0.5 text-[12px] font-bold tracking-wider uppercase border rounded-sm ${
                         l.kind === "meta"
                           ? "bg-blue-500/10 text-blue-400 border-blue-500/20"
                           : "bg-purple-500/10 text-purple-400 border-purple-500/20"
@@ -168,25 +168,25 @@ export default function LinesManager({
                     </span>
                     {state && (
                       <span
-                        className={`px-2 py-0.5 text-[10px] font-display font-bold tracking-wider uppercase border rounded-sm ${state.className}`}
+                        className={`px-2 py-0.5 text-[12px] font-bold tracking-wider uppercase border rounded-sm ${state.className}`}
                       >
                         {state.label}
                       </span>
                     )}
-                    {!l.active && <span className="text-[10px] text-[#8A8A8A]">inactiva</span>}
+                    {!l.active && <span className="text-[12px] text-[#8A8A8A]">inactiva</span>}
                   </div>
-                  <p className="text-xs text-[#8A8A8A] mt-1">
+                  <p className="text-[13px] text-[#8A8A8A] mt-1">
                     {l.phone ? formatArPhone(l.phone) : "sin número cargado"}
                     {owner && ` · ${owner.email}`}
                     {l.instance && ` · ${l.instance}`}
                   </p>
-                  <p className="text-[11px] text-[#8A8A8A] mt-0.5">
+                  <p className="text-[13px] text-[#8A8A8A] mt-0.5">
                     Último mensaje {when(l.last_message_at)} · estado consultado{" "}
                     {when(l.conn_checked_at)}
                   </p>
                 </div>
 
-                <div className="flex items-center gap-3 text-[11px] shrink-0">
+                <div className="flex items-center gap-3 text-[13px] shrink-0">
                   {l.kind === "baileys" && (
                     <>
                       <button
@@ -227,7 +227,7 @@ export default function LinesManager({
                               setConfirmDelete(null);
                             })
                           }
-                          className="text-[#E8231A] hover:text-white font-display font-semibold"
+                          className="text-[#FF6A5C] hover:text-white font-display font-semibold"
                         >
                           Confirmar
                         </button>
@@ -241,7 +241,7 @@ export default function LinesManager({
                     ) : (
                       <button
                         onClick={() => setConfirmDelete(l.id)}
-                        className="text-[#8A8A8A] hover:text-[#E8231A]"
+                        className="text-[#8A8A8A] hover:text-[#FF6A5C]"
                       >
                         Eliminar
                       </button>
@@ -261,7 +261,7 @@ export default function LinesManager({
                         unoptimized
                         className="bg-white p-2 rounded-sm"
                       />
-                      <div className="text-xs text-[#B0B0B0] space-y-1.5 max-w-sm">
+                      <div className="text-[13px] text-[#B0B0B0] space-y-1.5 max-w-sm">
                         <p className="font-display font-semibold text-white">
                           En el teléfono de {l.name}:
                         </p>
@@ -282,7 +282,7 @@ export default function LinesManager({
                     // Hay versiones de Evolution donde este endpoint devuelve
                     // vacío aunque el Manager sí muestre el QR. Se dice, en vez
                     // de dejar la pantalla girando.
-                    <div className="text-xs text-[#B0B0B0] space-y-2">
+                    <div className="text-[13px] text-[#B0B0B0] space-y-2">
                       <p>
                         Evolution respondió sin código QR. Es un problema conocido de algunas
                         versiones: el QR existe, pero no viene por la API.
@@ -304,7 +304,7 @@ export default function LinesManager({
                   )}
                   <button
                     onClick={() => setQr(null)}
-                    className="mt-3 text-[11px] text-[#8A8A8A] hover:text-white"
+                    className="mt-3 text-[13px] text-[#8A8A8A] hover:text-white"
                   >
                     Cerrar
                   </button>

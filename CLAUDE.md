@@ -93,15 +93,48 @@ Se comenzó con un plan en WordPress (ver `../PLANCMS.md`) pero se migró a Next
 --dark:        #141416   (fondo secciones alternas)
 --card:        #1A1A1E   (fondo tarjetas)
 --border:      #2A2A2E   (bordes)
---red:         #E8231A   (acento primario, CTAs)
---red-dark:    #C41D16   (hover del rojo)
+--red:         #E8231A   (acento primario, superficies grandes, logo)
+--red-dark:    #C41D16   (fondo de botón sólido — ver abajo)
+--red-text:    #FF6A5C   (texto rojo chico sobre oscuro — ver abajo)
+--chip-off:    #6E6E76   (estado "no tiene" en los chips de contacto)
 --gray:        #8A8A8A   (texto secundario)
 --gray-light:  #B0B0B0   (texto links nav, subtítulos)
 ```
 
-Border-radius: `rounded-sm` (2px) en todo el sitio — look industrial, no bubbly.  
-Sin librerías de animación — todo CSS + IntersectionObserver nativo.  
+**Los dos rojos accesibles no son decorativos: son la corrección de un fallo de
+contraste medido** (auditoría UX del 20/08/2026, aplicada el 25-26/08). El
+`#E8231A` de marca queda por debajo de AA en dos usos concretos, midiendo sobre
+los colores efectivamente renderizados y componiendo las transparencias:
+
+- texto blanco sobre botón `#E8231A` → **4,48:1** (mínimo 4,5:1)
+- texto `#E8231A` chico sobre fondos oscuros → **3,74–3,82:1**
+
+Por eso: **botón sólido va `bg-[#C41D16]` con `hover:bg-[#E8231A]`** (5,9:1 con
+blanco) y **texto rojo chico va `#FF6A5C`** (5,8–6,2:1). El rojo de marca sigue
+siendo el de las barras, los puntos y las superficies grandes, donde no hay
+texto encima. Los tokens están en `globals.css` con las mediciones al lado.
+
+Border-radius: `rounded-sm` (2px) en todo el sitio — look industrial, no bubbly.
+Sin librerías de animación — todo CSS + IntersectionObserver nativo.
 Sin librerías de UI (no shadcn, no MUI) — componentes propios con Tailwind.
+
+### Componentes compartidos del panel
+
+Existen para que un mismo concepto no se implemente de cinco formas distintas.
+**Antes de escribir un overlay, un aviso, un interruptor o una etiqueta nueva,
+usar el que ya está**:
+
+| Componente | Para qué | Por qué existe |
+|---|---|---|
+| `admin/Modal.tsx` | Diálogo modal | Los overlays a mano no cerraban con Escape, no tenían `role="dialog"` y el fondo scrolleaba. Trae Escape, trampa de foco, bloqueo de scroll y retorno del foco. |
+| `admin/Drawer.tsx` | Panel lateral con el fondo **usable** | El hermano del anterior, para el caso opuesto. Su cabecera explica por qué declara `aria-modal="false"`. |
+| `admin/Toast.tsx` | Avisos de "esto pasó" + **Deshacer** | Crear y borrar no confirmaban nada. El deshacer **pospone** la acción en vez de revertirla: el borrado sale al servidor cuando expira el aviso. |
+| `admin/Toggle.tsx` | Interruptor on/off | Estaba copiado en cinco lugares. **Encendido va en verde**: el rojo queda para lo destructivo. |
+| `admin/Field.tsx` | Campo con etiqueta asociada | Había 37 `<label>` y ninguno asociado. Envuelve el control, así no hay que inventar ids. |
+| `admin/AdminErrorScreen.tsx` | Pantalla de error de sección | Se renderiza **dentro** del layout, así el menú sobrevive al error. |
+| `lib/admin/sections.ts` | Nombre único de cada sección | Menú, encabezado y `<title>` decían cosas distintas. El menú **ya no tiene labels propios**: los toma de acá. |
+| `lib/hooks/useUnsavedChanges.ts` | Guard de cambios sin guardar | El App Router no tiene bloqueo de navegación oficial; intercepta el clic en el `<a>` en fase de captura. |
+| `lib/products/completeness.ts` | Qué le falta a un producto | Ojo con la regex: `TODO` va **sensible a mayúsculas**, si no matchea "todo en uno" y hasta dentro de "Método". |
 
 ## Estructura de componentes
 

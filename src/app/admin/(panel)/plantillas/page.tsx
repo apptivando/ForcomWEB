@@ -1,8 +1,11 @@
+import { sectionTitle } from "@/lib/admin/sections";
 import { listOutreachTemplates } from "@/app/admin/outreach-actions";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentRole } from "@/lib/auth/roles";
 import { currentTransport } from "@/lib/outreach";
 import TemplatesEditor from "@/components/admin/TemplatesEditor";
+
+export const metadata = { title: sectionTitle("plantillas") };
 
 export default async function PlantillasPage() {
   const supabase = await createClient();
@@ -18,14 +21,14 @@ export default async function PlantillasPage() {
         <h1 className="font-display font-extrabold text-3xl text-white">
           Plantillas de contacto inicial
         </h1>
-        <p className="text-[#8A8A8A] mt-1 max-w-3xl">
+        <p className="text-[#8A8A8A] mt-1 max-w-prose">
           Los mensajes con los que se le escribe por primera vez a un prospecto.
         </p>
       </div>
 
       {/* Esta explicación es la razón de ser de toda la pantalla: sin entenderla
           no se entiende por qué no alcanza con escribir un mensaje a mano. */}
-      <div className="bg-[#141416] border border-[#2A2A2E] rounded-sm p-5 mb-6 max-w-3xl text-sm text-[#B0B0B0] space-y-2">
+      <div className="bg-[#141416] border border-[#2A2A2E] rounded-sm p-5 mb-6 max-w-3xl text-[15px] text-[#B0B0B0] space-y-2">
         <p>
           <span className="text-white font-semibold">La ventana de 24 horas.</span> Con una conexión
           oficial de Meta, a un cliente se le puede escribir texto libre solo dentro de las 24 horas

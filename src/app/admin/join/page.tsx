@@ -20,10 +20,10 @@ function Problema({ titulo, detalle }: { titulo: string; detalle: string }) {
   return (
     <>
       <h1 className="font-display font-bold text-xl text-white mb-3">{titulo}</h1>
-      <p className="text-sm text-[#8A8A8A] mb-6">{detalle}</p>
+      <p className="text-[15px] text-[#8A8A8A] mb-6">{detalle}</p>
       <Link
         href="/admin/login"
-        className="inline-block text-sm text-[#E8231A] hover:underline"
+        className="inline-block text-[15px] text-[#FF6A5C] hover:underline"
       >
         Ir al inicio de sesión
       </Link>
@@ -72,7 +72,7 @@ export default async function JoinPage({ searchParams }: { searchParams: SearchP
   return (
     <AuthShell subtitle="Activar tu acceso">
       <h1 className="font-display font-bold text-xl text-white mb-2">Elegí tu contraseña</h1>
-      <p className="text-sm text-[#8A8A8A] mb-6">
+      <p className="text-[15px] text-[#8A8A8A] mb-6">
         Vas a entrar al panel como{" "}
         <span className="text-white">{ROLE_LABEL[invitation.role]}</span>.
       </p>

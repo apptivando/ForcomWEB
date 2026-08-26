@@ -13,6 +13,43 @@
   --color-forcom-gray-light: #B0B0B0;
   --font-display: var(--font-barlow-condensed);
   --font-body: var(--font-dm-sans);
+
+  /* ── Rojos accesibles ──────────────────────────────────────────────────────
+     El #E8231A de marca no llega a AA en dos usos concretos, medido sobre los
+     colores efectivamente renderizados (componiendo las transparencias):
+
+       · texto blanco sobre botón #E8231A ........... 4,48:1  (mínimo 4,5:1)
+       · texto #E8231A chico sobre fondos oscuros ... 3,74–3,82:1
+
+     El rojo de marca sigue siendo el de las superficies grandes, el logo y los
+     títulos. Para esos dos casos van estos dos:
+
+       · botón sólido  → fondo #C41D16 con texto blanco ... 5,9:1
+       · texto chico   → #FF6A5C sobre oscuro ............. 5,8–6,2:1
+
+     Y el chip de contacto ausente (WA/@/Tel apagados) usaba #3A3A3E sobre
+     #161618: 1,6:1. Sube al --gray del sistema y se diferencia por forma.
+
+     Ojo con el valor: la auditoría proponía #6E6E76 estimándolo en "~4,5:1",
+     pero medido sobre los fondos reales de fila (#141416 y #161618) da
+     3,58:1 y no llega a AA. #8A8A8A da 5,23:1. El #6E6E76 sí sirve para el
+     BORDE punteado del chip: como elemento de interfaz no textual el mínimo
+     es 3:1, no 4,5:1. */
+  --color-forcom-red-text: #FF6A5C;
+  --color-forcom-chip-off: #8A8A8A;
+  --color-forcom-chip-off-border: #6E6E76;
+
+  /* ── Anchos de contenido ───────────────────────────────────────────────────
+     El panel tenía cinco anchos distintos según la sección —384, 576, 672, 768
+     y 1152 px—, así que el ojo tenía que reubicar dónde empieza y termina la
+     información en cada salto de sección. En "Mi cuenta" quedaba el 73 % de la
+     pantalla vacío a la derecha.
+
+     Uno solo para formularios. Las tablas usan el ancho disponible.
+     Para texto corrido va `max-w-prose` (65 caracteres), que ya trae Tailwind:
+     los subtítulos llegaban a 164 caracteres por renglón y el salto de línea
+     falla seguido por encima de 100. */
+  --container-form: 45rem;
 }
 
 /* ─── Base ─── */
@@ -250,5 +287,29 @@ body {
 
   html {
     scroll-behavior: auto;
+  }
+}
+
+/* ─── Campos en pantallas chicas ───────────────────────────────────────────
+   Safari en iPhone AGRANDA la pantalla al enfocar un campo cuyo texto mide
+   menos de 16 px. Es una función de accesibilidad del sistema operativo, no un
+   error del sitio, y no se puede desactivar: la única forma de evitarla es no
+   bajar de 16 px. Al terminar de escribir, la página queda ampliada y corrida,
+   y hay que reacomodarla con dos dedos — una vez por cada búsqueda.
+
+   Va como regla global y no campo por campo a propósito: son 24 campos con
+   tamaño explícito hoy, y cualquiera que se agregue mañana quedaría afuera.
+   Arriba de 768 px no aplica, así que el escritorio conserva su densidad.
+
+   El alto mínimo acompaña: 44 px es el objetivo táctil de WCAG. */
+@media (max-width: 767px) {
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea {
+    font-size: 16px;
+    min-height: 44px;
+  }
+  textarea {
+    min-height: 88px;
   }
 }

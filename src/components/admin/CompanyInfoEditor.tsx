@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { updateCompanyInfo } from "@/app/admin/actions";
 import type { CompanyInfo } from "@/lib/types";
+import { useFormGuard } from "@/lib/hooks/useUnsavedChanges";
 
 export default function CompanyInfoEditor({ info }: { info: CompanyInfo }) {
   const [, startTransition] = useTransition();
@@ -17,6 +18,8 @@ export default function CompanyInfoEditor({ info }: { info: CompanyInfo }) {
     schedule: info.schedule,
   });
 
+  const { markSaved } = useFormGuard(form, "Los datos de contacto tienen cambios sin guardar.");
+
   function setField(key: keyof typeof form, value: string) {
     setForm((prev) => ({ ...prev, [key]: value }));
     setSaved(false);
@@ -29,6 +32,7 @@ export default function CompanyInfoEditor({ info }: { info: CompanyInfo }) {
     startTransition(async () => {
       try {
         await updateCompanyInfo(form);
+        markSaved();
         setSaved(true);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Error al guardar.");
@@ -39,31 +43,31 @@ export default function CompanyInfoEditor({ info }: { info: CompanyInfo }) {
   }
 
   const inputCls =
-    "w-full bg-[#0D0D0F] border border-[#2A2A2E] rounded-sm px-4 py-3 text-white focus:border-[#E8231A] focus:outline-none transition-colors";
+    "w-full bg-[#0D0D0F] border border-[#6A6A70] rounded-sm px-4 py-3 text-white focus:border-[#4A4A52] focus:ring-2 focus:ring-[#FF6A5C]/60 focus:ring-offset-1 focus:ring-offset-[#0D0D0F] focus:outline-none transition-colors";
   const labelCls =
     "block text-xs font-display font-semibold tracking-[0.15em] uppercase text-[#8A8A8A] mb-1.5";
 
   return (
-    <form onSubmit={handleSubmit} className="max-w-xl space-y-6">
+    <form onSubmit={handleSubmit} className="max-w-form space-y-6">
       <div className="bg-[#141416] border border-[#2A2A2E] rounded-sm p-6 space-y-5">
         {/* WhatsApp */}
         <div>
-          <label className={labelCls}>Número de WhatsApp</label>
-          <input
+          <label htmlFor="numero-de-whatsapp" className={labelCls}>Número de WhatsApp</label>
+          <input id="numero-de-whatsapp"
             className={inputCls}
             value={form.whatsapp}
             onChange={(e) => setField("whatsapp", e.target.value)}
             placeholder="5491112345678"
           />
-          <p className="text-[11px] text-[#8A8A8A] mt-1.5">
+          <p className="text-[13px] text-[#8A8A8A] mt-1.5">
             Formato internacional sin + ni espacios. Ej: <code className="bg-[#0D0D0F] px-1">5491112345678</code>
           </p>
         </div>
 
         {/* Email */}
         <div>
-          <label className={labelCls}>Email de contacto</label>
-          <input
+          <label htmlFor="email-de-contacto" className={labelCls}>Email de contacto</label>
+          <input id="email-de-contacto"
             type="email"
             className={inputCls}
             value={form.email}
@@ -74,8 +78,8 @@ export default function CompanyInfoEditor({ info }: { info: CompanyInfo }) {
 
         {/* Teléfono */}
         <div>
-          <label className={labelCls}>Teléfono (visible en el sitio)</label>
-          <input
+          <label htmlFor="telefono-visible-en-el-sitio" className={labelCls}>Teléfono (visible en el sitio)</label>
+          <input id="telefono-visible-en-el-sitio"
             className={inputCls}
             value={form.phone}
             onChange={(e) => setField("phone", e.target.value)}
@@ -85,8 +89,8 @@ export default function CompanyInfoEditor({ info }: { info: CompanyInfo }) {
 
         {/* Horario */}
         <div>
-          <label className={labelCls}>Horario de atención</label>
-          <input
+          <label htmlFor="horario-de-atencion" className={labelCls}>Horario de atención</label>
+          <input id="horario-de-atencion"
             className={inputCls}
             value={form.schedule}
             onChange={(e) => setField("schedule", e.target.value)}
@@ -113,7 +117,7 @@ export default function CompanyInfoEditor({ info }: { info: CompanyInfo }) {
       </div>
 
       {error && (
-        <p className="text-sm text-[#E8231A] bg-[#E8231A]/10 border border-[#E8231A]/20 rounded-sm px-4 py-3">
+        <p className="text-[15px] text-[#FF6A5C] bg-[#E8231A]/10 border border-[#E8231A]/20 rounded-sm px-4 py-3">
           {error}
         </p>
       )}
@@ -122,12 +126,12 @@ export default function CompanyInfoEditor({ info }: { info: CompanyInfo }) {
         <button
           type="submit"
           disabled={saving}
-          className="px-8 py-3 bg-[#E8231A] text-white font-display font-bold text-sm tracking-widest uppercase rounded-sm hover:bg-[#C41D16] transition-colors disabled:opacity-50"
+          className="px-8 py-3 bg-[#C41D16] text-white font-display font-bold text-[15px] tracking-widest uppercase rounded-sm hover:bg-[#E8231A] transition-colors disabled:opacity-50"
         >
           {saving ? "Guardando..." : "Guardar cambios"}
         </button>
         {saved && (
-          <span className="text-sm text-green-400 font-display font-semibold">
+          <span className="text-[15px] text-green-400 font-display font-semibold">
             ✓ Guardado
           </span>
         )}
@@ -147,7 +151,7 @@ function InfoRow({
 }) {
   return (
     <div className="flex items-center gap-3">
-      <div className="w-8 h-8 bg-[#1A1A1E] border border-[#2A2A2E] rounded-sm flex items-center justify-center text-[#E8231A] shrink-0">
+      <div className="w-8 h-8 bg-[#1A1A1E] border border-[#2A2A2E] rounded-sm flex items-center justify-center text-[#FF6A5C] shrink-0">
         {icon === "email" && (
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
@@ -170,8 +174,8 @@ function InfoRow({
         )}
       </div>
       <div>
-        <p className="text-[10px] font-display font-semibold tracking-[0.15em] uppercase text-[#8A8A8A]">{label}</p>
-        <p className="text-sm text-white">{value}</p>
+        <p className="text-[12px] font-semibold tracking-[0.15em] uppercase text-[#8A8A8A]">{label}</p>
+        <p className="text-[15px] text-white">{value}</p>
       </div>
     </div>
   );

@@ -80,13 +80,13 @@ export default function ClientDataForm({
   }
 
   const field =
-    "w-full bg-[#0D0D0F] border border-[#2A2A2E] rounded-sm px-2.5 py-1.5 text-xs text-white placeholder:text-[#8A8A8A] focus:border-[#E8231A] focus:outline-none";
+    "w-full bg-[#0D0D0F] border border-[#6A6A70] rounded-sm px-2.5 py-1.5 text-[13px] text-white placeholder:text-[#8A8A8A] focus:border-[#4A4A52] focus:ring-2 focus:ring-[#FF6A5C]/60 focus:ring-offset-1 focus:ring-offset-[#0D0D0F] focus:outline-none";
 
   return (
     <div className="px-6 py-4 space-y-4">
       {client.manual_lock && (
         <div className="flex items-start justify-between gap-3 bg-[#141416] border border-[#2A2A2E] rounded-sm px-3 py-2.5">
-          <p className="text-[11px] text-[#B0B0B0]">
+          <p className="text-[13px] text-[#B0B0B0]">
             🔒 Ficha congelada: la búsqueda automática de datos no la vuelve a tocar. Si le faltan
             datos, se puede descongelar.
           </p>
@@ -96,7 +96,7 @@ export default function ClientDataForm({
               await onSaved();
               router.refresh();
             }}
-            className="shrink-0 text-[11px] font-display font-semibold text-[#B0B0B0] hover:text-white whitespace-nowrap"
+            className="shrink-0 text-[13px] font-semibold text-[#B0B0B0] hover:text-white whitespace-nowrap"
           >
             Descongelar y volver a buscar
           </button>
@@ -106,7 +106,7 @@ export default function ClientDataForm({
       <div className="grid gap-3 sm:grid-cols-2">
         {FIELDS.map((f) => (
           <label key={f.key} className="block">
-            <span className="block text-[10px] text-[#8A8A8A] mb-1">
+            <span className="block text-[12px] text-[#8A8A8A] mb-1">
               {f.label}
               {f.hint && <span className="text-[#3A3A3E]"> · {f.hint}</span>}
             </span>
@@ -123,7 +123,7 @@ export default function ClientDataForm({
       </div>
 
       {willFreeze && (
-        <p className="text-[11px] text-yellow-400">
+        <p className="text-[13px] text-yellow-400">
           Guardar esto congela la ficha: {dirty.filter((f) => f.disputed).map((f) => f.label.toLowerCase()).join(", ")}{" "}
           {dirty.filter((f) => f.disputed).length === 1 ? "es un campo" : "son campos"} que la
           búsqueda automática también completa, y lo que cargues a mano no se vuelve a discutir.
@@ -131,24 +131,24 @@ export default function ClientDataForm({
       )}
 
       {error && (
-        <p className="text-[11px] text-[#E8231A] bg-[#E8231A]/5 border border-[#E8231A]/20 rounded-sm px-3 py-2">
+        <p className="text-[13px] text-[#FF6A5C] bg-[#E8231A]/5 border border-[#E8231A]/20 rounded-sm px-3 py-2">
           {error}
         </p>
       )}
-      {saved && dirty.length === 0 && <p className="text-[11px] text-green-400">Guardado.</p>}
+      {saved && dirty.length === 0 && <p className="text-[13px] text-green-400">Guardado.</p>}
 
       <div className="flex items-center justify-between gap-3 pt-1">
         <button
           onClick={save}
           disabled={saving || dirty.length === 0}
-          className="px-5 py-2 bg-[#E8231A] text-white font-display font-bold text-[11px] tracking-widest uppercase rounded-sm hover:bg-[#C41D16] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          className="px-5 py-2 bg-[#C41D16] text-white font-bold text-[13px] tracking-widest uppercase rounded-sm hover:bg-[#E8231A] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
           {saving ? "Guardando…" : dirty.length === 0 ? "Sin cambios" : `Guardar ${dirty.length} cambio(s)`}
         </button>
 
         {canDelete &&
           (confirmDelete ? (
-            <div className="flex items-center gap-3 text-[11px]">
+            <div className="flex items-center gap-3 text-[13px]">
               <span className="text-[#8A8A8A]">¿Borrar el cliente y todo su historial?</span>
               <button
                 onClick={async () => {
@@ -156,7 +156,7 @@ export default function ClientDataForm({
                   onDeleted();
                   router.refresh();
                 }}
-                className="text-[#E8231A] hover:text-white font-display font-semibold"
+                className="text-[#FF6A5C] hover:text-white font-display font-semibold"
               >
                 Confirmar
               </button>
@@ -170,7 +170,7 @@ export default function ClientDataForm({
           ) : (
             <button
               onClick={() => setConfirmDelete(true)}
-              className="text-[11px] text-[#8A8A8A] hover:text-[#E8231A] transition-colors"
+              className="text-[13px] text-[#8A8A8A] hover:text-[#FF6A5C] transition-colors"
             >
               Eliminar cliente
             </button>

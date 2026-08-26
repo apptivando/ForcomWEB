@@ -396,7 +396,9 @@ export interface ContactMessage {
   phone: string | null;
   industry: string | null;
   message: string;
-  status: "nuevo" | "leido" | "contactado";
+  /** `spam` lo pone el panel a mano; no se borra, para poder revisar si el
+   *  filtro anti-bot se comió algo legítimo. Ver migración 017. */
+  status: "nuevo" | "leido" | "contactado" | "spam";
   admin_notes: string | null;
   /** Ficha del cliente en `crm_contacts`. La llena la fase 7 (migración 010). */
   contact_id: string | null;

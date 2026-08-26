@@ -114,8 +114,8 @@ export default function ImageGalleryEditor({ images, onChange, maxImages = 5 }: 
             <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
           </svg>
           <div className="text-center">
-            <p className="text-sm font-display font-semibold">Subir imágenes</p>
-            <p className="text-xs mt-0.5 text-[#8A8A8A]">Hasta {maxImages} fotos · JPG, PNG, WebP</p>
+            <p className="text-[15px] font-display font-semibold">Subir imágenes</p>
+            <p className="text-[13px] mt-0.5 text-[#8A8A8A]">Hasta {maxImages} fotos · JPG, PNG, WebP</p>
           </div>
         </button>
       )}
@@ -124,7 +124,7 @@ export default function ImageGalleryEditor({ images, onChange, maxImages = 5 }: 
       {images.length === 0 && uploading && (
         <div className="w-full border border-[#2A2A2E] rounded-sm py-12 flex flex-col items-center gap-3 text-[#8A8A8A]">
           <div className="w-6 h-6 border-2 border-[#2A2A2E] border-t-[#E8231A] rounded-full animate-spin" />
-          <p className="text-xs font-display">Subiendo…</p>
+          <p className="text-[13px] font-display">Subiendo…</p>
         </div>
       )}
 
@@ -159,7 +159,7 @@ export default function ImageGalleryEditor({ images, onChange, maxImages = 5 }: 
                   />
 
                   {/* Badge de orden */}
-                  <span className="absolute top-1 left-1 min-w-[18px] h-[18px] flex items-center justify-center bg-black/75 text-white text-[10px] font-display font-bold rounded-sm px-1">
+                  <span className="absolute top-1 left-1 min-w-[18px] h-[18px] flex items-center justify-center bg-black/75 text-white text-[12px] font-bold rounded-sm px-1">
                     {i + 1}
                   </span>
 
@@ -167,7 +167,7 @@ export default function ImageGalleryEditor({ images, onChange, maxImages = 5 }: 
                   <button
                     type="button"
                     onClick={() => removeImage(i)}
-                    className="absolute top-1 right-1 w-[18px] h-[18px] flex items-center justify-center bg-[#E8231A]/90 hover:bg-[#E8231A] text-white text-sm font-bold leading-none rounded-sm transition-colors"
+                    className="absolute top-1 right-1 w-[18px] h-[18px] flex items-center justify-center bg-[#C41D16] hover:bg-[#E8231A] text-white text-[15px] font-bold leading-none rounded-sm transition-colors"
                     title="Eliminar imagen"
                   >
                     ×
@@ -175,7 +175,7 @@ export default function ImageGalleryEditor({ images, onChange, maxImages = 5 }: 
 
                   {/* Label "Principal" en la primera */}
                   {i === 0 && (
-                    <span className="absolute bottom-1 left-1 right-1 text-center text-[8px] font-display font-bold tracking-wide uppercase bg-black/70 text-[#E8231A] rounded-sm py-0.5">
+                    <span className="absolute bottom-1 left-1 right-1 text-center text-[12px] font-bold tracking-wide uppercase bg-black/70 text-[#FF6A5C] rounded-sm py-0.5">
                       Principal
                     </span>
                   )}
@@ -189,7 +189,7 @@ export default function ImageGalleryEditor({ images, onChange, maxImages = 5 }: 
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploading}
-                className="aspect-square rounded-sm border-2 border-dashed border-[#2A2A2E] hover:border-[#E8231A]/50 hover:bg-[#E8231A]/5 flex flex-col items-center justify-center gap-1 text-[#8A8A8A] hover:text-[#E8231A] transition-colors disabled:opacity-40"
+                className="aspect-square rounded-sm border-2 border-dashed border-[#2A2A2E] hover:border-[#E8231A]/50 hover:bg-[#E8231A]/5 flex flex-col items-center justify-center gap-1 text-[#8A8A8A] hover:text-[#FF6A5C] transition-colors disabled:opacity-40"
                 title="Agregar imagen"
               >
                 {uploading ? (
@@ -199,14 +199,14 @@ export default function ImageGalleryEditor({ images, onChange, maxImages = 5 }: 
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
                     </svg>
-                    <span className="text-[9px] font-display font-bold tracking-wide uppercase">Agregar</span>
+                    <span className="text-[12px] font-bold tracking-wide uppercase">Agregar</span>
                   </>
                 )}
               </button>
             )}
           </div>
 
-          <p className="text-xs text-[#8A8A8A] mt-2.5">
+          <p className="text-[13px] text-[#8A8A8A] mt-2.5">
             {images.length}/{maxImages} imágenes · Arrastrá para reordenar · Imagen 1 aparece en la tarjeta del producto
           </p>
         </>
@@ -214,7 +214,7 @@ export default function ImageGalleryEditor({ images, onChange, maxImages = 5 }: 
 
       {/* Error */}
       {uploadError && (
-        <p className="text-xs text-[#E8231A] bg-[#E8231A]/10 border border-[#E8231A]/20 rounded-sm px-3 py-2 mt-3">
+        <p className="text-[13px] text-[#FF6A5C] bg-[#E8231A]/10 border border-[#E8231A]/20 rounded-sm px-3 py-2 mt-3">
           {uploadError}
         </p>
       )}

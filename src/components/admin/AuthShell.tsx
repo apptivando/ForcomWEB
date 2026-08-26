@@ -23,7 +23,7 @@ export default function AuthShell({
               FORCOM
             </span>
           </div>
-          <p className="text-[#8A8A8A] text-sm">{subtitle}</p>
+          <p className="text-[#8A8A8A] text-[15px]">{subtitle}</p>
         </div>
         <div className="bg-[#141416] border border-[#2A2A2E] rounded-sm p-8">{children}</div>
       </div>

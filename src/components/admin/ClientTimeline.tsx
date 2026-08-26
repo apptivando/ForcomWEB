@@ -163,13 +163,13 @@ export default function ClientTimeline({
           onChange={(e) => setNote(e.target.value)}
           rows={2}
           placeholder="Nota interna — queda con tu nombre y la fecha"
-          className="w-full bg-[#0D0D0F] border border-[#2A2A2E] rounded-sm px-3 py-2 text-xs text-white placeholder:text-[#8A8A8A] focus:border-[#E8231A] focus:outline-none resize-none"
+          className="w-full bg-[#0D0D0F] border border-[#6A6A70] rounded-sm px-3 py-2 text-[13px] text-white placeholder:text-[#8A8A8A] focus:border-[#4A4A52] focus:ring-2 focus:ring-[#FF6A5C]/60 focus:ring-offset-1 focus:ring-offset-[#0D0D0F] focus:outline-none resize-none"
         />
         <div className="flex justify-end mt-2">
           <button
             type="submit"
             disabled={savingNote || !note.trim()}
-            className="px-4 py-1.5 bg-[#E8231A] text-white font-display font-bold text-[11px] tracking-widest uppercase rounded-sm hover:bg-[#C41D16] disabled:opacity-40 transition-colors"
+            className="px-4 py-1.5 bg-[#C41D16] text-white font-bold text-[13px] tracking-widest uppercase rounded-sm hover:bg-[#E8231A] disabled:opacity-40 transition-colors"
           >
             {savingNote ? "Guardando…" : "Agregar nota"}
           </button>
@@ -178,15 +178,15 @@ export default function ClientTimeline({
 
       <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4">
         {error && (
-          <p className="text-xs text-[#E8231A] bg-[#E8231A]/5 border border-[#E8231A]/20 rounded-sm px-3 py-2 mb-3">
+          <p className="text-[13px] text-[#FF6A5C] bg-[#E8231A]/5 border border-[#E8231A]/20 rounded-sm px-3 py-2 mb-3">
             {error}
           </p>
         )}
 
-        {loading && items.length === 0 && <p className="text-xs text-[#8A8A8A]">Cargando…</p>}
+        {loading && items.length === 0 && <p className="text-[13px] text-[#8A8A8A]">Cargando…</p>}
 
         {!loading && items.length === 0 && (
-          <p className="text-xs text-[#8A8A8A]">
+          <p className="text-[13px] text-[#8A8A8A]">
             Todavía no pasó nada con este cliente.
           </p>
         )}
@@ -207,18 +207,18 @@ export default function ClientTimeline({
 
                 <div className="flex-1 min-w-0 pb-1">
                   <div className="flex items-baseline gap-2 flex-wrap">
-                    <span className="text-[10px] font-display font-semibold tracking-wider uppercase text-[#8A8A8A]">
+                    <span className="text-[12px] font-semibold tracking-wider uppercase text-[#8A8A8A]">
                       {style.label}
                     </span>
-                    <span className="text-[10px] text-[#8A8A8A]" title={exactWhen(item.at)}>
+                    <span className="text-[12px] text-[#8A8A8A]" title={exactWhen(item.at)}>
                       {formatWhen(item.at)}
                     </span>
-                    {author && <span className="text-[10px] text-[#8A8A8A]">· {author}</span>}
+                    {author && <span className="text-[12px] text-[#8A8A8A]">· {author}</span>}
                     {item.meta?.is_outreach === true && (
-                      <span className="text-[10px] text-yellow-400">· contacto en frío</span>
+                      <span className="text-[12px] text-yellow-400">· contacto en frío</span>
                     )}
                     {item.meta?.ai === true && (
-                      <span className="text-[10px] text-blue-400">· la IA</span>
+                      <span className="text-[12px] text-blue-400">· la IA</span>
                     )}
                   </div>
 
@@ -228,12 +228,12 @@ export default function ClientTimeline({
                         value={editDraft}
                         onChange={(e) => setEditDraft(e.target.value)}
                         rows={3}
-                        className="w-full bg-[#0D0D0F] border border-[#2A2A2E] rounded-sm px-3 py-2 text-xs text-white focus:border-[#E8231A] focus:outline-none resize-none"
+                        className="w-full bg-[#0D0D0F] border border-[#6A6A70] rounded-sm px-3 py-2 text-[13px] text-white focus:border-[#4A4A52] focus:ring-2 focus:ring-[#FF6A5C]/60 focus:ring-offset-1 focus:ring-offset-[#0D0D0F] focus:outline-none resize-none"
                       />
-                      <div className="flex gap-3 mt-1.5 text-[11px]">
+                      <div className="flex gap-3 mt-1.5 text-[13px]">
                         <button
                           onClick={() => saveEdit(item.ref_id)}
-                          className="text-[#E8231A] hover:text-white"
+                          className="text-[#FF6A5C] hover:text-white"
                         >
                           Guardar
                         </button>
@@ -247,7 +247,7 @@ export default function ClientTimeline({
                     </div>
                   ) : (
                     <p
-                      className={`text-xs mt-1 whitespace-pre-wrap break-words ${
+                      className={`text-[13px] mt-1 whitespace-pre-wrap break-words ${
                         isNote ? "text-yellow-100/80" : "text-[#B0B0B0]"
                       }`}
                     >
@@ -256,7 +256,7 @@ export default function ClientTimeline({
                   )}
 
                   {canEdit && editingNote !== item.ref_id && (
-                    <div className="flex gap-3 mt-1 text-[10px]">
+                    <div className="flex gap-3 mt-1 text-[12px]">
                       <button
                         onClick={() => {
                           setEditingNote(item.ref_id);
@@ -268,7 +268,7 @@ export default function ClientTimeline({
                       </button>
                       <button
                         onClick={() => removeNote(item.ref_id)}
-                        className="text-[#8A8A8A] hover:text-[#E8231A]"
+                        className="text-[#8A8A8A] hover:text-[#FF6A5C]"
                       >
                         Borrar
                       </button>
@@ -283,7 +283,7 @@ export default function ClientTimeline({
         {hasMore && (
           <button
             onClick={loadMore}
-            className="w-full mt-4 py-2 text-[11px] font-display font-semibold text-[#8A8A8A] hover:text-white border border-[#2A2A2E] rounded-sm transition-colors"
+            className="w-full mt-4 py-2 text-[13px] font-semibold text-[#8A8A8A] hover:text-white border border-[#2A2A2E] rounded-sm transition-colors"
           >
             Ver más
           </button>
