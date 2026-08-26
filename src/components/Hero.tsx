@@ -34,7 +34,7 @@ export default function Hero({ data }: { data?: HeroContent | null }) {
             {/* Eyebrow */}
             <div className="animate-fade-in-up hidden sm:flex items-center gap-3 mb-4 md:mb-6" style={{ animationDelay: "0.1s" }}>
               <div className="w-8 h-[2px] bg-forcom-red" />
-              <span className="font-display font-semibold text-xs tracking-[0.3em] uppercase text-forcom-red">
+              <span className="font-display font-semibold text-xs tracking-[0.3em] uppercase text-forcom-red-text">
                 {h.badge_text}
               </span>
             </div>
@@ -46,7 +46,7 @@ export default function Hero({ data }: { data?: HeroContent | null }) {
             >
               <span className="sm:block">{h.headline_line1}{" "}</span>
               <span className="sm:block">{h.headline_line2}{" "}</span>
-              <span className="sm:block text-forcom-red">{h.headline_red}</span>
+              <span className="sm:block text-forcom-red-text">{h.headline_red}</span>
             </h1>
 
             {/* Subhead */}
@@ -61,7 +61,7 @@ export default function Hero({ data }: { data?: HeroContent | null }) {
             <div className="animate-fade-in-up flex flex-col sm:flex-row gap-3 md:gap-4" style={{ animationDelay: "0.55s" }}>
               <a
                 href="#productos"
-                className="inline-flex items-center justify-center px-5 py-3 md:px-8 md:py-4 bg-forcom-red text-white font-display font-bold text-sm tracking-widest uppercase rounded-sm hover:bg-forcom-red-dark transition-colors group"
+                className="inline-flex items-center justify-center px-5 py-3 md:px-8 md:py-4 bg-forcom-red-dark text-white font-display font-bold text-sm tracking-widest uppercase rounded-sm hover:bg-forcom-red-dark transition-colors group"
               >
                 {h.cta_primary}
                 <svg className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
@@ -70,7 +70,7 @@ export default function Hero({ data }: { data?: HeroContent | null }) {
               </a>
               <a
                 href="#contacto"
-                className="inline-flex items-center justify-center px-5 py-3 md:px-8 md:py-4 border border-forcom-border text-white font-display font-semibold text-sm tracking-widest uppercase rounded-sm hover:border-forcom-red hover:text-forcom-red transition-colors"
+                className="inline-flex items-center justify-center px-5 py-3 md:px-8 md:py-4 border border-forcom-border text-white font-display font-semibold text-sm tracking-widest uppercase rounded-sm hover:border-forcom-red hover:text-forcom-red-text transition-colors"
               >
                 {h.cta_secondary}
               </a>
@@ -93,7 +93,7 @@ export default function Hero({ data }: { data?: HeroContent | null }) {
               className="sm:hidden mt-6 flex flex-col items-center gap-1.5 text-forcom-gray/50 hover:text-forcom-gray transition-colors"
               aria-label="Ver productos"
             >
-              <span className="font-display text-[10px] tracking-[0.25em] uppercase">Ver productos</span>
+              <span className="font-display text-[12px] tracking-[0.25em] uppercase">Ver productos</span>
               <svg className="w-4 h-4 animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
               </svg>

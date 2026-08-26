@@ -7,6 +7,11 @@
   --color-forcom-border: #2A2A2E;
   --color-forcom-red: #E8231A;
   --color-forcom-red-dark: #C41D16;
+  /* Rojo para TEXTO chico sobre oscuro. El #E8231A de marca da 4,33:1 y el
+     mínimo AA para texto normal es 4,5:1; este da 6,90:1 y se sigue leyendo
+     como el rojo de FORCOM. El de marca queda para superficies grandes, el
+     logo y los íconos, donde el mínimo es 3:1 y sí lo cumple. */
+  --color-forcom-red-text: #FF6A5C;
   --color-forcom-red-glow: rgba(232, 35, 26, 0.15);
   --color-forcom-white: #FFFFFF;
   --color-forcom-gray: #8A8A8A;
@@ -250,5 +255,25 @@ body {
 
   html {
     scroll-behavior: auto;
+  }
+}
+
+/* ─── Campos en pantallas chicas ───────────────────────────────────────────
+   Safari en iPhone AGRANDA la pantalla al enfocar un campo cuyo texto mide
+   menos de 16 px. Es una función de accesibilidad del sistema operativo, no un
+   error del sitio, y no se puede desactivar: la única forma de evitarla es no
+   bajar de 16 px. Al terminar de escribir, la página queda ampliada y corrida.
+   Acá afecta al formulario de contacto, que es la vía de entrada de los leads.
+
+   El alto mínimo acompaña: 44 px es el objetivo táctil de WCAG. */
+@media (max-width: 767px) {
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea {
+    font-size: 16px;
+    min-height: 44px;
+  }
+  textarea {
+    min-height: 88px;
   }
 }

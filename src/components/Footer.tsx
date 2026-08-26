@@ -26,7 +26,7 @@ export default function Footer() {
                   <li key={item}>
                     <a
                       href="#productos"
-                      className="text-sm text-forcom-gray hover:text-forcom-red transition-colors"
+                      className="text-sm text-forcom-gray hover:text-forcom-red-text transition-colors"
                     >
                       {item}
                     </a>
@@ -47,7 +47,7 @@ export default function Footer() {
                   <li key={item}>
                     <a
                       href="#industrias"
-                      className="text-sm text-forcom-gray hover:text-forcom-red transition-colors"
+                      className="text-sm text-forcom-gray hover:text-forcom-red-text transition-colors"
                     >
                       {item}
                     </a>
@@ -72,7 +72,7 @@ export default function Footer() {
                 <li key={item.label}>
                   <a
                     href={item.href}
-                    className="text-sm text-forcom-gray hover:text-forcom-red transition-colors"
+                    className="text-sm text-forcom-gray hover:text-forcom-red-text transition-colors"
                   >
                     {item.label}
                   </a>
@@ -88,10 +88,10 @@ export default function Footer() {
             &copy; {new Date().getFullYear()} FORCOM. Todos los derechos reservados.
           </p>
           <div className="flex items-center gap-6">
-            <a href="#" className="text-xs text-forcom-gray hover:text-forcom-red transition-colors">
+            <a href="#" className="text-xs text-forcom-gray hover:text-forcom-red-text transition-colors">
               Política de privacidad
             </a>
-            <a href="#" className="text-xs text-forcom-gray hover:text-forcom-red transition-colors">
+            <a href="#" className="text-xs text-forcom-gray hover:text-forcom-red-text transition-colors">
               Términos y condiciones
             </a>
           </div>

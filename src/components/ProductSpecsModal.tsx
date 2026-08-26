@@ -142,7 +142,7 @@ export default function ProductSpecsModal({ product, onClose }: Props) {
         {/* Header */}
         <div className="flex items-start justify-between gap-4 px-6 py-5 border-b border-[#2A2A2E] shrink-0">
           <div>
-            <p className="font-display font-semibold text-[10px] tracking-[0.2em] uppercase text-forcom-red mb-0.5">
+            <p className="font-display font-semibold text-[12px] tracking-[0.2em] uppercase text-forcom-red-text mb-0.5">
               {product.category}
             </p>
             <h2 className="font-display font-bold text-xl tracking-tight text-white leading-tight">
@@ -329,11 +329,11 @@ export default function ProductSpecsModal({ product, onClose }: Props) {
                           <p className="text-sm text-white font-display font-semibold truncate">
                             {file.name}
                           </p>
-                          <p className="text-[11px] text-forcom-gray">
+                          <p className="text-[12px] text-forcom-gray">
                             {FILE_TYPE_LABELS[file.type] ?? "Archivo"}
                           </p>
                         </div>
-                        <span className="text-[10px] font-display font-bold tracking-[0.12em] uppercase text-forcom-red opacity-0 group-hover:opacity-100 transition-opacity">
+                        <span className="text-[12px] font-display font-bold tracking-[0.12em] uppercase text-forcom-red-text opacity-0 group-hover:opacity-100 transition-opacity">
                           Descargar
                         </span>
                       </a>

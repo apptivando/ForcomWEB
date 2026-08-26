@@ -158,7 +158,7 @@ export default function HeroCarousel({ slides: dbSlides }: { slides?: HeroSlide[
           >
             <div className="hidden sm:flex items-center gap-3 mb-4 md:mb-6">
               <div className="w-8 h-[2px] bg-forcom-red flex-shrink-0" />
-              <span className="font-display font-semibold text-xs tracking-[0.3em] uppercase text-forcom-red">
+              <span className="font-display font-semibold text-xs tracking-[0.3em] uppercase text-forcom-red-text">
                 {slide.badge_text}
               </span>
             </div>
@@ -166,7 +166,7 @@ export default function HeroCarousel({ slides: dbSlides }: { slides?: HeroSlide[
             <h1 className="font-display font-extrabold text-3xl sm:text-4xl md:text-5xl lg:text-7xl leading-[0.95] tracking-tight text-white mt-3 mb-4 sm:mt-0 md:mb-6 text-center sm:text-left">
               <span className="sm:block">{slide.headline_line1}{" "}</span>
               <span className="sm:block">{slide.headline_line2}{" "}</span>
-              <span className="sm:block text-forcom-red">{slide.headline_accent}</span>
+              <span className="sm:block text-forcom-red-text">{slide.headline_accent}</span>
             </h1>
 
             <p className="hidden sm:block text-forcom-gray-light text-base md:text-lg lg:text-xl leading-relaxed mb-5 md:mb-10 max-w-md">
@@ -176,7 +176,7 @@ export default function HeroCarousel({ slides: dbSlides }: { slides?: HeroSlide[
             <div className="flex flex-col sm:flex-row gap-3 md:gap-4">
               <a
                 href={ctaHref}
-                className="inline-flex items-center justify-center px-5 py-3 md:px-8 md:py-4 bg-forcom-red text-white font-display font-bold text-sm tracking-widest uppercase rounded-sm hover:bg-forcom-red-dark transition-colors group"
+                className="inline-flex items-center justify-center px-5 py-3 md:px-8 md:py-4 bg-forcom-red-dark text-white font-display font-bold text-sm tracking-widest uppercase rounded-sm hover:bg-forcom-red-dark transition-colors group"
               >
                 {slide.cta_label}
                 <svg className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
@@ -185,7 +185,7 @@ export default function HeroCarousel({ slides: dbSlides }: { slides?: HeroSlide[
               </a>
               <a
                 href="#contacto"
-                className="inline-flex items-center justify-center px-5 py-3 md:px-8 md:py-4 border border-forcom-border text-white font-display font-semibold text-sm tracking-widest uppercase rounded-sm hover:border-forcom-red hover:text-forcom-red transition-colors"
+                className="inline-flex items-center justify-center px-5 py-3 md:px-8 md:py-4 border border-forcom-border text-white font-display font-semibold text-sm tracking-widest uppercase rounded-sm hover:border-forcom-red hover:text-forcom-red-text transition-colors"
               >
                 Contactar ventas
               </a>
@@ -207,7 +207,7 @@ export default function HeroCarousel({ slides: dbSlides }: { slides?: HeroSlide[
               className="sm:hidden mt-6 flex flex-col items-center gap-1.5 text-forcom-gray/50 hover:text-forcom-gray transition-colors"
               aria-label="Ver productos"
             >
-              <span className="font-display text-[10px] tracking-[0.25em] uppercase">Ver productos</span>
+              <span className="font-display text-[12px] tracking-[0.25em] uppercase">Ver productos</span>
               <svg className="w-4 h-4 animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
               </svg>
@@ -259,7 +259,7 @@ export default function HeroCarousel({ slides: dbSlides }: { slides?: HeroSlide[
             <button
               onClick={() => goTo((current - 1 + slides.length) % slides.length)}
               aria-label="Slide anterior"
-              className="w-10 h-10 border border-forcom-border flex items-center justify-center rounded-sm hover:border-forcom-red hover:text-forcom-red text-forcom-gray transition-colors"
+              className="w-10 h-10 border border-forcom-border flex items-center justify-center rounded-sm hover:border-forcom-red hover:text-forcom-red-text text-forcom-gray transition-colors"
             >
               <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
@@ -268,7 +268,7 @@ export default function HeroCarousel({ slides: dbSlides }: { slides?: HeroSlide[
             <button
               onClick={() => goTo((current + 1) % slides.length)}
               aria-label="Slide siguiente"
-              className="w-10 h-10 border border-forcom-border flex items-center justify-center rounded-sm hover:border-forcom-red hover:text-forcom-red text-forcom-gray transition-colors"
+              className="w-10 h-10 border border-forcom-border flex items-center justify-center rounded-sm hover:border-forcom-red hover:text-forcom-red-text text-forcom-gray transition-colors"
             >
               <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />

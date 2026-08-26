@@ -107,7 +107,7 @@ export default function Navbar() {
                     onClick={() => setProductsOpen(false)}
                     className="flex flex-col px-4 py-3 rounded-sm hover:bg-forcom-card group transition-colors"
                   >
-                    <span className="font-display font-bold text-sm text-white group-hover:text-forcom-red transition-colors tracking-wide">
+                    <span className="font-display font-bold text-sm text-white group-hover:text-forcom-red-text transition-colors tracking-wide">
                       {cat.label}
                     </span>
                     <span className="text-xs text-forcom-gray mt-0.5 leading-tight">{cat.sub}</span>
@@ -119,7 +119,7 @@ export default function Navbar() {
                 <a
                   href="#productos"
                   onClick={() => setProductsOpen(false)}
-                  className="text-xs font-display font-bold text-forcom-red tracking-[0.2em] uppercase hover:text-forcom-red-dark transition-colors"
+                  className="text-xs font-display font-bold text-forcom-red-text tracking-[0.2em] uppercase hover:text-forcom-red-text-dark transition-colors"
                 >
                   Ver todos los productos →
                 </a>
@@ -140,7 +140,7 @@ export default function Navbar() {
 
           <a
             href="#contacto"
-            className="ml-4 px-6 py-3 bg-forcom-red text-white font-display font-bold text-sm tracking-[0.1em] uppercase rounded-sm hover:bg-forcom-red-dark transition-colors"
+            className="ml-4 px-6 py-3 bg-forcom-red-dark text-white font-display font-bold text-sm tracking-[0.1em] uppercase rounded-sm hover:bg-forcom-red-dark transition-colors"
           >
             Consultá ahora
           </a>
@@ -202,7 +202,7 @@ export default function Navbar() {
                       key={cat.href}
                       href={cat.href}
                       onClick={() => setMobileOpen(false)}
-                      className="font-display font-semibold text-sm tracking-wide text-forcom-gray hover:text-white hover:text-forcom-red transition-colors py-2.5"
+                      className="font-display font-semibold text-sm tracking-wide text-forcom-gray hover:text-white hover:text-forcom-red-text transition-colors py-2.5"
                     >
                       {cat.label}
                       <span className="ml-2 text-xs text-forcom-gray/60 font-normal tracking-normal">
@@ -228,7 +228,7 @@ export default function Navbar() {
             <a
               href="#contacto"
               onClick={() => setMobileOpen(false)}
-              className="mt-5 px-5 py-3.5 bg-forcom-red text-white font-display font-bold text-sm tracking-[0.1em] uppercase rounded-sm text-center hover:bg-forcom-red-dark transition-colors"
+              className="mt-5 px-5 py-3.5 bg-forcom-red-dark text-white font-display font-bold text-sm tracking-[0.1em] uppercase rounded-sm text-center hover:bg-forcom-red-dark transition-colors"
             >
               Consultá ahora
             </a>
