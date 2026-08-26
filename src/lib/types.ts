@@ -22,6 +22,8 @@ export interface ProductFile {
 
 export interface Product {
   id: string;
+  /** Parte de la URL pública: /productos/<slug>. La genera upsertProduct. */
+  slug: string;
   model: string;
   category: string;
   section: string;

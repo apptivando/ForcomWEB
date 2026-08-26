@@ -105,10 +105,50 @@ export async function reorderHeroSlides(items: Array<{ id: string; order_index: 
 
 // ─── Productos ───────────────────────────────────────────────────────────────
 
+/**
+ * El slug de la URL pública de cada producto (`/productos/<slug>`).
+ *
+ * Se deriva del modelo y no se pide a mano: un campo más que llenar es un campo
+ * más para dejar vacío, y un producto sin slug no tiene ficha — la tarjeta del
+ * catálogo enlazaría a `/productos/null`.
+ */
+function slugify(text: string): string {
+  return text
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+}
+
+/**
+ * El slug tiene que ser único: dos productos con modelos que se normalizan
+ * igual chocarían en la misma URL. Al segundo se le agrega -2, -3…
+ * `excludeId` evita que un producto choque consigo mismo al editarlo.
+ */
+async function uniqueSlug(
+  supabase: Awaited<ReturnType<typeof requireAuth>>,
+  model: string,
+  excludeId?: string
+): Promise<string> {
+  const base = slugify(model);
+  let slug = base;
+  let suffix = 2;
+  for (;;) {
+    let query = supabase.from("products").select("id").eq("slug", slug);
+    if (excludeId) query = query.neq("id", excludeId);
+    const { data: existing } = await query.maybeSingle();
+    if (!existing) return slug;
+    slug = `${base}-${suffix}`;
+    suffix++;
+  }
+}
+
 export async function upsertProduct(data: Partial<Product> & { model: string }) {
   const supabase = await requireAuth();
+  const slug = await uniqueSlug(supabase, data.model, data.id);
   const payload = {
     model: data.model,
+    slug,
     category: data.category ?? "",
     section: data.section ?? "",
     section_id: data.section_id ?? "",

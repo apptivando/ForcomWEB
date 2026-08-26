@@ -1,18 +1,21 @@
 import { MetadataRoute } from "next";
+import { createClient } from "@/lib/supabase/server";
 
 const BASE_URL = "https://www.forcom.tech";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  // When product pages exist (post-MVP), agregar aquí:
-  // const supabase = await createClient()
-  // const { data: products } = await supabase
-  //   .from('products').select('id, model').eq('active', true)
-  // const productUrls = (products ?? []).map(p => ({
-  //   url: `${BASE_URL}/productos/${p.id}`,
-  //   lastModified: new Date(),
-  //   changeFrequency: 'monthly' as const,
-  //   priority: 0.8,
-  // }))
+  const supabase = await createClient();
+  const { data: products } = await supabase
+    .from("products")
+    .select("slug, updated_at")
+    .eq("active", true);
+
+  const productUrls: MetadataRoute.Sitemap = (products ?? []).map((p) => ({
+    url: `${BASE_URL}/productos/${p.slug}`,
+    lastModified: p.updated_at ? new Date(p.updated_at) : new Date(),
+    changeFrequency: "monthly",
+    priority: 0.8,
+  }));
 
   return [
     {
@@ -21,5 +24,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "weekly",
       priority: 1,
     },
+    ...productUrls,
   ];
 }

@@ -1,8 +1,5 @@
-"use client";
-
-import { useState } from "react";
+import Link from "next/link";
 import type { Product } from "@/lib/types";
-import ProductSpecsModal from "@/components/ProductSpecsModal";
 
 interface ProductGroup {
   section: string;
@@ -16,8 +13,8 @@ const FALLBACK: ProductGroup[] = [
     section: "Smart POS — Terminales Inteligentes",
     id: "cat-smart-pos",
     items: [
-      { id: "f1", model: "A6 G2 Smart-POS", category: "Terminal Flagship", section: "Smart POS — Terminales Inteligentes", section_id: "cat-smart-pos", badge: "PREMIUM", image_url: "/images/products/forcom-a6.png", images: [], videos: [], description: null, full_specs: null, files: [], specs: ['Pantalla táctil capacitiva 18.5"', "Chasis de aluminio, Intel Core i7", "16GB RAM · 256GB SSD", "WiFi dual-band · Ideal para restaurantes y retail"], active: true, order_index: 1, created_at: "", updated_at: "" },
-      { id: "f2", model: "T5 Smart-POS", category: "Terminal Versátil", section: "Smart POS — Terminales Inteligentes", section_id: "cat-smart-pos", badge: null, image_url: "/images/products/forcom-t5.png", images: [], videos: [], description: null, full_specs: null, files: [], specs: ['Pantalla táctil capacitiva 15"', "ABS + metal, Intel Core i5", "8GB RAM · 256GB SSD", "Supermercados, restaurantes, estaciones de servicio"], active: true, order_index: 2, created_at: "", updated_at: "" },
+      { id: "f1", slug: "a6-g2-smart-pos", model: "A6 G2 Smart-POS", category: "Terminal Flagship", section: "Smart POS — Terminales Inteligentes", section_id: "cat-smart-pos", badge: "PREMIUM", image_url: "/images/products/forcom-a6.png", images: [], videos: [], description: null, full_specs: null, files: [], specs: ['Pantalla táctil capacitiva 18.5"', "Chasis de aluminio, Intel Core i7", "16GB RAM · 256GB SSD", "WiFi dual-band · Ideal para restaurantes y retail"], active: true, order_index: 1, created_at: "", updated_at: "" },
+      { id: "f2", slug: "t5-smart-pos", model: "T5 Smart-POS", category: "Terminal Versátil", section: "Smart POS — Terminales Inteligentes", section_id: "cat-smart-pos", badge: null, image_url: "/images/products/forcom-t5.png", images: [], videos: [], description: null, full_specs: null, files: [], specs: ['Pantalla táctil capacitiva 15"', "ABS + metal, Intel Core i5", "8GB RAM · 256GB SSD", "Supermercados, restaurantes, estaciones de servicio"], active: true, order_index: 2, created_at: "", updated_at: "" },
     ],
   },
 ];
@@ -35,11 +32,9 @@ function groupBySection(products: Product[]): ProductGroup[] {
 
 export default function ProductCards({ products }: { products?: Product[] | null }) {
   const groups = products && products.length > 0 ? groupBySection(products) : FALLBACK;
-  const [selected, setSelected] = useState<Product | null>(null);
 
   return (
-    <>
-      <section id="productos" className="relative py-24 lg:py-32 bg-forcom-dark grid-bg">
+    <section id="productos" className="relative py-24 lg:py-32 bg-forcom-dark grid-bg">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
           {groups.map((group) => (
             <div key={group.id} id={group.id} className="mb-20 last:mb-0 scroll-mt-24 lg:scroll-mt-28">
@@ -111,16 +106,15 @@ export default function ProductCards({ products }: { products?: Product[] | null
                     </ul>
 
                     {/* CTA */}
-                    <button
-                      type="button"
-                      onClick={() => setSelected(product)}
+                    <Link
+                      href={`/productos/${product.slug}`}
                       className="inline-flex items-center gap-2 font-display font-semibold text-xs tracking-[0.15em] uppercase text-forcom-gray hover:text-forcom-red-text transition-colors group/link"
                     >
                       Ver especificaciones
                       <svg className="w-4 h-4 group-hover/link:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
                       </svg>
-                    </button>
+                    </Link>
                   </div>
                 ))}
               </div>
@@ -128,8 +122,5 @@ export default function ProductCards({ products }: { products?: Product[] | null
           ))}
         </div>
       </section>
-
-      <ProductSpecsModal product={selected} onClose={() => setSelected(null)} />
-    </>
   );
 }

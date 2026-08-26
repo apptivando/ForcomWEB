@@ -32,6 +32,9 @@ export default async function Home() {
         category: p.category,
         description: p.description ?? undefined,
         image: p.image_url ?? undefined,
+        // Cada producto del JSON-LD apunta a su ficha: es lo que permite que
+        // Google muestre el resultado enriquecido con su propia URL.
+        url: `https://www.forcom.tech/productos/${p.slug}`,
         brand: { "@type": "Brand", name: "FORCOM" },
         offers: {
           "@type": "Offer",

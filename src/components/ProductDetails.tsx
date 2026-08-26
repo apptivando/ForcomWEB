@@ -1,0 +1,202 @@
+import type { Product, ProductFile } from "@/lib/types";
+
+interface Props {
+  product: Product;
+}
+
+// ─── Markdown table parser ─────────────────────────────────────────────────────
+
+type Block =
+  | { kind: "table"; rows: string[][] }
+  | { kind: "text"; lines: string[] };
+
+function parseSpecsText(text: string): Block[] {
+  const lines = text.split("\n");
+  const blocks: Block[] = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i];
+    if (line.trimStart().startsWith("|")) {
+      const tableLines: string[] = [];
+      while (i < lines.length && lines[i].trimStart().startsWith("|")) {
+        const isseparator = /^\s*\|[\s\-|]+\|\s*$/.test(lines[i]);
+        if (!isseparator) tableLines.push(lines[i]);
+        i++;
+      }
+      const rows = tableLines.map((l) =>
+        l
+          .split("|")
+          .slice(1, -1)
+          .map((cell) => cell.trim())
+      );
+      if (rows.length > 0) blocks.push({ kind: "table", rows });
+    } else {
+      const textLines: string[] = [];
+      while (i < lines.length && !lines[i].trimStart().startsWith("|")) {
+        textLines.push(lines[i]);
+        i++;
+      }
+      const trimmed = textLines.join("\n").trim();
+      if (trimmed) blocks.push({ kind: "text", lines: trimmed.split("\n") });
+    }
+  }
+
+  return blocks;
+}
+
+// ─── File type label & icon ────────────────────────────────────────────────────
+
+const FILE_TYPE_LABELS: Record<ProductFile["type"], string> = {
+  driver: "Driver",
+  folleto: "Folleto",
+  manual: "Manual",
+  otro: "Archivo",
+};
+
+function DownloadIcon() {
+  return (
+    <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4" />
+    </svg>
+  );
+}
+
+function ExternalLinkIcon() {
+  return (
+    <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+    </svg>
+  );
+}
+
+// ─── Main component ────────────────────────────────────────────────────────────
+
+export default function ProductDetails({ product }: Props) {
+  const specBlocks = product.full_specs ? parseSpecsText(product.full_specs) : [];
+
+  return (
+    <div>
+      <div className="space-y-8">
+        {/* Description */}
+        {product.description && (
+          <div>
+            <h3 className="font-display font-bold text-sm tracking-[0.12em] uppercase text-forcom-gray mb-3">
+              Descripción
+            </h3>
+            <p className="text-sm text-[#B0B0B0] leading-relaxed">
+              {product.description}
+            </p>
+          </div>
+        )}
+
+        {/* Full specs */}
+        {specBlocks.length > 0 && (
+          <div>
+            <h3 className="font-display font-bold text-sm tracking-[0.12em] uppercase text-forcom-gray mb-4">
+              Especificaciones técnicas
+            </h3>
+            <div className="space-y-5">
+              {specBlocks.map((block, bi) => {
+                if (block.kind === "table") {
+                  return (
+                    <div key={bi} className="overflow-x-auto rounded-sm border border-[#2A2A2E]">
+                      <table className="w-full text-sm border-collapse">
+                        <tbody>
+                          {block.rows.map((row, ri) => (
+                            <tr key={ri} className="border-b border-[#2A2A2E] last:border-0 hover:bg-[#1A1A1E] transition-colors">
+                              {row.map((cell, ci) => (
+                                <td
+                                  key={ci}
+                                  className={`px-4 py-3 align-top ${
+                                    ci === 0
+                                      ? "text-forcom-gray font-display font-semibold text-xs tracking-wide whitespace-nowrap w-1/3"
+                                      : "text-[#B0B0B0]"
+                                  }`}
+                                >
+                                  {cell}
+                                </td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  );
+                }
+                return (
+                  <div key={bi} className="space-y-1">
+                    {block.lines.map((line, li) => (
+                      <p key={li} className="text-sm text-[#B0B0B0] leading-relaxed">
+                        {line || <>&nbsp;</>}
+                      </p>
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Videos */}
+        {(product.videos ?? []).filter(Boolean).length > 0 && (
+          <div>
+            <h3 className="font-display font-bold text-sm tracking-[0.12em] uppercase text-forcom-gray mb-3">
+              Videos
+            </h3>
+            <div className="space-y-2">
+              {(product.videos ?? []).filter(Boolean).map((url, i) => (
+                <a
+                  key={i}
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-3 px-4 py-3 bg-[#1A1A1E] border border-[#2A2A2E] rounded-sm text-sm text-[#B0B0B0] hover:text-white hover:border-[#444] transition-colors group"
+                >
+                  <ExternalLinkIcon />
+                  <span className="flex-1 truncate">{url}</span>
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Downloadable files */}
+        {(product.files ?? []).filter((f) => f.name && f.url).length > 0 && (
+          <div>
+            <h3 className="font-display font-bold text-sm tracking-[0.12em] uppercase text-forcom-gray mb-3">
+              Archivos descargables
+            </h3>
+            <div className="space-y-2">
+              {(product.files ?? [])
+                .filter((f) => f.name && f.url)
+                .map((file, i) => (
+                  <a
+                    key={i}
+                    href={file.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    download
+                    className="flex items-center gap-3 px-4 py-3 bg-[#1A1A1E] border border-[#2A2A2E] rounded-sm hover:border-forcom-red/40 hover:bg-forcom-red/5 transition-colors group"
+                  >
+                    <DownloadIcon />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-white font-display font-semibold truncate">
+                        {file.name}
+                      </p>
+                      <p className="text-[12px] text-forcom-gray">
+                        {FILE_TYPE_LABELS[file.type] ?? "Archivo"}
+                      </p>
+                    </div>
+                    <span className="text-[12px] font-display font-bold tracking-[0.12em] uppercase text-forcom-red-text opacity-0 group-hover:opacity-100 transition-opacity">
+                      Descargar
+                    </span>
+                  </a>
+                ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
