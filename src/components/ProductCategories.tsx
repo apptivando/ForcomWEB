@@ -115,7 +115,7 @@ export default function ProductCategories() {
         <div className="reveal mb-16 lg:mb-20">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-8 h-[2px] bg-forcom-red" />
-            <span className="font-display font-semibold text-xs tracking-[0.3em] uppercase text-forcom-red">
+            <span className="font-display font-semibold text-xs tracking-[0.3em] uppercase text-forcom-red-text">
               Catálogo de Productos
             </span>
           </div>
@@ -147,7 +147,7 @@ export default function ProductCategories() {
               <h3 className="font-display font-bold text-2xl tracking-tight text-white mb-1">
                 {cat.title}
               </h3>
-              <p className="font-display font-medium text-xs tracking-[0.2em] uppercase text-forcom-red mb-3">
+              <p className="font-display font-medium text-xs tracking-[0.2em] uppercase text-forcom-red-text mb-3">
                 {cat.subtitle}
               </p>
 
@@ -162,7 +162,7 @@ export default function ProductCategories() {
                   {cat.count}
                 </span>
                 <svg
-                  className="w-5 h-5 text-forcom-border group-hover:text-forcom-red group-hover:translate-x-1 transition-all"
+                  className="w-5 h-5 text-forcom-border group-hover:text-forcom-red-text group-hover:translate-x-1 transition-all"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"

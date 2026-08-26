@@ -126,7 +126,7 @@ export default async function ProductPage({
             <ProductGallery images={allImages} alt={product.model} />
 
             <div>
-              <p className="font-display font-semibold text-xs tracking-[0.2em] uppercase text-forcom-red mb-2">
+              <p className="font-display font-semibold text-xs tracking-[0.2em] uppercase text-forcom-red-text mb-2">
                 {product.category}
               </p>
               <h1 className="font-display font-extrabold text-3xl sm:text-4xl tracking-tight text-white mb-6">
@@ -155,7 +155,7 @@ export default async function ProductPage({
                 </a>
                 <Link
                   href="/#contacto"
-                  className="inline-flex items-center justify-center px-6 py-3.5 border border-forcom-border text-white font-display font-semibold text-sm tracking-widest uppercase rounded-sm hover:border-forcom-red hover:text-forcom-red transition-colors"
+                  className="inline-flex items-center justify-center px-6 py-3.5 border border-forcom-border text-white font-display font-semibold text-sm tracking-widest uppercase rounded-sm hover:border-forcom-red hover:text-forcom-red-text transition-colors"
                 >
                   Solicitar cotización
                 </Link>
@@ -194,7 +194,7 @@ export default async function ProductPage({
                         </span>
                       )}
                     </div>
-                    <p className="font-display font-semibold text-[10px] tracking-[0.2em] uppercase text-forcom-red mb-1">
+                    <p className="font-display font-semibold text-[10px] tracking-[0.2em] uppercase text-forcom-red-text mb-1">
                       {p.category}
                     </p>
                     <h3 className="font-display font-bold text-base text-white">{p.model}</h3>

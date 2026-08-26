@@ -57,7 +57,7 @@ export default function ProductCards({ products }: { products?: Product[] | null
                     {/* Badge */}
                     {product.badge && (
                       <div className="absolute top-4 right-4 px-2.5 py-1 bg-forcom-red/10 border border-forcom-red/30 rounded-sm">
-                        <span className="font-display font-bold text-[10px] tracking-[0.15em] uppercase text-forcom-red">
+                        <span className="font-display font-bold text-[12px] tracking-[0.15em] uppercase text-forcom-red-text">
                           {product.badge}
                         </span>
                       </div>
@@ -78,7 +78,7 @@ export default function ProductCards({ products }: { products?: Product[] | null
                             <circle cx="18" cy="18" r="4" stroke="currentColor" strokeWidth="1.5" />
                             <path d="M8 32l10-10 6 6 8-8 8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                           </svg>
-                          <span className="font-display text-[10px] tracking-[0.2em] uppercase text-forcom-gray">
+                          <span className="font-display text-[12px] tracking-[0.2em] uppercase text-forcom-gray">
                             Imagen del producto
                           </span>
                         </div>
@@ -86,7 +86,7 @@ export default function ProductCards({ products }: { products?: Product[] | null
                     </div>
 
                     {/* Category */}
-                    <p className="font-display font-semibold text-[10px] tracking-[0.2em] uppercase text-forcom-red mb-1.5">
+                    <p className="font-display font-semibold text-[12px] tracking-[0.2em] uppercase text-forcom-red-text mb-1.5">
                       {product.category}
                     </p>
 
@@ -108,7 +108,7 @@ export default function ProductCards({ products }: { products?: Product[] | null
                     {/* CTA */}
                     <Link
                       href={`/productos/${product.slug}`}
-                      className="inline-flex items-center gap-2 font-display font-semibold text-xs tracking-[0.15em] uppercase text-forcom-gray hover:text-forcom-red transition-colors group/link"
+                      className="inline-flex items-center gap-2 font-display font-semibold text-xs tracking-[0.15em] uppercase text-forcom-gray hover:text-forcom-red-text transition-colors group/link"
                     >
                       Ver especificaciones
                       <svg className="w-4 h-4 group-hover/link:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">

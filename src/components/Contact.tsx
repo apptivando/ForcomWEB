@@ -67,7 +67,7 @@ export default function Contact({ info }: { info?: ContactInfo }) {
           <div className="reveal">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-8 h-[2px] bg-forcom-red" />
-              <span className="font-display font-semibold text-xs tracking-[0.3em] uppercase text-forcom-red">
+              <span className="font-display font-semibold text-xs tracking-[0.3em] uppercase text-forcom-red-text">
                 Contacto
               </span>
             </div>
@@ -209,7 +209,7 @@ export default function Contact({ info }: { info?: ContactInfo }) {
                   </div>
 
                   {status === "error" && (
-                    <p className="text-sm text-forcom-red bg-forcom-red/10 border border-forcom-red/20 rounded-sm px-3 py-2">
+                    <p className="text-sm text-forcom-red-text bg-forcom-red/10 border border-forcom-red/20 rounded-sm px-3 py-2">
                       Hubo un error al enviar. Por favor intentá de nuevo.
                     </p>
                   )}
@@ -217,7 +217,7 @@ export default function Contact({ info }: { info?: ContactInfo }) {
                   <button
                     type="submit"
                     disabled={status === "sending"}
-                    className="w-full px-8 py-4 bg-forcom-red text-white font-display font-bold text-sm tracking-widest uppercase rounded-sm hover:bg-forcom-red-dark transition-colors disabled:opacity-60"
+                    className="w-full px-8 py-4 bg-forcom-red-dark text-white font-display font-bold text-sm tracking-widest uppercase rounded-sm hover:bg-forcom-red-dark transition-colors disabled:opacity-60"
                   >
                     {status === "sending" ? "Enviando..." : "Enviar consulta"}
                   </button>

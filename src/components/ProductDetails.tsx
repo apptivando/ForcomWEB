@@ -184,11 +184,11 @@ export default function ProductDetails({ product }: Props) {
                       <p className="text-sm text-white font-display font-semibold truncate">
                         {file.name}
                       </p>
-                      <p className="text-[11px] text-forcom-gray">
+                      <p className="text-[12px] text-forcom-gray">
                         {FILE_TYPE_LABELS[file.type] ?? "Archivo"}
                       </p>
                     </div>
-                    <span className="text-[10px] font-display font-bold tracking-[0.12em] uppercase text-forcom-red opacity-0 group-hover:opacity-100 transition-opacity">
+                    <span className="text-[12px] font-display font-bold tracking-[0.12em] uppercase text-forcom-red-text opacity-0 group-hover:opacity-100 transition-opacity">
                       Descargar
                     </span>
                   </a>

@@ -78,7 +78,7 @@ export default function Industries() {
         <div className="reveal text-center mb-16 lg:mb-20">
           <div className="flex items-center justify-center gap-3 mb-4">
             <div className="w-8 h-[2px] bg-forcom-red" />
-            <span className="font-display font-semibold text-xs tracking-[0.3em] uppercase text-forcom-red">
+            <span className="font-display font-semibold text-xs tracking-[0.3em] uppercase text-forcom-red-text">
               Sectores
             </span>
             <div className="w-8 h-[2px] bg-forcom-red" />
