@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { upsertProduct } from "@/app/admin/actions";
 import type { Product, ProductFile } from "@/lib/types";
 import ImageGalleryEditor from "@/components/admin/ImageGalleryEditor";
+import ProductFilesEditor from "@/components/admin/ProductFilesEditor";
 import { useFormGuard } from "@/lib/hooks/useUnsavedChanges";
 import { whyNotReady } from "@/lib/products/completeness";
 import Toggle from "@/components/admin/Toggle";
@@ -87,23 +88,6 @@ export default function ProductForm({
     const videos = [...form.videos];
     videos[i] = val;
     setForm((prev) => ({ ...prev, videos }));
-  }
-
-  function addFile() {
-    setForm((prev) => ({
-      ...prev,
-      files: [...prev.files, { name: "", url: "", type: "otro" as const }],
-    }));
-  }
-
-  function setFileField(i: number, key: keyof ProductFile, val: string) {
-    const files = [...form.files];
-    files[i] = { ...files[i], [key]: val };
-    setForm((prev) => ({ ...prev, files }));
-  }
-
-  function removeFile(i: number) {
-    setForm((prev) => ({ ...prev, files: prev.files.filter((_, idx) => idx !== i) }));
   }
 
   function handleSectionChange(sectionId: string) {
@@ -283,69 +267,14 @@ export default function ProductForm({
 
       {/* Archivos descargables */}
       <div className="bg-[#141416] border border-[#2A2A2E] rounded-sm p-6 space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="font-display font-bold text-base text-white">Archivos descargables</h2>
-            <p className="text-[13px] text-[#8A8A8A] mt-1">Drivers, folletos, manuales. El usuario los descarga desde el modal.</p>
-          </div>
-          <button
-            type="button"
-            onClick={addFile}
-            className="px-4 py-2 text-xs font-display font-bold tracking-[0.1em] uppercase border border-[#E8231A]/40 text-[#FF6A5C] hover:bg-[#E8231A]/10 rounded-sm transition-colors"
-          >
-            + Agregar archivo
-          </button>
+        <div>
+          <h2 className="font-display font-bold text-base text-white">Archivos descargables</h2>
+          <p className="text-[13px] text-[#8A8A8A] mt-1">Drivers, folletos, manuales. El cliente los descarga desde la página del producto.</p>
         </div>
-
-        {form.files.length === 0 && (
-          <p className="text-[13px] text-[#8A8A8A] italic">Sin archivos. Hacé click en «+ Agregar archivo» para añadir uno.</p>
-        )}
-
-        {form.files.map((file, i) => (
-          <div key={i} className="grid grid-cols-[1fr_1fr_auto_auto] gap-3 items-end">
-            <div>
-              {i === 0 && <label htmlFor="archivo-nombre-0" className={labelCls}>Nombre</label>}
-              <input id={`archivo-nombre-${i}`} aria-label={`Nombre del archivo ${i + 1}`}
-                className={inputCls}
-                value={file.name}
-                onChange={(e) => setFileField(i, "name", e.target.value)}
-                placeholder="Driver Windows 10"
-              />
-            </div>
-            <div>
-              {i === 0 && <label htmlFor="archivo-url-0" className={labelCls}>URL o ruta</label>}
-              <input id={`archivo-url-${i}`} aria-label={`URL del archivo ${i + 1}`}
-                className={inputCls}
-                value={file.url}
-                onChange={(e) => setFileField(i, "url", e.target.value)}
-                placeholder="/files/driver-tk200.zip"
-              />
-            </div>
-            <div>
-              {i === 0 && <label htmlFor="archivo-tipo-0" className={labelCls}>Tipo</label>}
-              <select id={`archivo-tipo-${i}`} aria-label={`Tipo del archivo ${i + 1}`}
-                className={inputCls + " appearance-none"}
-                value={file.type}
-                onChange={(e) => setFileField(i, "type", e.target.value)}
-              >
-                <option value="driver">Driver</option>
-                <option value="folleto">Folleto</option>
-                <option value="manual">Manual</option>
-                <option value="otro">Otro</option>
-              </select>
-            </div>
-            <div className={i === 0 ? "pt-6" : ""}>
-              <button
-                type="button"
-                onClick={() => removeFile(i)}
-                className="w-10 h-10 flex items-center justify-center text-[#8A8A8A] hover:text-[#FF6A5C] border border-[#2A2A2E] hover:border-[#E8231A]/40 rounded-sm transition-colors"
-                title="Eliminar archivo"
-              >
-                ×
-              </button>
-            </div>
-          </div>
-        ))}
+        <ProductFilesEditor
+          files={form.files}
+          onChange={(files) => setField("files", files)}
+        />
       </div>
 
       {/* Specs tarjeta */}
