@@ -45,42 +45,88 @@ export async function POST(request: Request) {
   const cleanName = name.trim();
   const cleanCompany = company?.trim() || null;
 
-  // El mensaje se guarda con el cliente anon: `contact_messages` tiene una
-  // policy de INSERT público justamente para esto (el formulario lo usa gente
-  // sin sesión).
-  const supabase = await createClient();
-  const { data: inserted, error } = await supabase
-    .from("contact_messages")
-    .insert({
-      name: cleanName,
-      company: cleanCompany,
-      email: cleanEmail,
-      phone: normalizedPhone,
-      industry: industry || null,
-      message: message.trim(),
-      status: "nuevo",
-    })
-    .select("id")
-    .single();
+  // El mensaje se guarda con la service key, NO con el cliente anon, y la razón
+  // es el `.select("id")` de abajo.
+  //
+  // `contact_messages` tiene policy de INSERT público (el formulario lo usa
+  // gente sin sesión), pero la de SELECT es solo para autenticados. Postgres
+  // aplica la policy de SELECT a la cláusula RETURNING de un INSERT, y
+  // PostgREST usa RETURNING para poder devolver la fila insertada. O sea:
+  // pedirle el id al insert anon lo hace fallar con
+  //
+  //     42501: new row violates row-level security policy for table
+  //            "contact_messages"
+  //
+  // —el mismo error que dio el bug de la migración 018, con otra causa, y por
+  // eso es tan fácil confundirlos—. Verificado contra la base real: el mismo
+  // insert sin `.select()` entra, con `.select()` no.
+  //
+  // La alternativa sería abrir el SELECT al rol anon, y eso deja leer el buzón
+  // de mensajes entero desde cualquier navegador. No se hace.
+  //
+  // El id hace falta para enganchar el mensaje con la ficha del cliente
+  // (`contact_id`, más abajo), así que el insert va con la clave de servicio.
+  // Sigue siendo un endpoint público, pero lo que se guarda ya pasó por el
+  // filtro anti-spam y por la validación de campos de acá arriba.
+  //
+  // Si la service key no está cargada en el entorno, el lead se guarda igual
+  // con el cliente anon y sin pedir el id: se pierde el enlace con la ficha,
+  // que es recuperable después, y no la consulta, que no lo es. Esta tabla ya
+  // se comió un mes de leads por una falla silenciosa; no se le agrega otra
+  // forma de fallar.
+  const fila = {
+    name: cleanName,
+    company: cleanCompany,
+    email: cleanEmail,
+    phone: normalizedPhone,
+    industry: industry || null,
+    message: message.trim(),
+    status: "nuevo",
+  };
 
-  if (error) {
-    console.error("contact insert error:", error);
-    return NextResponse.json({ error: "Error al guardar el mensaje" }, { status: 500 });
+  const admin = process.env.SUPABASE_SERVICE_KEY ? createAdminClient() : null;
+  let messageId: string | null = null;
+
+  if (admin) {
+    const { data, error } = await admin
+      .from("contact_messages")
+      .insert(fila)
+      .select("id")
+      .single();
+
+    if (error) {
+      console.error("contact insert error:", error);
+      return NextResponse.json({ error: "Error al guardar el mensaje" }, { status: 500 });
+    }
+    messageId = data.id;
+  } else {
+    console.warn(
+      "contact: falta SUPABASE_SERVICE_KEY — el lead se guarda, pero no se enlaza con crm_contacts"
+    );
+    const supabase = await createClient();
+    const { error } = await supabase.from("contact_messages").insert(fila);
+
+    if (error) {
+      console.error("contact insert error:", error);
+      return NextResponse.json({ error: "Error al guardar el mensaje" }, { status: 500 });
+    }
   }
 
   // Fase 7 del Track E: además del mensaje, se crea (o se completa) la ficha
   // del cliente, así el lead aparece en /admin/clientes junto a los prospectos
   // y a los contactos de WhatsApp.
   //
-  // Va con la service key y NO con el cliente anon: `crm_contacts` no tiene ni
-  // debe tener una policy para anónimos — abrirla dejaría a cualquiera leer la
-  // base de clientes entera desde el navegador. Con RLS activo y sin policy el
-  // insert no daría error, simplemente no escribiría ninguna fila.
+  // Usa la misma service key del insert de arriba, y acá es imprescindible:
+  // `crm_contacts` no tiene ni debe tener una policy para anónimos — abrirla
+  // dejaría a cualquiera leer la base de clientes entera desde el navegador.
+  // Con RLS activo y sin policy el insert no daría error, simplemente no
+  // escribiría ninguna fila.
   //
   // Un fallo acá no rompe el formulario: el mensaje ya está guardado y el mail
   // de aviso se manda igual. Se loguea y se sigue.
-  try {
-    const admin = createAdminClient();
+  // Sin service key no hay ficha que crear: ya se avisó arriba y el lead, que
+  // es lo que no se puede perder, quedó guardado.
+  if (admin) try {
     let contactId: string | null = null;
 
     if (normalizedPhone) {
@@ -149,8 +195,8 @@ export async function POST(request: Request) {
       }
     }
 
-    if (contactId && inserted?.id) {
-      await admin.from("contact_messages").update({ contact_id: contactId }).eq("id", inserted.id);
+    if (contactId && messageId) {
+      await admin.from("contact_messages").update({ contact_id: contactId }).eq("id", messageId);
     }
   } catch (crmError) {
     console.error("contact → crm_contacts error (non-fatal):", crmError);
