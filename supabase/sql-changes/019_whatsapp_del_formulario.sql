@@ -59,3 +59,12 @@ WHERE  c.whatsapp_phone IS NULL
          WHERE  m.contact_id = c.id
            AND  m.phone IS NOT NULL
        );
+
+-- 3. Verificación
+-- Cuántas fichas quedaron con el WhatsApp declarado por la propia persona en el
+-- formulario. Esta sección faltaba: sin ella `scripts/sync-schema.mjs` no puede
+-- espejar la migración (corta el cuerpo justo acá), y por eso la 019 había
+-- quedado fuera del array `MIRRORED` y copiada a mano en `schema.sql`.
+SELECT count(*) AS fichas_con_whatsapp_del_formulario
+  FROM crm_contacts
+ WHERE whatsapp_source = 'formulario';

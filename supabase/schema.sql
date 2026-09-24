@@ -770,13 +770,11 @@ ALTER TABLE crm_contacts ADD CONSTRAINT crm_contacts_enrichment_level_check
 -- De dónde salió la evidencia de WhatsApp. 'link' = enlace wa.me en el
 -- sitio; 'texto' = un teléfono junto a la palabra WhatsApp; 'busqueda'
 -- = del resultado de Google del nivel 3; 'manual' = lo cargó una
--- persona; 'formulario' = lo escribió la propia persona en el campo
--- "Teléfono (WhatsApp)" del sitio, que es la evidencia más fuerte de
--- todas. NUNCA se infiere de que el número parezca celular: eso va
+-- persona. NUNCA se infiere de que el número parezca celular: eso va
 -- en whatsapp_likely y no cuenta como contacto confirmado.
 ALTER TABLE crm_contacts DROP CONSTRAINT IF EXISTS crm_contacts_whatsapp_source_check;
 ALTER TABLE crm_contacts ADD CONSTRAINT crm_contacts_whatsapp_source_check
-  CHECK (whatsapp_source IS NULL OR whatsapp_source IN ('link', 'texto', 'busqueda', 'manual', 'formulario'));
+  CHECK (whatsapp_source IS NULL OR whatsapp_source IN ('link', 'texto', 'busqueda', 'manual'));
 
 -- Nada de filas fantasma sin ningún identificador.
 ALTER TABLE crm_contacts DROP CONSTRAINT IF EXISTS crm_contacts_needs_identity;
@@ -2327,3 +2325,98 @@ DROP POLICY IF EXISTS "Anyone can submit contact" ON contact_messages;
 CREATE POLICY "Anyone can submit contact" ON contact_messages
   FOR INSERT TO anon, authenticated
   WITH CHECK (true);
+
+
+-- ============================================================
+-- Migración: el WhatsApp del formulario cuenta como confirmado (26/08/2026)
+-- Ejecutar en Supabase Dashboard > SQL Editor
+-- Ver supabase/sql-changes/019_whatsapp_del_formulario.sql
+-- ============================================================
+
+
+-- 1. El origen nuevo
+ALTER TABLE crm_contacts DROP CONSTRAINT IF EXISTS crm_contacts_whatsapp_source_check;
+ALTER TABLE crm_contacts ADD CONSTRAINT crm_contacts_whatsapp_source_check
+  CHECK (whatsapp_source IS NULL OR whatsapp_source IN ('link', 'texto', 'busqueda', 'manual', 'formulario'));
+
+-- 2. Backfill de los leads que ya entraron por el formulario
+--
+-- El criterio no es `origin = 'formulario'`: un prospecto que ya existía por
+-- Google Maps y después completó el formulario conserva su origen original
+-- (así lo hace el upsert de /api/contact) y también dio su número. Lo que
+-- define el caso es tener un mensaje del formulario CON teléfono.
+--
+-- Se compara contra `crm_contacts.phone` para no pisar nada: si la ficha ya
+-- tiene un WhatsApp confirmado por otra vía, el WHERE la deja afuera.
+UPDATE crm_contacts c
+SET    whatsapp_phone = c.phone,
+       whatsapp_source = 'formulario',
+       updated_at = NOW()
+WHERE  c.whatsapp_phone IS NULL
+  AND  c.phone IS NOT NULL
+  AND  EXISTS (
+         SELECT 1 FROM contact_messages m
+         WHERE  m.contact_id = c.id
+           AND  m.phone IS NOT NULL
+       );
+
+
+-- ============================================================
+-- Migración: ficha de cliente para los leads de producción (24/09/2026)
+-- Ejecutar en Supabase Dashboard > SQL Editor
+-- Ver supabase/sql-changes/020_backfill_fichas_formulario.sql
+-- ============================================================
+
+
+-- 1. Backfill
+
+-- (a) Leads con teléfono → la clave es el teléfono, que es lo que comparten con
+--     el CRM de WhatsApp.
+INSERT INTO crm_contacts (phone, contact_name, business_name, email, origin, enrichment_status)
+SELECT DISTINCT ON (m.phone)
+       m.phone, m.name, nullif(m.company, ''), lower(m.email), 'formulario', 'skipped'
+  FROM contact_messages m
+ WHERE m.phone IS NOT NULL AND m.phone <> ''
+ ORDER BY m.phone, m.created_at DESC
+ON CONFLICT (phone) DO UPDATE SET
+  email         = coalesce(crm_contacts.email,         EXCLUDED.email),
+  contact_name  = coalesce(crm_contacts.contact_name,  EXCLUDED.contact_name),
+  business_name = coalesce(crm_contacts.business_name, EXCLUDED.business_name);
+  -- `origin` NO se pisa: si ese número ya escribió por WhatsApp o vino del
+  -- scraper, sigue figurando con el origen que conocimos primero.
+
+-- (b) Leads sin teléfono → la clave es el email. No hay UNIQUE sobre esa
+--     columna (las cadenas comparten info@… entre sucursales), así que el
+--     NOT EXISTS es lo que lo hace repetible.
+INSERT INTO crm_contacts (contact_name, business_name, email, origin, enrichment_status)
+SELECT DISTINCT ON (lower(m.email))
+       m.name, nullif(m.company, ''), lower(m.email), 'formulario', 'skipped'
+  FROM contact_messages m
+ WHERE (m.phone IS NULL OR m.phone = '')
+   AND m.email IS NOT NULL
+   AND NOT EXISTS (SELECT 1 FROM crm_contacts c WHERE c.email = lower(m.email))
+ ORDER BY lower(m.email), m.created_at DESC;
+
+-- (c) Enganchar cada mensaje con su ficha.
+UPDATE contact_messages m
+   SET contact_id = c.id
+  FROM crm_contacts c
+ WHERE m.contact_id IS NULL
+   AND ( (m.phone IS NOT NULL AND m.phone <> '' AND c.phone = m.phone)
+      OR ((m.phone IS NULL OR m.phone = '')     AND c.email = lower(m.email)) );
+
+-- (d) El teléfono que la persona escribió en el campo rotulado WhatsApp cuenta
+--     como confirmado — es el criterio de la migración 019, repetido acá porque
+--     un lead nuevo entra por (a) sin pasar por ese backfill. Solo donde está
+--     vacío: un WhatsApp confirmado por otra vía puede ser otro número.
+UPDATE crm_contacts c
+SET    whatsapp_phone = c.phone,
+       whatsapp_source = 'formulario',
+       updated_at = NOW()
+WHERE  c.whatsapp_phone IS NULL
+  AND  c.phone IS NOT NULL
+  AND  EXISTS (
+         SELECT 1 FROM contact_messages m
+         WHERE  m.contact_id = c.id
+           AND  m.phone IS NOT NULL
+       );

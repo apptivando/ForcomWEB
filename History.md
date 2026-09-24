@@ -49,6 +49,51 @@ título.
 
 ---
 
+## 2026-09-24 — El lead de producción entra sin ficha de cliente
+
+**Rama:** develop `pendiente` · **Producción:** no
+**Base de datos:** migración **020 escrita, sin correr**
+
+**Qué cambió:** se envió el formulario desde forcom.tech y quedó a la vista una
+diferencia entre los dos paneles: el mensaje aparece en los dos, pero en el de
+dev la sección Clientes no muestra la ficha de quien escribió.
+
+**No hay nada roto.** Crear la ficha es la fase 7 del Track E y ese código vive
+solo en `develop`; producción corre `main`, que guarda el mensaje y nada más.
+Los dos paneles leen la misma base, así que el de dev ve un mensaje que entró
+por producción y busca una ficha que nadie creó. Cuando `develop` llegue a
+`main` esto se arregla solo y para siempre.
+
+Mientras tanto se agregó la migración **020**, que le da ficha a los leads que
+no la tienen y los engancha. Es el backfill de la 010 recortado y **repetible**:
+se puede correr cada vez que entre un lead antes del merge, sin duplicar ni
+pisar datos.
+
+De paso, dos arreglos de andamiaje:
+
+- La **019 no estaba en el array `MIRRORED`** de `scripts/sync-schema.mjs` y su
+  contenido estaba copiado a mano en `schema.sql`. Correr ese script —que
+  reconstruye el archivo desde la 010— se la habría llevado puesta en silencio.
+  Es exactamente el accidente que el `CLAUDE.md` avisa que ya pasó una vez. Se
+  la agregó al array, junto con la 020, y para eso hubo que darle a la 019 la
+  sección de verificación que le faltaba (el script corta el cuerpo ahí).
+- Se puso al día `../MIGRACION_VERCEL.md`: la `SUPABASE_SERVICE_KEY` está
+  cargada desde el 07/08 (no se podía deducir desde producción, porque `main` no
+  la usa), las siete variables están confirmadas por lo que hace el sitio en
+  vivo, el DNS de `crm-dev.forcom.tech` nunca existió, el repo del CRM está
+  archivado y los procesos de PM2 parados. El Track 1A queda cerrado.
+
+**Probado:** el envío real desde el sitio, por vos — el lead quedó en la base,
+se ve en los dos paneles y el aviso llegó a `ventas@forcom.tech`. Que el lead
+está guardado completo y sin ficha se verificó campo por campo contra la base.
+Que `schema.sql` no perdió nada al reconstruirse, con un diff línea por línea.
+
+**Sin probar:** **la 020 no se corrió**, así que el lead del 24/09 sigue sin
+ficha hasta que se corra. GA4 tiene el tag en la página en vivo, pero nadie miró
+el panel para confirmar que las visitas lleguen.
+
+---
+
 ## 2026-09-23 — El formulario vuelve a guardar el lead
 
 **Rama:** develop `2a808cc` · **Producción:** no (el arreglo de base sí)
@@ -77,6 +122,8 @@ www.forcom.tech**. Lo que se verificó es que la base acepta el guardado tal com
 lo hace `main` y que el sitio en vivo sigue trayendo datos de Supabase; el envío
 real, con el correo de aviso y el auto-reply de Resend, no lo miró nadie todavía
 —y Resend no manda un mail desde el 21/08—.
+→ **Probado el 24/09/2026**, ver la entrada de arriba: el envío funciona y el
+aviso llegó.
 
 ---
 
