@@ -51,8 +51,8 @@ título.
 
 ## 2026-09-24 — El lead de producción entra sin ficha de cliente
 
-**Rama:** develop `pendiente` · **Producción:** no
-**Base de datos:** migración **020 escrita, sin correr**
+**Rama:** develop `1828600` · **Producción:** no
+**Base de datos:** migración **020 corrida** en Supabase
 
 **Qué cambió:** se envió el formulario desde forcom.tech y quedó a la vista una
 diferencia entre los dos paneles: el mensaje aparece en los dos, pero en el de
@@ -87,10 +87,47 @@ De paso, dos arreglos de andamiaje:
 se ve en los dos paneles y el aviso llegó a `ventas@forcom.tech`. Que el lead
 está guardado completo y sin ficha se verificó campo por campo contra la base.
 Que `schema.sql` no perdió nada al reconstruirse, con un diff línea por línea.
+**La 020 corrida y verificada:** 7 mensajes, 7 fichas, `sin_ficha = 0`, y el
+lead del 24/09 quedó enganchado a su ficha
+(`c5308244-c84f-4913-9dc8-4af14f12b50f`, `origin = formulario`).
 
-**Sin probar:** **la 020 no se corrió**, así que el lead del 24/09 sigue sin
-ficha hasta que se corra. GA4 tiene el tag en la página en vivo, pero nadie miró
-el panel para confirmar que las visitas lleguen.
+**Sin probar:** GA4 tiene el tag en la página en vivo, pero nadie miró el panel
+para confirmar que las visitas lleguen. Tampoco se probaron en producción el
+login del admin ni `/admin/miembros`.
+
+### Cierre del formulario de contacto
+
+Con esto el tema queda cerrado. El recorrido completo, para que se entienda
+dentro de seis meses:
+
+**Qué estaba roto.** El formulario de forcom.tech no guardó una sola consulta
+entre el **21/08 y el 23/09/2026**. La persona veía un error, y como el correo
+de aviso se manda *después* de guardar, tampoco salía el mail: la consulta
+desaparecía sin dejar rastro en ningún lado. Un mes de leads perdidos, y no se
+pueden recuperar — el guardado nunca ocurrió y la ruta loguea el error, no el
+contenido del mensaje.
+
+**Eran dos causas distintas con el mismo mensaje de error**, y eso fue lo que lo
+hizo difícil:
+
+1. En producción faltaba el permiso de escritura pública de la tabla. Lo arregló
+   la migración **018**.
+2. En `develop` el guardado además pide de vuelta el número del mensaje, y el
+   permiso de *lectura* de esa tabla es solo para usuarios logueados. Postgres
+   aplica ese permiso a lo que el guardado devuelve, así que fallaba con el
+   mismo código (`42501`) y casi el mismo texto. O sea que llevar `develop` a
+   producción habría vuelto a romper el formulario, otra vez en silencio.
+   Arreglado en `2a808cc`.
+
+**Qué quedó verificado, mirándolo funcionar y no compilando:** el envío real
+desde el sitio guarda el lead, lo muestra en los dos paneles y manda el aviso a
+`ventas@forcom.tech`; los dos caminos del guardado (con y sin clave de servidor)
+probados de punta a punta; y el backfill de fichas corrido y contado.
+
+**Qué queda, y no es del formulario:** llevar `develop` a `main`. Hasta que eso
+pase, cada lead nuevo entra sin ficha de cliente y hay que correr la **020** de
+nuevo — es repetible justamente para eso. Después del merge se engancha solo y
+la 020 deja de tener sentido.
 
 ---
 

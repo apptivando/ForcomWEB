@@ -27,7 +27,7 @@ El WhatsApp está congelado desde el 21/08/2026.
 | 1 | **[vos]** ¿Se sigue con el nivel 3 del scraper o se para? | La medición del 25/08 dio **44 % de correos en comercios con sitio web y 6 % en los que no tienen**. El nivel 3 sirve para WhatsApp y redes, no para correos — y el correo es el canal elegido. Ver el Paso B abajo. |
 | 2 | **[vos]** ¿Qué rubros y localidades se buscan? | Se concluyó que conviene apuntar a rubros con sitio web propio (distribuidoras, mayoristas, cadenas), no a comercios de barrio. Sin esa lista el scraper no tiene qué hacer. |
 | 3 | **[vos]** ¿Qué servicio se usa para administrar las llamadas? | No bloquea la cola de llamadas — el lugar para colgar grabación y transcripción queda preparado igual. Bloquea solo la integración. |
-| 4 | **[vos]** ¿Se lleva el panel rediseñado a producción? | Está listo y probado en `develop` desde el 26/08. Dijiste que faltaban retoques. Son 55 commits de diferencia con `main`. |
+| 4 | **[vos]** ¿Se lleva el panel rediseñado a producción? | Está listo y probado en `develop` desde el 26/08. Dijiste que faltaban retoques; al 24/09 son **59 commits** de diferencia con `main`, y con el Track E cerrado ya es un merge normal, no cherry-picks. **Tiene un costo mientras se espera:** cada lead que entra por el formulario queda sin ficha de cliente hasta que se corra la migración **020** a mano (la fase 7 del Track E, que crea la ficha, está solo en `develop`). Ver `History.md`, 24/09. |
 
 ---
 
