@@ -25,7 +25,7 @@ export default function Footer() {
                 (item) => (
                   <li key={item}>
                     <a
-                      href="#productos"
+                      href="/#productos"
                       className="text-sm text-forcom-gray hover:text-forcom-red-text transition-colors"
                     >
                       {item}
@@ -46,7 +46,7 @@ export default function Footer() {
                 (item) => (
                   <li key={item}>
                     <a
-                      href="#industrias"
+                      href="/#industrias"
                       className="text-sm text-forcom-gray hover:text-forcom-red-text transition-colors"
                     >
                       {item}
@@ -64,10 +64,10 @@ export default function Footer() {
             </h4>
             <ul className="space-y-2.5">
               {[
-                { label: "Sobre nosotros", href: "#por-que" },
-                { label: "Contacto", href: "#contacto" },
-                { label: "Soporte técnico", href: "#contacto" },
-                { label: "Garantía", href: "#contacto" },
+                { label: "Sobre nosotros", href: "/#por-que" },
+                { label: "Contacto", href: "/#contacto" },
+                { label: "Soporte técnico", href: "/#contacto" },
+                { label: "Garantía", href: "/#contacto" },
               ].map((item) => (
                 <li key={item.label}>
                   <a

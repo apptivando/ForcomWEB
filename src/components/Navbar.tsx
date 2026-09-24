@@ -4,20 +4,20 @@ import { useState, useEffect, useRef } from "react";
 import ForcomLogo from "./ForcomLogo";
 
 const productCategories = [
-  { label: "Smart POS", sub: "Terminales Inteligentes", href: "#cat-smart-pos" },
-  { label: "Mini PC", sub: "Computación Compacta", href: "#cat-mini-pc" },
-  { label: "Impresoras", sub: "Térmica & Etiquetas", href: "#cat-impresoras" },
-  { label: "Lectores Escritorio", sub: "Omnidireccionales 1D/2D", href: "#cat-lectores" },
-  { label: "Lectores de Mano", sub: "Wireless & USB", href: "#cat-lectores-mano" },
-  { label: "Verificadores", sub: "Kioscos Autoservicio", href: "#cat-verificadores" },
-  { label: "Balanzas", sub: "Comercio & Retail", href: "#cat-balanzas" },
-  { label: "Accesorios", sub: "Cajones, Visores & Más", href: "#cat-accesorios" },
+  { label: "Smart POS", sub: "Terminales Inteligentes", href: "/#cat-smart-pos" },
+  { label: "Mini PC", sub: "Computación Compacta", href: "/#cat-mini-pc" },
+  { label: "Impresoras", sub: "Térmica & Etiquetas", href: "/#cat-impresoras" },
+  { label: "Lectores Escritorio", sub: "Omnidireccionales 1D/2D", href: "/#cat-lectores" },
+  { label: "Lectores de Mano", sub: "Wireless & USB", href: "/#cat-lectores-mano" },
+  { label: "Verificadores", sub: "Kioscos Autoservicio", href: "/#cat-verificadores" },
+  { label: "Balanzas", sub: "Comercio & Retail", href: "/#cat-balanzas" },
+  { label: "Accesorios", sub: "Cajones, Visores & Más", href: "/#cat-accesorios" },
 ];
 
 const navLinks = [
-  { label: "Por qué FORCOM", href: "#por-que" },
-  { label: "Industrias", href: "#industrias" },
-  { label: "Contacto", href: "#contacto" },
+  { label: "Por qué FORCOM", href: "/#por-que" },
+  { label: "Industrias", href: "/#industrias" },
+  { label: "Contacto", href: "/#contacto" },
 ];
 
 export default function Navbar() {
@@ -53,7 +53,7 @@ export default function Navbar() {
     >
       <div className="max-w-7xl mx-auto px-6 lg:px-8 flex items-center justify-between h-16 lg:h-20">
         {/* Logo */}
-        <a href="#" className="group flex-shrink-0">
+        <a href="/" className="group flex-shrink-0">
           <ForcomLogo className="h-10 lg:h-12 w-auto group-hover:opacity-90 transition-opacity" priority />
         </a>
 
@@ -117,7 +117,7 @@ export default function Navbar() {
 
               <div className="border-t border-forcom-border px-5 py-3">
                 <a
-                  href="#productos"
+                  href="/#productos"
                   onClick={() => setProductsOpen(false)}
                   className="text-xs font-display font-bold text-forcom-red-text tracking-[0.2em] uppercase hover:text-forcom-red-text-dark transition-colors"
                 >
@@ -139,7 +139,7 @@ export default function Navbar() {
           ))}
 
           <a
-            href="#contacto"
+            href="/#contacto"
             className="ml-4 px-6 py-3 bg-forcom-red-dark text-white font-display font-bold text-sm tracking-[0.1em] uppercase rounded-sm hover:bg-forcom-red-dark transition-colors"
           >
             Consultá ahora
@@ -226,7 +226,7 @@ export default function Navbar() {
             ))}
 
             <a
-              href="#contacto"
+              href="/#contacto"
               onClick={() => setMobileOpen(false)}
               className="mt-5 px-5 py-3.5 bg-forcom-red-dark text-white font-display font-bold text-sm tracking-[0.1em] uppercase rounded-sm text-center hover:bg-forcom-red-dark transition-colors"
             >
