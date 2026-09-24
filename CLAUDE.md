@@ -82,6 +82,10 @@ Todo plan que le presente al usuario debe tener esta estructura, en este orden:
 
 Verificar que el build salga limpio (`npm run build`) antes de dar la tarea por terminada. Si el build sale limpio, hacer push: a `develop` si esa rama existe en el repo, si no, directo a `main`.
 
+**Con cada push, escribir la entrada en `History.md`** (arriba de todo, formato en su encabezado): qué rama, qué commit, si llegó a producción, qué migración se corrió, qué cambió, qué se probó y qué quedó sin probar. "Probado" es lo que alguien vio funcionando — que el build salga limpio no cuenta.
+
+**Lo que se posterga se escribe en `Futuro.md` antes de cerrar la sesión**, con el motivo y etiquetado `[vos]` o `[yo]`. Cuando un ítem de `Futuro.md` se empieza, se saca de ahí y pasa a `History.md` al pushear.
+
 ## Decisión de plataforma
 
 Se comenzó con un plan en WordPress (ver `../PLANCMS.md`) pero se migró a Next.js. El PLANCMS.md es un documento desactualizado — ignorarlo.
