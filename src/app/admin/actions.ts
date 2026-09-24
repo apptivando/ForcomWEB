@@ -654,6 +654,23 @@ export async function removeMember(userId: string) {
 }
 
 /**
+ * Resultado de las acciones de contraseña (invitación, recuperación, cambio).
+ *
+ * POR QUÉ NO ALCANZA CON `throw`: estas acciones le hablan a una persona que
+ * está mirando un formulario, y sus errores son parte de la conversación —
+ * "esa es la contraseña que ya tenías", "el link venció"—. Next **borra el
+ * mensaje de cualquier error que se tire desde una Server Action en el build
+ * de producción** y lo reemplaza por "An error occurred in the Server
+ * Components render...". En `next dev` el texto se ve, así que el problema no
+ * aparece probando local: se ve recién en forcom.tech, y le aparece al usuario.
+ * Pasó el 24/09/2026 al reusar una contraseña en /admin/recuperar.
+ *
+ * Por eso lo esperable se **devuelve** y solo lo inesperado se tira (ahí el
+ * mensaje genérico está bien: no hay nada que la persona pueda hacer con él).
+ */
+export type PasswordActionResult = { ok: true } | { ok: false; error: string };
+
+/**
  * Completa la invitación: la llama /admin/join cuando la persona manda la
  * contraseña. Acá — y no al abrir el link — es donde el token se consume.
  *
@@ -663,19 +680,22 @@ export async function removeMember(userId: string) {
 export async function acceptInvitation(
   token: string,
   password: string
-): Promise<{ email: string }> {
+): Promise<PasswordActionResult> {
   const invalid = validatePassword(password);
-  if (invalid) throw new Error(invalid);
+  if (invalid) return { ok: false, error: invalid };
 
   const found = await lookupInvitation(token);
   if (found.status === "expired") {
-    throw new Error("La invitación venció. Pedile a un admin que te la mande de nuevo.");
+    return { ok: false, error: "La invitación venció. Pedile a un admin que te la mande de nuevo." };
   }
   if (found.status === "used") {
-    throw new Error("Esta invitación ya se usó. Entrá con tu email y contraseña.");
+    return { ok: false, error: "Esta invitación ya se usó. Entrá con tu email y contraseña." };
   }
   if (found.status !== "ok") {
-    throw new Error("El link no es válido. Pedile a un admin que te mande una invitación nueva.");
+    return {
+      ok: false,
+      error: "El link no es válido. Pedile a un admin que te mande una invitación nueva.",
+    };
   }
 
   const admin = createAdminClient();
@@ -718,7 +738,7 @@ export async function acceptInvitation(
     .eq("id", found.id);
 
   revalidatePath("/admin/miembros");
-  return { email: found.email };
+  return { ok: true };
 }
 
 /**
@@ -730,22 +750,22 @@ export async function acceptInvitation(
  *
  * Acción pública: la usa gente sin sesión, que es todo el punto.
  */
-export async function requestPasswordReset(email: string): Promise<void> {
+export async function requestPasswordReset(email: string): Promise<PasswordActionResult> {
   const normalized = email.trim().toLowerCase();
-  if (!normalized.includes("@")) return;
+  if (!normalized.includes("@")) return { ok: true };
 
   const admin = createAdminClient();
 
   // Solo para miembros del panel: un usuario de Auth sin fila en
   // admin_members no tiene nada que recuperar.
   const user = await findAuthUserByEmail(admin, normalized);
-  if (!user) return;
+  if (!user) return { ok: true };
   const { data: member } = await admin
     .from("admin_members")
     .select("user_id")
     .eq("user_id", user.id)
     .maybeSingle();
-  if (!member) return;
+  if (!member) return { ok: true };
 
   // Freno: apretar el botón diez veces no manda diez correos, y nadie puede
   // usar el formulario para inundarle la bandeja a otro.
@@ -761,7 +781,7 @@ export async function requestPasswordReset(email: string): Promise<void> {
     recent &&
     Date.now() - new Date(recent.created_at).getTime() < RESET_THROTTLE_SECONDS * 1000
   ) {
-    return;
+    return { ok: true };
   }
 
   // Un solo link vivo por casilla: el nuevo mata a los anteriores.
@@ -803,9 +823,13 @@ export async function requestPasswordReset(email: string): Promise<void> {
     // en pantalla. Si quedara mudo, la persona esperaría para siempre un
     // correo que no está saliendo. El resto de los errores sí se traga: ahí el
     // silencio es lo que evita revelar si la casilla existe.
-    if (err instanceof EmailConfigError) throw err;
+    if (err instanceof EmailConfigError) {
+      return { ok: false, error: `El correo no pudo salir: ${err.message}` };
+    }
     console.error("password reset email error:", err);
   }
+
+  return { ok: true };
 }
 
 /**
@@ -815,19 +839,19 @@ export async function requestPasswordReset(email: string): Promise<void> {
 export async function resetPassword(
   token: string,
   password: string
-): Promise<{ email: string }> {
+): Promise<PasswordActionResult> {
   const invalid = validatePassword(password);
-  if (invalid) throw new Error(invalid);
+  if (invalid) return { ok: false, error: invalid };
 
   const found = await lookupPasswordReset(token);
   if (found.status === "expired") {
-    throw new Error("El link venció. Pedí uno nuevo desde “Olvidé mi contraseña”.");
+    return { ok: false, error: "El link venció. Pedí uno nuevo desde “Olvidé mi contraseña”." };
   }
   if (found.status === "used") {
-    throw new Error("Este link ya se usó. Entrá con tu contraseña nueva.");
+    return { ok: false, error: "Este link ya se usó. Entrá con tu contraseña nueva." };
   }
   if (found.status !== "ok") {
-    throw new Error("El link no es válido. Pedí uno nuevo desde “Olvidé mi contraseña”.");
+    return { ok: false, error: "El link no es válido. Pedí uno nuevo desde “Olvidé mi contraseña”." };
   }
 
   // ¿Es la misma contraseña que ya tenía? Acá no la conocemos —el link de
@@ -842,7 +866,7 @@ export async function resetPassword(
   if (!sameErr) {
     // Scope local: cierra solo la sesión que se acaba de crear acá.
     await check.auth.signOut({ scope: "local" });
-    throw new Error("Esa es la contraseña que ya tenías. Elegí una distinta.");
+    return { ok: false, error: "Esa es la contraseña que ya tenías. Elegí una distinta." };
   }
 
   const admin = createAdminClient();
@@ -864,7 +888,7 @@ export async function resetPassword(
     .eq("email", found.email)
     .is("used_at", null);
 
-  return { email: found.email };
+  return { ok: true };
 }
 
 /**
@@ -876,15 +900,15 @@ export async function resetPassword(
 export async function changeOwnPassword(
   currentPassword: string,
   newPassword: string
-): Promise<void> {
+): Promise<PasswordActionResult> {
   const supabase = await requireAuth();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user?.email) throw new Error("No autorizado");
 
   const invalid = validatePassword(newPassword);
-  if (invalid) throw new Error(invalid);
+  if (invalid) return { ok: false, error: invalid };
   if (newPassword === currentPassword) {
-    throw new Error("La contraseña nueva tiene que ser distinta de la actual.");
+    return { ok: false, error: "La contraseña nueva tiene que ser distinta de la actual." };
   }
 
   // Cliente aparte, sin cookies: verificar acá con el cliente de sesión
@@ -894,7 +918,7 @@ export async function changeOwnPassword(
     email: user.email,
     password: currentPassword,
   });
-  if (signInErr) throw new Error("La contraseña actual no es correcta.");
+  if (signInErr) return { ok: false, error: "La contraseña actual no es correcta." };
 
   // Verificar deja abierta la sesión que se acaba de crear: se cierra. Scope
   // "local" a propósito — el default de supabase-js es "global", que cerraría
@@ -906,6 +930,8 @@ export async function changeOwnPassword(
     password: newPassword,
   });
   if (error) throw new Error(error.message);
+
+  return { ok: true };
 }
 
 // ─── Bandeja de WhatsApp (Track E, fase 3) ────────────────────────────────────

@@ -24,17 +24,17 @@ export default function PasswordResetRequest({ initialEmail = "" }: { initialEma
     setError("");
     setSubmitting(true);
     try {
-      await requestPasswordReset(email);
+      const result = await requestPasswordReset(email);
+      // La acción avisa cuando el correo no sale para NADIE (dominio o API key
+      // mal): ese mensaje se muestra tal cual, porque es lo único que le
+      // permite a un admin darse cuenta de que hay que arreglar algo. Viene
+      // como valor de retorno y no como excepción porque Next borra el texto
+      // de los errores que se tiran desde una Server Action en producción.
+      if (!result.ok) return setError(result.error);
       setSent(true);
     } catch (err) {
-      // La acción solo tira cuando el correo no sale para NADIE (dominio o
-      // API key mal): ese mensaje se muestra tal cual, porque es lo único que
-      // le permite a un admin darse cuenta de que hay que arreglar algo.
-      setError(
-        err instanceof Error && err.message
-          ? `El correo no pudo salir: ${err.message}`
-          : "No se pudo procesar el pedido. Probá de nuevo en un momento."
-      );
+      console.error("password reset request error:", err);
+      setError("No se pudo procesar el pedido. Probá de nuevo en un momento.");
     } finally {
       setSubmitting(false);
     }

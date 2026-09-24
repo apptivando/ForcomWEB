@@ -110,8 +110,11 @@ export default function PasswordForm({
       const supabase = createClient();
 
       if (mode === "invite" || mode === "reset") {
-        if (mode === "invite") await acceptInvitation(token!, password);
-        else await resetPassword(token!, password);
+        const result =
+          mode === "invite"
+            ? await acceptInvitation(token!, password)
+            : await resetPassword(token!, password);
+        if (!result.ok) return setError(result.error);
 
         // La cuenta ya quedó con esta contraseña: se entra en el momento, sin
         // pasar por el login.
@@ -134,7 +137,9 @@ export default function PasswordForm({
         return;
       }
 
-      await changeOwnPassword(current, password);
+      const result = await changeOwnPassword(current, password);
+      if (!result.ok) return setError(result.error);
+
       // Cambiar la contraseña puede invalidar la sesión actual (depende de la
       // config de Supabase): se renueva con la nueva para no quedar afuera.
       await supabase.auth.signInWithPassword({ email, password });
@@ -144,7 +149,16 @@ export default function PasswordForm({
       setDone(true);
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "No se pudo guardar la contraseña.");
+      // Acá solo caen fallas inesperadas (la base, la red). Lo que la persona
+      // puede corregir —contraseña repetida, link vencido— vuelve como
+      // `result.error`, no como excepción: Next borra el texto de los errores
+      // que se tiran desde una Server Action en producción y lo reemplaza por
+      // "An error occurred in the Server Components render...". Por eso no se
+      // muestra `err.message`: en producción no dice nada útil.
+      console.error("password form error:", err);
+      setError(
+        "No se pudo guardar la contraseña. Probá de nuevo en un momento; si sigue igual, pedí un link nuevo."
+      );
     } finally {
       setSubmitting(false);
     }
