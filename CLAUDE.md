@@ -91,6 +91,12 @@ src/
 
 **`contact_messages`** — CRM: mensajes del formulario de contacto
 
+**`admin_members`** — quién puede entrar a `/admin` y con qué rol (`owner` · `admin` · `agent`). Tener sesión de Supabase **no alcanza**: sin fila acá no se entra. La función `current_admin_role()` la leen las políticas RLS.
+
+**`admin_invitations`** / **`admin_password_resets`** — links de invitación y de recuperación de contraseña. Guardan el **hash** del token, nunca el token. Abrir el link no consume nada: se marca usado recién cuando llega la contraseña nueva, así los antivirus de las casillas corporativas —que abren los links antes de entregar el correo— no queman el link.
+
+> Migraciones `001`, `015` y `016`, ya corridas. Los `.sql` viven en la rama `develop` (`supabase/sql-changes/`), que es donde se escribieron.
+
 ### Storage
 
 **Bucket `product-images`** (público) — imágenes subidas desde el admin.  
@@ -118,7 +124,8 @@ npm run dev
 
 - **Framework Preset en Vercel** debe ser "Next.js" (no "Other") — si queda en Other, 404 en todas las rutas.
 - **`src/lib/supabase/server.ts`** tiene try-catch en `setAll` — requerido porque App Router no permite setear cookies desde Server Components; sin él falla en producción.
-- **Auth middleware** está en `src/lib/supabase/middleware-proxy.ts`. NO nombrarlo `middleware.ts` ni ponerlo en raíz de `src/`.
+- **El gate de `/admin` es `src/proxy.ts`, en la raíz de `src/`, con ese nombre exacto.** Next 16 renombró "Middleware" a "Proxy" y solo lo reconoce ahí. Hasta el 24/09/2026 este archivo vivía en `src/lib/supabase/middleware-proxy.ts` — donde **nunca se ejecutó**: era código muerto, y lo único que protegía el panel era el chequeo de sesión del layout. Para confirmar que está vivo, `npm run build` tiene que listar `ƒ Proxy (Middleware)` al final. Si no aparece, el gate no corre.
+- **Next borra el texto de los errores tirados desde una Server Action en el build de producción** y lo reemplaza por "An error occurred in the Server Components render...". En `next dev` el texto se ve, así que el problema no aparece probando en local. Por eso las acciones de contraseña **devuelven** `{ ok: false, error }` en vez de tirar: lo que la persona puede corregir tiene que llegarle. Ver `PasswordActionResult` en `src/app/admin/actions.ts`.
 - **Logo** usa `next/image` con PNG (`/images/brand/forcom-logo.png`). No volver a SVG con texto — el ® desaparecía y perdía calidad.
 - **HeroCarousel usa `h-screen` (no `min-h-screen`)** — con `min-h-screen` la sección se alargaba en algunos slides y la navegación quedaba fuera del viewport. La navegación está posicionada `absolute bottom-6` para que siempre sea visible. No volver a flujo normal ni a `min-h-screen`.
 - **Hero mobile layout (30/06/2026)** — `section` usa `items-start md:items-center`: en mobile el contenido arranca justo bajo la navbar (elimina el dead space superior), en desktop queda centrado verticalmente. Imagen: `w-80 h-80` fijo en mobile, `md:w-full md:h-auto md:aspect-square` en desktop. Las decoraciones (esquinas rojas, borde rotado, badge de producto) son visibles en todos los tamaños — no agregar `hidden md:block` a esos elementos. Trust badges: `flex justify-center sm:justify-start text-xs sm:text-sm` (visibles en mobile, centrados). Scroll indicator `sm:hidden` al fondo del texto. Título: `text-center sm:text-left`.
