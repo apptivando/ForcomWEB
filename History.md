@@ -33,7 +33,7 @@ Dos reglas que hacen que esto sirva:
 
 ## 2026-09-24 — El CRM se muda a Apptivando CRM, y Cuentas queda listo para producción
 
-**Rama:** develop (documentación) · **el port a `main` está armado y sin subir**
+**Rama:** develop `20f32cb` (congelamiento) · main `73d9ab7` (port) · **Producción: sí**
 **Base de datos:** ninguna (001, 015 y 016 ya estaban corridas)
 
 **Qué cambió — la decisión:** el CRM deja de ser parte de este repo y pasa a ser
@@ -81,10 +81,13 @@ el menú y rebota si escribe la URL a mano; un admin entra, ve la lista real de
 miembros y el detalle de roles nuevo, sin rastros del texto viejo. El build
 lista `ƒ Proxy (Middleware)`, que es como se comprueba que el gate corre.
 
+**Verificado además en producción**, ya con el deploy arriba: `/admin/recuperar`
+y `/admin/join` responden (antes no existían), `join` con un token inválido lo
+dice, y sin sesión las cuatro rutas del panel redirigen al login.
+
 **Sin probar:** el envío real de un correo de invitación o de recuperación. Vos
 confirmaste que Resend tiene `forcom.tech` verificado y que las variables están
-en Vercel, pero no se mandó ningún correo. Es lo primero a probar cuando esto
-llegue a `main`.
+en Vercel, pero no se mandó ningún correo. Es lo primero a probar.
 
 **Decisión tomada:** `apptivando@gmail.com` existe en Supabase Auth sin fila en
 `admin_members`. Hoy entra al panel de producción; después del port deja de
