@@ -31,6 +31,112 @@ Dos reglas que hacen que esto sirva:
 
 ---
 
+## 2026-09-24 — Los errores de las pantallas de contraseña se veían genéricos en producción
+
+**Rama:** develop `7bdd8b1` · **Producción:** no
+**Base de datos:** ninguna
+
+**Qué cambió:** **Next borra el mensaje de cualquier error que se tire desde una
+Server Action en el build de producción** y lo reemplaza por "An error occurred
+in the Server Components render...". En `next dev` el texto se ve, así que el
+problema no aparece probando en local: aparece recién en forcom.tech, y le
+aparece a la persona. Pasó el 24/09 al reusar una contraseña en
+`/admin/recuperar`: en vez de "Esa es la contraseña que ya tenías", cartel
+genérico.
+
+Estas pantallas le hablan a alguien que está mirando un formulario, y sus
+errores son parte de la conversación. Ahora lo esperable se **devuelve** y solo
+lo inesperado se tira. Alcanza a aceptar una invitación, recuperar la
+contraseña, cambiarla desde Mi cuenta y pedir el link de recuperación — esta
+última tenía el mismo problema con el aviso de dominio de correo caído, que es
+lo único que le permite a un admin darse cuenta de que hay algo roto.
+
+**Probado:** `tsc --noEmit` y `eslint` limpios.
+**Sin probar:** las cuatro pantallas contra un build de producción, que es donde
+se ve la diferencia. Se verifica en el port a `main`.
+
+---
+
+## 2026-09-24 — El menú de productos no funcionaba desde la página de un producto
+
+**Rama:** develop `15b28a1` · main `b0e93d5` (cherry-pick) · **Producción:** sí
+**Base de datos:** ninguna
+
+**Qué cambió:** estando en `/productos/[slug]`, elegir otra categoría en el menú
+solo agregaba `#cat-...` a la URL y te dejaba en el mismo producto. Los links del
+Navbar y del Footer eran anclas sueltas (`#cat-smart-pos`, `#contacto`), que el
+navegador busca en la página actual; en la página de producto esas secciones no
+existen. Ahora apuntan a la home (`/#cat-smart-pos`), y el logo a `/`. En la home
+el comportamiento no cambia (sigue siendo solo scroll).
+
+**Probado:** en producción (`forcom.tech`), el usuario entró a un producto y
+navegó a otra categoría desde el menú: funciona correctamente.
+
+---
+
+## 2026-09-24 — La cola de enriquecimiento estaba trabada por el UNIQUE de `phone`
+
+**Rama:** develop `42f7f31` · **Producción:** no
+**Base de datos:** ninguna
+
+**Qué cambió:** apretaste "Enriquecer ahora", el cartel informó "5 procesados" y
+la cola no bajó. El motor andaba perfecto —encontró 3 correos y 2 WhatsApp en 39
+segundos— pero **no guardaba nada**: el `UPDATE` final moría con un `23505` sobre
+`crm_contacts_phone_key`.
+
+La causa: las cinco fichas de la cola eran sucursales de cadena (dos "Carrefour
+Maxi", dos "Alvear", una "Cordiez") y el enriquecedor les encontraba el **teléfono
+central, que ya era de una ficha hermana**. `crm_contacts.phone` tiene `UNIQUE`
+desde el esquema original de WhatsApp, donde el teléfono *era* la identidad del
+contacto.
+
+**Lo importante no era el teléfono perdido, era el efecto colateral.** Postgres
+rechaza el `UPDATE` entero, así que con él se iban también el correo y el WhatsApp
+recién encontrados, el `enrichment_status = 'done'` y el `scrape_attempts + 1`.
+Sin ese contador el tope de tres intentos nunca se alcanza: la ficha quedaba en
+`running`, el watchdog la devolvía a `pending` a los 15 minutos, y se reintentaba
+para siempre gastando consultas de Serper en cada vuelta. **Tres semanas
+rebotando** — desde el 21/08 y el 25/08, que es cuando se crearon.
+
+El arreglo, en `src/lib/prospects/enrich.ts`, son dos piezas:
+
+- **`phoneTaken()`** — antes de escribir un teléfono nuevo, pregunta si ya es de
+  otra ficha. Si lo es, no lo escribe y deja el motivo en las notas. Las fichas
+  **no se fusionan**: son dos locales distintos, con direcciones distintas.
+- **`saveEnrichment()`** — la red de contención. Ante un `23505` identifica la
+  columna que chocó (del `details` de Postgres, o del nombre de la constraint
+  como respaldo), la saca del patch y reintenta, para que el estado se guarde
+  siempre. Es genérico a propósito: `email` hoy no tiene `UNIQUE` justamente por
+  este motivo (nota del índice en la 010), pero el día que alguien le ponga uno,
+  la cola no se vuelve a trabar.
+
+De paso, `found.phone` en el resultado del lote ahora informa lo que **se
+guardó**, no lo que se encontró: antes el cartel podía prometer cinco teléfonos
+con cero escritos.
+
+**El "121" de `Futuro.md` no existía.** Era una nota de agosto ("quedaron ~121
+prospectos en la cola cuando se agotó la cuota"), no un número en vivo: la cola
+real eran esas 5 fichas rebotando. El ítem se sacó de `Futuro.md`.
+
+**Probado:** se corrió el mismo `enrichBatch()` que usa el botón sobre las 5
+fichas trabadas. Antes: los 5 con el error de unicidad y la cola en 5. Después:
+**0 errores y la cola en 0**, con los datos verificados campo por campo en la
+base — las dos Alvear en tier 1 (`info@alvearsupermercados.com.ar` + WhatsApp),
+Cordiez en tier 2 (`clientes@cyre.com.ar`), los dos Carrefour en tier 4 pero con
+`done` e `intentos = 1`, o sea fuera de la cola para siempre. Los sitios de
+Carrefour no dan datos porque renderizan en JavaScript, que es el límite
+documentado del extractor. Vos confirmaste en pantalla "Cola de enriquecimiento:
+0". Además: los 19 casos de `test-extract.mjs`, `tsc --noEmit` y `eslint` limpios.
+
+**Sin probar:** el botón en sí, clickeado desde el navegador con el código nuevo
+—la verificación se hizo corriendo el mismo código por script—. Nada de esto está
+en producción.
+
+La advertencia completa, con el porqué, quedó en
+[docs/PROSPECTOS.md](docs/PROSPECTOS.md).
+
+---
+
 ## 2026-09-23 — Se arranca el historial y el backlog
 
 **Rama:** develop · **Producción:** no
