@@ -295,14 +295,14 @@ Lo que quedó sin hacer, por tiempo indefinido:
 | 1 | Probar el formulario de contacto de punta a punta: mandarlo con un número y ver que en la ficha el ícono verde quede prendido y aparezca "Abrir en la Bandeja →" | **[vos]** |
 | 2 | Probar la subida de un archivo descargable desde el navegador | **[vos]** |
 | 3 | Re-probar los tres arreglos de contraseña del 24/08 (cartel al guardar, rechazo de la contraseña vieja, que el gestor ofrezca generar una) | **[vos]** |
-| 4 | Quedaron ~121 prospectos en la cola cuando se agotó la cuota del día. Se procesan con `node scripts/drain-queue.mjs` | **[vos]** |
-| 5 | 12 fichas marcadas por el auditor esperando revisión a mano | **[vos]** |
-| 6 | `PROSPECT_SEARCH_DAILY_LIMIT` está en **90 en Vercel** y en **400** en `.env.local` | **[vos]** |
-| 7 | Completar desde el admin el **RLS1100** (tiene publicado el texto "Completar specs desde catálogo") y el **5D Cash Drawer** (sin especificaciones) | **[vos]** |
-| 8 | Sacar un archivo de un producto no lo borra del storage. Las fotos funcionan igual | **[yo]** |
-| 9 | 2 errores viejos de lint en `ProductForm.tsx` de `main`. Ya están corregidos en `develop` y viajan cuando vaya el panel | — |
-| 10 | `scripts/_tmp-fix-emilio.mjs` está sin commitear desde agosto. No es del repo; decidir si va o se borra | **[vos]** |
-| 11 | El cron de GitHub está declarado cada 5 minutos pero dispara cada **50-80**. Se decidió no tocarlo | — |
+| 4 | 12 fichas marcadas por el auditor esperando revisión a mano | **[vos]** |
+| 5 | `PROSPECT_SEARCH_DAILY_LIMIT` está en **90 en Vercel** y en **400** en `.env.local`. Y el cartel "Google Search hoy" del panel **repite ese default con otro valor**: `getCseUsageToday()` ([actions.ts](src/app/admin/actions.ts)) cae en 90 y `dailyLimit()` ([search.ts](src/lib/prospects/search.ts)) cae en 400, así que si la variable falta, el cartel muestra un techo más bajo que el que realmente frena. El arreglo es que el cartel lea `dailyLimit()` — una sola fuente de verdad. Descubierto el 24/09 al ver `16/90` en pantalla | **[vos]** decide el valor · **[yo]** el cartel |
+| 6 | Completar desde el admin el **RLS1100** (tiene publicado el texto "Completar specs desde catálogo") y el **5D Cash Drawer** (sin especificaciones) | **[vos]** |
+| 7 | Sacar un archivo de un producto no lo borra del storage. Las fotos funcionan igual | **[yo]** |
+| 8 | 2 errores viejos de lint en `ProductForm.tsx` de `main`. Ya están corregidos en `develop` y viajan cuando vaya el panel | — |
+| 9 | `scripts/_tmp-fix-emilio.mjs` está sin commitear desde agosto. No es del repo; decidir si va o se borra | **[vos]** |
+| 10 | El cron de GitHub está declarado cada 5 minutos pero dispara cada **50-80**. Se decidió no tocarlo | — |
+| 11 | Un teléfono como `543510000000` pasa la validación de área (el `351` de Córdoba existe) aunque el número local sea relleno. No se guardó porque además estaba duplicado, pero el agujero sigue abierto | **[yo]** |
 
 ---
 

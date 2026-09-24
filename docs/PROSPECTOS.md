@@ -507,6 +507,27 @@ argumento más para enriquecer rápido.
 **Atribución.** Los términos exigen "Powered by Google" al mostrar datos de
 Places sin un mapa, incluso puertas adentro. Está al pie de `/admin/clientes`.
 
+**Dos sucursales, un solo teléfono.** `crm_contacts.phone` tiene `UNIQUE` desde
+el esquema original de WhatsApp, donde el teléfono *era* la identidad del
+contacto. Las cadenas publican el mismo número central en todas sus sucursales,
+así que la segunda choca con la primera. El enriquecedor **no la fusiona** —son
+dos locales distintos— sino que la deja sin teléfono propio y escribe el motivo
+en las notas de la ficha.
+
+Lo que costó descubrirlo fue el efecto colateral, no el dato perdido: Postgres
+rechaza el `UPDATE` **entero**, y con él se iban también el email y el WhatsApp
+recién encontrados, el `enrichment_status = 'done'` y el `scrape_attempts + 1`.
+Sin ese contador el tope de tres intentos nunca se alcanza: la ficha quedaba en
+`running`, el watchdog la devolvía a `pending` a los 15 minutos y se reintentaba
+para siempre, gastando consultas de búsqueda en cada vuelta. Cinco sucursales de
+supermercado estuvieron rebotando así tres semanas, con el botón **Enriquecer
+ahora** informando "5 procesados" y la cola sin bajar nunca.
+
+Por eso `saveEnrichment()` guarda el estado aunque un dato se caiga, y no al
+revés: si una columna con `UNIQUE` choca, la saca del patch y reintenta. Es
+genérico a propósito — `email` hoy no tiene `UNIQUE` (ver abajo), pero el día
+que alguien agregue uno, esto evita que la cola se vuelva a trabar.
+
 **`contact_tier` es de solo lectura.** Es una columna `GENERATED ALWAYS AS ...
 STORED`. Cualquier insert o update que la incluya revienta con *"cannot insert a
 non-DEFAULT value into column"*. Nunca hacer `select('*')` → `upsert(row)` sobre

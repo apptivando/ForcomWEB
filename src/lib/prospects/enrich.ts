@@ -600,6 +600,102 @@ async function runLevel3(
   return { error: null, quotaHit: false };
 }
 
+// ─── Guardado ────────────────────────────────────────────────────────────────
+
+/**
+ * Columnas con UNIQUE, por si Postgres no dice cuál chocó.
+ *
+ * `email` no está, y no es un olvido: se dejó **sin** UNIQUE justamente para
+ * que una cadena pueda repetir `info@lacadena.com.ar` entre sucursales sin
+ * hacer fallar el enriquecimiento (ver la nota del índice en
+ * `010_clientes_unificados.sql`). `phone` no se puede destapar igual: ahí el
+ * teléfono sí es identidad — es por donde se matchea un WhatsApp entrante.
+ */
+const UNIQUE_CONSTRAINT_COLUMNS: Record<string, string> = {
+  crm_contacts_phone_key: "phone",
+  crm_contacts_google_place_id_key: "google_place_id",
+};
+
+type DbError = { code?: string; message: string; details?: string | null };
+
+/** Qué columna chocó en un 23505. */
+function conflictColumn(err: DbError): string | null {
+  // `Key (phone)=(549...) already exists.` — el camino bueno, porque nombra la
+  // columna y no depende de cómo se llame la constraint.
+  const byDetails = err.details?.match(/Key \(([^)]+)\)=/)?.[1];
+  if (byDetails) return byDetails.split(",")[0].trim();
+
+  const constraint = err.message.match(/unique constraint "([^"]+)"/)?.[1];
+  return constraint ? UNIQUE_CONSTRAINT_COLUMNS[constraint] ?? null : null;
+}
+
+/** ¿Ese teléfono ya es de otra ficha? El UNIQUE de `phone` no admite dos. */
+async function phoneTaken(
+  supabase: SupabaseClient,
+  phone: string,
+  exceptId: string
+): Promise<boolean> {
+  const { data, error } = await supabase
+    .from("crm_contacts")
+    .select("id")
+    .eq("phone", phone)
+    .neq("id", exceptId)
+    .limit(1);
+
+  // Si la consulta falla no se asume nada: se intenta escribir igual y, si
+  // choca, lo resuelve el reintento de `saveEnrichment`. Este chequeo es para
+  // que el motivo quede escrito en la ficha, no es la red de contención.
+  if (error) return false;
+  return (data ?? []).length > 0;
+}
+
+/**
+ * Guarda el resultado. Si una columna con UNIQUE choca, guarda todo lo demás.
+ *
+ * El caso que lo obligó: dos sucursales de una cadena publican el mismo
+ * teléfono central, y `crm_contacts.phone` tiene UNIQUE desde el esquema
+ * original de WhatsApp. Lo grave no era perder ese teléfono — era que Postgres
+ * rechaza el UPDATE **entero**, y con él se iban el email y el WhatsApp recién
+ * encontrados, el `enrichment_status = 'done'` y el `scrape_attempts + 1`.
+ *
+ * Sin ese contador el tope de tres intentos nunca se alcanza: la ficha quedaba
+ * en `running`, el watchdog la devolvía a `pending` a los 15 minutos y se
+ * reintentaba para siempre, gastando consultas de búsqueda en cada vuelta.
+ * Medido: cinco sucursales de supermercado rebotando durante tres semanas, y
+ * la cola que no bajaba nunca aunque el botón "Enriquecer ahora" dijera que
+ * había procesado cinco.
+ *
+ * Por eso el estado se guarda aunque un dato se caiga, y no al revés.
+ */
+async function saveEnrichment(
+  supabase: SupabaseClient,
+  contactId: string,
+  patch: Record<string, unknown>
+): Promise<{ error: string | null; dropped: string[] }> {
+  const dropped: string[] = [];
+
+  // Un intento por cada columna que pueda chocar, más uno. Tres alcanza de
+  // sobra para las dos que tienen UNIQUE.
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const { error } = await supabase.from("crm_contacts").update(patch).eq("id", contactId);
+    if (!error) return { error: null, dropped };
+    if (error.code !== "23505") return { error: error.message, dropped };
+
+    const col = conflictColumn(error);
+    // Si no se puede identificar la columna, o ya no está en el patch,
+    // reintentar sería mandar el mismo UPDATE y recibir el mismo error.
+    if (!col || !(col in patch)) return { error: error.message, dropped };
+
+    delete patch[col];
+    dropped.push(col);
+    patch.enrichment_error = [patch.enrichment_error, `${col}: ya es de otra ficha, no se guardó`]
+      .filter(Boolean)
+      .join(" · ");
+  }
+
+  return { error: "conflicto de unicidad que no se pudo resolver", dropped };
+}
+
 // ─── Orquestador ─────────────────────────────────────────────────────────────
 
 export interface EnrichOutcome {
@@ -679,7 +775,17 @@ export async function enrichContact(
     patch.whatsapp_phone = f.whatsapp;
     patch.whatsapp_source = f.whatsappSource;
   }
-  if (f.phoneE164 && !contact.phone) patch.phone = f.phoneE164;
+  if (f.phoneE164 && !contact.phone) {
+    // Una sucursal de cadena comparte el teléfono central con sus hermanas.
+    // Las fichas NO se fusionan —son dos locales distintos, con direcciones
+    // distintas— así que la segunda se queda sin teléfono propio y el motivo
+    // queda escrito para quien abra la ficha.
+    if (await phoneTaken(supabase, f.phoneE164, contact.id)) {
+      f.notes.push(`teléfono ${f.phoneE164}: ya es de otra ficha (sucursal de la misma cadena), no se guardó`);
+    } else {
+      patch.phone = f.phoneE164;
+    }
+  }
   if (f.instagram && !contact.instagram_url) patch.instagram_url = f.instagram;
   if (f.facebook && !contact.facebook_url) patch.facebook_url = f.facebook;
   if (f.linkedin && !contact.linkedin_url) patch.linkedin_url = f.linkedin;
@@ -691,7 +797,7 @@ export async function enrichContact(
   // intento lo saque de la cola en vez de reintentarlo para siempre.
   if (error && f.level === 0) patch.enrichment_status = "failed";
 
-  const { error: dbError } = await supabase.from("crm_contacts").update(patch).eq("id", contact.id);
+  const saved = await saveEnrichment(supabase, contact.id, patch);
 
   return {
     contactId: contact.id,
@@ -700,9 +806,12 @@ export async function enrichContact(
     found: {
       email: Boolean(f.email),
       whatsapp: Boolean(f.whatsapp),
-      phone: Boolean(f.phoneE164),
+      // Lo que se guardó, no lo que se encontró: un teléfono que choca con otra
+      // ficha no se escribe, y contarlo haría que el resumen del lote prometa
+      // teléfonos que no están.
+      phone: Boolean(patch.phone),
     },
-    error: dbError?.message ?? error,
+    error: saved.error ?? error,
   };
 }
 
