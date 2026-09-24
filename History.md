@@ -31,6 +31,67 @@ Dos reglas que hacen que esto sirva:
 
 ---
 
+## 2026-09-24 — El CRM se muda a Apptivando CRM, y Cuentas queda listo para producción
+
+**Rama:** develop (documentación) · **el port a `main` está armado y sin subir**
+**Base de datos:** ninguna (001, 015 y 016 ya estaban corridas)
+
+**Qué cambió — la decisión:** el CRM deja de ser parte de este repo y pasa a ser
+un producto, **Apptivando CRM** (`c:\Apptivando\ApptivandoCRM`), un SaaS
+multi-organización que unifica los CRM de FORCOM y de OnConcilia. FORCOM pasa a
+ser una organización cliente y recibe las mejoras automáticamente. Está previsto
+embeberlo después en el panel, en un iframe desde un subdominio propio.
+
+En consecuencia **se congelan en `develop`** los grupos Ventas y WhatsApp del
+panel, `src/lib/prospects/` y las migraciones 010-014. No se borra nada: sigue
+compilando y funcionando, pero no recibe trabajo. **`/admin/crm` —"Mensajes del
+formulario"— no se congela**: está en el grupo Ventas pero es la bandeja de
+leads del sitio y ya vive en producción.
+
+**Lo que sí va a producción es Cuentas y Miembros**, armado y verificado en una
+copia de `main`, esperando el visto bueno para subir. Trae invitaciones por
+correo con link propio, crear la contraseña uno mismo, "olvidé mi contraseña",
+cambiarla desde Mi cuenta, y un rol por persona en vez de "logueado = puede
+todo".
+
+**El detalle de roles se reescribió**, que era el punto del pedido. El de
+`develop` enumera bandeja de WhatsApp, clientes, pipeline, asistente de IA y
+plantillas de contacto en frío — nada de eso existe en producción. El de `main`
+dice lo que hay: el agente maneja el contenido del sitio y los mensajes del
+formulario; el admin, además, esta pantalla; el dueño, lo mismo que el admin
+pero la cuenta no se puede quedar sin uno.
+
+**Dos cosas que viajan porque sin ellas el port llega roto:**
+
+1. **`src/proxy.ts`.** El gate de `/admin` vivía en
+   `src/lib/supabase/middleware-proxy.ts` y **nunca se ejecutó**: Next 16 solo
+   reconoce ese archivo en `src/proxy.ts`. Era código muerto. Lo único que
+   protegía el panel de producción era el chequeo de sesión del layout, que
+   además no mira `admin_members`. El `CLAUDE.md` de `main` decía explícitamente
+   que **no** se moviera a la raíz de `src/` — esa instrucción es la que sostuvo
+   el bug, y se corrigió con el port. En `develop` el archivo y su gotcha ya
+   estaban bien desde el 30/07, y nadie notó que producción seguía con la
+   versión vieja.
+2. **El arreglo de los errores de Server Action** (entrada de abajo).
+
+**Probado** sirviendo la rama con un usuario de prueba real, creado y borrado
+dentro de la misma corrida — 12 de 12 controles: sesión válida sin ser miembro
+no entra; un agente entra al panel, ve Mi cuenta con su rol, no ve Miembros en
+el menú y rebota si escribe la URL a mano; un admin entra, ve la lista real de
+miembros y el detalle de roles nuevo, sin rastros del texto viejo. El build
+lista `ƒ Proxy (Middleware)`, que es como se comprueba que el gate corre.
+
+**Sin probar:** el envío real de un correo de invitación o de recuperación. Vos
+confirmaste que Resend tiene `forcom.tech` verificado y que las variables están
+en Vercel, pero no se mandó ningún correo. Es lo primero a probar cuando esto
+llegue a `main`.
+
+**Decisión tomada:** `apptivando@gmail.com` existe en Supabase Auth sin fila en
+`admin_members`. Hoy entra al panel de producción; después del port deja de
+entrar. Elegiste dejarlo afuera.
+
+---
+
 ## 2026-09-24 — Los errores de las pantallas de contraseña se veían genéricos en producción
 
 **Rama:** develop `7bdd8b1` · **Producción:** no

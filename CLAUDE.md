@@ -12,7 +12,39 @@ Sitio web B2B de presentación y generación de leads para FORCOM, fabricante de
 **Fuentes:** Barlow Condensed (display/headings) + DM Sans (body)  
 **Dominio:** forcom.tech (en producción)
 
-## CRM de WhatsApp (proyecto en curso, iniciado 30/07/2026)
+## CRM (cerrado acá el 24/09/2026 — se mudó a Apptivando CRM)
+
+> ## 🛑 LEER ESTO ANTES QUE LO DE ABAJO — TERCER Y ÚLTIMO CAMBIO DE RUMBO (24/09/2026)
+>
+> **El CRM dejó de ser parte de este repo. Es un producto: Apptivando CRM**
+> (`c:\Apptivando\ApptivandoCRM`, `crm.apptivando.com`), un SaaS
+> multi-organización que nace de unificar los CRM de FORCOM y de OnConcilia.
+> FORCOM pasa a ser una organización cliente de ese producto y recibe las
+> mejoras automáticamente.
+>
+> **No se desarrolla más CRM dentro de este repo.** Si aparece un pedido de CRM
+> —clientes, prospección, pipeline, bandeja, plantillas, análisis de
+> conversaciones—, va a `ApptivandoCRM`, no acá. Leer su `CLAUDE.md` primero.
+>
+> **Qué queda congelado en `develop`:** los grupos **Ventas** (`/admin/clientes`,
+> `/admin/pipelines`) y **WhatsApp** (`/admin/inbox`, `/admin/lineas`,
+> `/admin/plantillas`, `/admin/agente`, `/admin/vendedores`,
+> `/admin/automatizaciones`), más todo `src/lib/prospects/` y las migraciones
+> 010 a 014. **No se borra nada**: sigue compilando y funcionando, pero no
+> recibe trabajo hasta que se enganche con el proyecto nuevo (está previsto
+> embeberlo en un iframe desde un subdominio propio, con la marca de FORCOM).
+>
+> **Qué NO se congela:** `/admin/crm` — "Mensajes del formulario". Está en el
+> grupo Ventas del menú, pero es la bandeja de leads del sitio y ya vive en
+> producción. Si se apaga, las consultas del formulario no las ve nadie.
+>
+> **Lo que sí sigue vivo acá** es el sitio público y el panel de contenido:
+> Hero, Productos, Info empresa, los mensajes del formulario, y —desde el
+> 24/09— **Cuentas y Miembros**, que es lo único del panel rediseñado que se
+> llevó a producción. El detalle de roles de `/admin/miembros` está escrito
+> distinto en cada rama a propósito: en `develop` enumera las secciones del CRM,
+> en `main` solo las que existen en producción. Si alguna vuelve, se actualiza
+> el de `main`.
 
 > ## ⚠️ CAMBIO DE RUMBO (06/08/2026): el fork de wacrm se discontinúa
 >

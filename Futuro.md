@@ -15,8 +15,22 @@ empezaron, decisiones pendientes y deuda chica. Lo que ya se hizo va en
 - Los planes largos se guardan enteros, no resumidos a un título. El trabajo de
   planificar ya está pago; perderlo obliga a hacerlo dos veces.
 
-**Orden actual de prioridad:** conseguir contactos → llamarlos y mailearlos.
-El WhatsApp está congelado desde el 21/08/2026.
+> ## 🛑 Desde el 24/09/2026, casi nada de este archivo se hace acá
+>
+> **El CRM se mudó a Apptivando CRM** (`c:\Apptivando\ApptivandoCRM`). Todo lo
+> que sea clientes, prospección, pipeline, bandeja, llamadas o campañas de
+> correo **se planifica y se construye allá**, no en este repo. Lo que sigue
+> guardado abajo es el trabajo de análisis ya hecho — sirve como insumo para el
+> proyecto nuevo, que arranca con esas decisiones tomadas en vez de
+> redescubrirlas.
+>
+> **Lo que sí queda para este repo** es el sitio público y el panel de
+> contenido: la sección 2.1 (agenda de posteos), la 5 (sitio y contenido) y la
+> 6 (infraestructura), más la deuda chica de la sección 4.
+
+**Orden actual de prioridad en este repo:** terminar de llevar el panel a
+producción y el contenido del sitio. La prospección y el contacto por teléfono
+y correo pasan a Apptivando CRM.
 
 ---
 
@@ -24,10 +38,15 @@ El WhatsApp está congelado desde el 21/08/2026.
 
 | # | Decisión | Por qué está frenada |
 |---|---|---|
-| 1 | **[vos]** ¿Se sigue con el nivel 3 del scraper o se para? | La medición del 25/08 dio **44 % de correos en comercios con sitio web y 6 % en los que no tienen**. El nivel 3 sirve para WhatsApp y redes, no para correos — y el correo es el canal elegido. Ver el Paso B abajo. |
-| 2 | **[vos]** ¿Qué rubros y localidades se buscan? | Se concluyó que conviene apuntar a rubros con sitio web propio (distribuidoras, mayoristas, cadenas), no a comercios de barrio. Sin esa lista el scraper no tiene qué hacer. |
-| 3 | **[vos]** ¿Qué servicio se usa para administrar las llamadas? | No bloquea la cola de llamadas — el lugar para colgar grabación y transcripción queda preparado igual. Bloquea solo la integración. |
-| 4 | **[vos]** ¿Se lleva el panel rediseñado a producción? | Está listo y probado en `develop` desde el 26/08. Dijiste que faltaban retoques; al 24/09 son **59 commits** de diferencia con `main`, y con el Track E cerrado ya es un merge normal, no cherry-picks. **Tiene un costo mientras se espera:** cada lead que entra por el formulario queda sin ficha de cliente hasta que se corra la migración **020** a mano (la fase 7 del Track E, que crea la ficha, está solo en `develop`). Ver `History.md`, 24/09. |
+| 1 | **[vos]** ¿Se lleva a `main` el port de Cuentas y Miembros? | Está armado y verificado (24/09), esperando tu visto bueno. Es lo único que falta para que cada persona entre con su propia contraseña en producción en vez de compartir una. Ver `History.md`, 24/09. |
+| 2 | **[vos]** ¿Qué se hace con el resto del panel rediseñado? | Las secciones de contenido (Hero, Productos, Info empresa) siguen solo en `develop` desde el 26/08. **Tiene un costo mientras se espera:** cada lead que entra por el formulario queda sin ficha de cliente hasta que se corra la migración **020** a mano. Ya no se puede mergear `develop` entero: arrastraría el CRM congelado. Va por port, como el de Cuentas. |
+| 3 | **[vos]** ¿Cuándo y cómo se engancha Apptivando CRM? | Está previsto embeberlo en un iframe desde un subdominio propio de FORCOM, con su marca. Hasta que eso pase, las secciones de Ventas y WhatsApp de `develop` quedan congeladas. La decisión y el plan son del otro repo. |
+
+> **Las decisiones que estaban acá sobre el scraper** —seguir o no con el nivel
+> 3, qué rubros buscar, qué servicio de telefonía usar— **se mudaron a
+> Apptivando CRM** junto con el producto. La medición que las informa (44 % de
+> correos en comercios con sitio propio contra 6 % en los que no tienen) está en
+> `History.md`, 24/08.
 
 ---
 
@@ -133,7 +152,12 @@ Friday) y sugiere posteos alrededor de esas fechas aunque no se lo pidan.
 
 ## 2.2 La cola de llamadas
 
-> Fase 2 del plan del 21/08/2026. Nunca se empezó. No existe `/admin/llamadas`.
+> **➜ Se mudó a Apptivando CRM (24/09/2026). No se construye en este repo.**
+> Queda acá porque el análisis ya está hecho y le sirve al proyecto nuevo tal
+> cual — sobre todo la obligación del Registro "No Llame", que tiene demora
+> administrativa y conviene arrancar igual.
+>
+> Fase 2 del plan del 21/08/2026. Nunca se empezó.
 
 ### Cómo funcionaría
 
@@ -194,6 +218,11 @@ pasados los 30 días.
 
 ## 2.3 Las campañas de correo con EnvíaloSimple
 
+> **➜ Se mudó a Apptivando CRM (24/09/2026). No se construye en este repo.**
+> La advertencia del SPF de abajo **sigue siendo de acá**: el DNS que se toca es
+> el de `forcom.tech`, y hacerlo mal rompe todo el correo del dominio, incluido
+> el de las invitaciones al panel.
+>
 > Fase 3 del plan del 21/08/2026. Nunca se empezó.
 
 ### Cómo funcionaría
@@ -246,6 +275,8 @@ no librado a que alguien se acuerde.
 
 ## 2.4 Paso B del nivel 3 — guardar todo lo que encuentra
 
+> **➜ Se mudó a Apptivando CRM (24/09/2026). No se construye en este repo.**
+>
 > Estaba condicionado a que la medición del Paso A lo justificara. **Dio 6 % en
 > comercios sin sitio web, así que la decisión quedó abierta** (ver sección 1).
 
@@ -271,20 +302,29 @@ de una persona, y ahí sí se recalcula.
 
 ---
 
-# 3. Congelado (no se borra, no se toca)
+# 3. Congelado en `develop` (no se borra, no se toca)
 
-**Todo el CRM de WhatsApp (Track E), congelado el 21/08/2026** por decisión del
-cliente. La Bandeja, las plantillas, la ventana de 24 h, las líneas de vendedores
-y el análisis de conversaciones siguen funcionando exactamente como están.
-Migraciones 010 a 014 corridas.
+**Desde el 24/09/2026 está congelado todo el CRM**, no solo el WhatsApp: los
+grupos **Ventas** (`/admin/clientes`, `/admin/pipelines`) y **WhatsApp**
+(`/admin/inbox`, `/admin/lineas`, `/admin/plantillas`, `/admin/agente`,
+`/admin/vendedores`, `/admin/automatizaciones`), más todo `src/lib/prospects/`
+y las migraciones 010 a 014, que están corridas.
 
-Lo que quedó sin hacer, por tiempo indefinido:
+Sigue compilando y funcionando igual que siempre. **No recibe más trabajo** hasta
+que se enganche con Apptivando CRM, que es donde vive el producto ahora.
 
-- **[vos]** Cargar las variables `EVOLUTION_*` en Vercel. Ya no es urgente.
-- **[yo]** La verificación pendiente: conectar una línea real de vendedor y
-  confirmar que sus mensajes van a la ficha y **no** a la Bandeja.
-- **[yo]** Contador de no leídos en la Bandeja. Necesita una columna nueva.
+**`/admin/crm` — "Mensajes del formulario" — NO está congelado.** Está en el
+grupo Ventas del menú, pero es la bandeja de leads del sitio y ya vive en
+producción.
+
+Lo que quedó sin hacer y **se resuelve en Apptivando CRM, no acá**:
+
+- Conectar una línea real de vendedor y confirmar que sus mensajes van a la
+  ficha y **no** a la Bandeja. Nunca se probó.
+- Contador de no leídos en la Bandeja.
 - Nunca se mandó un mensaje real de WhatsApp desde la plataforma.
+- **[vos]** Las variables `EVOLUTION_*` nunca se cargaron en Vercel. Ya no hace
+  falta: la conexión a WhatsApp es problema del proyecto nuevo.
 
 ---
 
@@ -295,14 +335,19 @@ Lo que quedó sin hacer, por tiempo indefinido:
 | 1 | Probar el formulario de contacto de punta a punta: mandarlo con un número y ver que en la ficha el ícono verde quede prendido y aparezca "Abrir en la Bandeja →" | **[vos]** |
 | 2 | Probar la subida de un archivo descargable desde el navegador | **[vos]** |
 | 3 | Re-probar los tres arreglos de contraseña del 24/08 (cartel al guardar, rechazo de la contraseña vieja, que el gestor ofrezca generar una) | **[vos]** |
-| 4 | 12 fichas marcadas por el auditor esperando revisión a mano | **[vos]** |
-| 5 | `PROSPECT_SEARCH_DAILY_LIMIT` está en **90 en Vercel** y en **400** en `.env.local`. Y el cartel "Google Search hoy" del panel **repite ese default con otro valor**: `getCseUsageToday()` ([actions.ts](src/app/admin/actions.ts)) cae en 90 y `dailyLimit()` ([search.ts](src/lib/prospects/search.ts)) cae en 400, así que si la variable falta, el cartel muestra un techo más bajo que el que realmente frena. El arreglo es que el cartel lea `dailyLimit()` — una sola fuente de verdad. Descubierto el 24/09 al ver `16/90` en pantalla | **[vos]** decide el valor · **[yo]** el cartel |
-| 6 | Completar desde el admin el **RLS1100** (tiene publicado el texto "Completar specs desde catálogo") y el **5D Cash Drawer** (sin especificaciones) | **[vos]** |
-| 7 | Sacar un archivo de un producto no lo borra del storage. Las fotos funcionan igual | **[yo]** |
-| 8 | 2 errores viejos de lint en `ProductForm.tsx` de `main`. Ya están corregidos en `develop` y viajan cuando vaya el panel | — |
-| 9 | `scripts/_tmp-fix-emilio.mjs` está sin commitear desde agosto. No es del repo; decidir si va o se borra | **[vos]** |
-| 10 | El cron de GitHub está declarado cada 5 minutos pero dispara cada **50-80**. Se decidió no tocarlo | — |
-| 11 | Un teléfono como `543510000000` pasa la validación de área (el `351` de Córdoba existe) aunque el número local sea relleno. No se guardó porque además estaba duplicado, pero el agujero sigue abierto | **[yo]** |
+| 4 | Completar desde el admin el **RLS1100** (tiene publicado el texto "Completar specs desde catálogo") y el **5D Cash Drawer** (sin especificaciones) | **[vos]** |
+| 5 | Sacar un archivo de un producto no lo borra del storage. Las fotos funcionan igual | **[yo]** |
+| 6 | **6 errores de lint en `Navbar.tsx` y `Footer.tsx`, en las dos ramas y en producción.** Los introdujo `b0e93d5` (24/09) al pasar las anclas del menú a `/#cat-...`: quedaron como `<a>` en vez de `<Link>`. Funciona, pero cada click recarga la página entera en vez de navegar como SPA | **[yo]** |
+| 7 | 2 errores viejos de lint en `ProductForm.tsx` de `main`. Ya están corregidos en `develop` y viajan cuando vaya el resto del panel | — |
+| 8 | `scripts/_tmp-fix-emilio.mjs` está sin commitear desde agosto. No es del repo; decidir si va o se borra | **[vos]** |
+| 9 | Mandar una invitación y un pedido de recuperación **reales** desde producción, una vez que el port esté en `main`. El correo nunca se probó de punta a punta desde que Resend volvió a estar verificado | **[vos]** |
+
+> **Se fueron a Apptivando CRM:** las 12 fichas marcadas por el auditor, el
+> desajuste de `PROSPECT_SEARCH_DAILY_LIMIT` entre Vercel (90) y `.env.local`
+> (400) —con el cartel del panel mostrando un techo más bajo que el que frena de
+> verdad—, el cron de GitHub que dispara cada 50-80 minutos en vez de cada 5, y
+> el agujero de validación por el que un teléfono como `543510000000` pasa el
+> chequeo de área aunque el número local sea relleno.
 
 ---
 
