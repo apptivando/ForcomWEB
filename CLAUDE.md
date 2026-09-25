@@ -233,6 +233,20 @@ src/
 
 **`contact_messages`** — CRM: mensajes del formulario de contacto
 
+### Tablas nuevas: `GRANT` explícito
+
+Desde el 2026-10-30 Supabase ya no da acceso automático de la Data API a las tablas
+nuevas de `public` (sin `GRANT`, supabase-js recibe `permission denied`). Todo
+`CREATE TABLE` nuevo en `supabase/sql-changes/` lleva en el mismo archivo:
+
+```sql
+grant select, insert, update, delete on public.nueva_tabla to authenticated;
+grant select, insert, update, delete on public.nueva_tabla to service_role;
+```
+
+A `anon` solo si el sitio público la lee o escribe sin sesión (ej. catálogo), y con el
+permiso justo (`grant select`). El `GRANT` habilita el acceso; RLS lo sigue recortando.
+
 ### Storage
 
 **Bucket `product-images`** (público) — imágenes subidas desde el admin.  
