@@ -8,6 +8,7 @@ import WhatsAppFAB, { DEFAULT_WHATSAPP_NUMBER } from "@/components/WhatsAppFAB";
 import ProductDetails from "@/components/ProductDetails";
 import ProductGallery from "@/components/ProductGallery";
 import type { Product } from "@/lib/types";
+import { parseCatalogUrl } from "@/lib/catalog";
 
 const BASE_URL = "https://www.forcom.tech";
 
@@ -107,7 +108,7 @@ export default async function ProductPage({
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
       />
-      <Navbar />
+      <Navbar showCatalog={!!parseCatalogUrl(companyInfo?.catalog_url)} />
       <main className="bg-forcom-dark min-h-screen">
         <div className="max-w-7xl mx-auto px-6 lg:px-8 pt-28 pb-20 lg:pt-32">
           {/* Breadcrumb */}

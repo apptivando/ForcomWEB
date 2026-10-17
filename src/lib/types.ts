@@ -66,6 +66,8 @@ export interface CompanyInfo {
   email: string;
   phone: string;
   schedule: string;
+  /** Flipbook de Publuu. Opcional: no existe hasta correr la migración 021. */
+  catalog_url?: string | null;
   updated_at: string;
 }
 

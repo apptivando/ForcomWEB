@@ -11,6 +11,7 @@ export const SECTION_LABEL: Record<string, string> = {
   dashboard: "Dashboard",
   hero: "Sección Hero",
   productos: "Productos",
+  catalogo: "Catálogo",
   clientes: "Clientes",
   inbox: "Bandeja de WhatsApp",
   lineas: "Líneas de WhatsApp",

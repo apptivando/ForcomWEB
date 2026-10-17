@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { usePathname } from "next/navigation";
 import ForcomLogo from "./ForcomLogo";
 
 const productCategories = [
@@ -20,8 +21,26 @@ const navLinks = [
   { label: "Contacto", href: "/#contacto" },
 ];
 
-export default function Navbar() {
-  const [scrolled, setScrolled] = useState(false);
+// El catálogo va destacado en rojo: es el pedido del cliente, que se vea
+// distinto del resto del menú. Subrayado fijo cuando es la página actual.
+const catalogLabel = "Catálogo";
+
+export default function Navbar({
+  showCatalog = false,
+  solid = false,
+}: {
+  /** Solo si hay un catálogo cargado en el panel (company_info.catalog_url). */
+  showCatalog?: boolean;
+  /**
+   * Fondo oscuro desde el arranque. Lo usa /catalogo: ahí no se scrollea (el
+   * que se mueve es el flipbook), así que el fondo no aparecería nunca.
+   */
+  solid?: boolean;
+} = {}) {
+  const pathname = usePathname();
+  const onCatalog = pathname === "/catalogo";
+  const [scrolledState, setScrolled] = useState(false);
+  const scrolled = solid || scrolledState;
   const [mobileOpen, setMobileOpen] = useState(false);
   const [productsOpen, setProductsOpen] = useState(false);
   const [mobileProductsOpen, setMobileProductsOpen] = useState(false);
@@ -127,6 +146,18 @@ export default function Navbar() {
             </div>
           </div>
 
+          {showCatalog && (
+            <a
+              href="/catalogo"
+              aria-current={onCatalog ? "page" : undefined}
+              className={`font-display font-bold text-sm tracking-[0.12em] uppercase text-forcom-red-text hover:text-white transition-colors relative py-[13px] after:absolute after:bottom-[9px] after:left-0 after:h-[2px] after:bg-forcom-red after:transition-all ${
+                onCatalog ? "after:w-full" : "after:w-0 hover:after:w-full"
+              }`}
+            >
+              {catalogLabel}
+            </a>
+          )}
+
           {/* Regular links */}
           {navLinks.map((link) => (
             <a
@@ -213,6 +244,17 @@ export default function Navbar() {
                 </div>
               )}
             </div>
+
+            {showCatalog && (
+              <a
+                href="/catalogo"
+                aria-current={onCatalog ? "page" : undefined}
+                onClick={() => setMobileOpen(false)}
+                className="font-display font-bold text-base tracking-[0.12em] uppercase text-forcom-red-text hover:text-white transition-colors py-4 border-b border-forcom-border/50"
+              >
+                {catalogLabel}
+              </a>
+            )}
 
             {navLinks.map((link) => (
               <a
