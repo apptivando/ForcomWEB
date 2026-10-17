@@ -31,6 +31,42 @@ Dos reglas que hacen que esto sirva:
 
 ---
 
+## 2026-10-17 — El catálogo de Publuu, embebido en el sitio
+
+**Rama:** develop `9d85b7e` · main `9f568bc` (cherry-pick) · **Producción: sí**
+**Base de datos:** migración 021 corrida (`company_info.catalog_url`, cargada con el link del cliente)
+
+**Qué cambió:** el cliente pidió embeber su catálogo (un flipbook de Publuu)
+con el menú de FORCOM visible arriba. Publuu deja embeberlo desde cualquier
+sitio (`frame-ancestors *`).
+
+- **`/catalogo`**: el visor ocupa toda la pantalla debajo del menú. En celular
+  no se embebe —se lee demasiado chico—: se muestra un botón "Abrir en pantalla
+  completa" que lo abre en Publuu. Debajo, un texto corto y la lista de todos
+  los productos con link a su ficha: lo que está dentro del iframe no cuenta
+  para Google como contenido de forcom.tech, esta lista sí. Está en el sitemap.
+- **Ítem "Catálogo" en el menú**, en rojo (pedido del cliente: que se destaque).
+  Solo aparece si hay un catálogo cargado.
+- **Panel → Sitio → Catálogo**: para reemplazar el link cuando salga un
+  catálogo nuevo. Acepta el link de Publuu o el código de "Embed" entero, y
+  muestra la vista previa antes de guardar. Vacío = el catálogo sale del sitio.
+- El plan de Publuu es gratuito, así que el visor muestra la marca de Publuu.
+
+**Cómo llegó a main:** cherry-pick con conflictos esperables, porque main tiene
+el panel viejo. El ítem del menú del admin se agregó a mano con el formato de
+main, y `CatalogEditor` en main va sin `Field` ni `useFormGuard`, que no existen
+ahí. La acción del panel quedó en `catalog-actions.ts` y no en `actions.ts`
+justamente para que esa parte saliera limpia.
+
+**Probado:** build limpio en las dos ramas. En local, contra la base real
+después de la migración, la home muestra el ítem, `/catalogo` trae el visor
+con el link guardado y el sitemap incluye `/catalogo`. El usuario lo miró en el
+navegador y lo aprobó.
+**Sin probar:** guardar un link desde el panel (no se probó logueado), la vista
+en un celular real, y producción una vez que termine el deploy.
+
+---
+
 ## 2026-09-24 — El CRM se muda a Apptivando CRM, y Cuentas queda listo para producción
 
 **Rama:** develop `20f32cb` (congelamiento) · main `73d9ab7` (port) · **Producción: sí**
