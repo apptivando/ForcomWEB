@@ -138,3 +138,19 @@ DROP POLICY IF EXISTS "Auth delete product images" ON storage.objects;
 CREATE POLICY "Auth delete product images"
   ON storage.objects FOR DELETE
   USING (bucket_id = 'product-images' AND auth.uid() IS NOT NULL);
+
+
+-- ============================================================
+-- Migración: link del catálogo de Publuu (16/10/2026)
+-- Ejecutar en Supabase Dashboard > SQL Editor
+-- Ver supabase/sql-changes/021_catalogo_publuu.sql
+-- ============================================================
+
+-- 1. La columna, con el catálogo actual (el que pasó el cliente)
+
+ALTER TABLE public.company_info
+  ADD COLUMN IF NOT EXISTS catalog_url TEXT;
+
+UPDATE public.company_info
+SET catalog_url = 'https://publuu.com/flip-book/216706/1518341'
+WHERE id = 1 AND catalog_url IS NULL;

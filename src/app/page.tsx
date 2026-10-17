@@ -8,6 +8,7 @@ import Contact from "@/components/Contact";
 import Footer from "@/components/Footer";
 import ScrollReveal from "@/components/ScrollReveal";
 import WhatsAppFAB from "@/components/WhatsAppFAB";
+import { parseCatalogUrl } from "@/lib/catalog";
 
 export default async function Home() {
   const supabase = await createClient();
@@ -53,7 +54,7 @@ export default async function Home() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(productListJsonLd) }}
       />
       <ScrollReveal />
-      <Navbar />
+      <Navbar showCatalog={!!parseCatalogUrl(companyInfo?.catalog_url)} />
       <main>
         <HeroCarousel slides={heroSlides} />
         <ProductCards products={products} />
