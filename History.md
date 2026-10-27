@@ -31,6 +31,64 @@ Dos reglas que hacen que esto sirva:
 
 ---
 
+## 2026-10-26 — Las mejoras que no eran del CRM llegan a producción, y el CRM se da de baja
+
+**Rama:** main `5a35562` (código) y `0032412` (SQL 022), armados a mano en la rama `pase-main-sin-crm` · **Producción: sí**
+**Base de datos:** migración 022 (`supabase/sql-changes/022_baja_crm.sql`, en `main`) escrita, **pendiente de correr** en el SQL Editor
+
+**Qué cambió:** `develop` había quedado muy adelante de `main` por el CRM, que
+se mudó a Apptivando CRM el 24/09. Debajo había mejoras que no eran del CRM y
+nunca habían llegado a producción. Se portaron a mano, sin cherry-pick, porque
+el commit de accesibilidad (`3a58ad8`) mezclaba 76 archivos del CRM y de fuera
+del CRM.
+
+- **Formulario del sitio:** anti-spam sin CAPTCHA (campo trampa `fc_ref` y
+  mínimo de 3 s de llenado) y campo "Teléfono (WhatsApp)". La ruta guarda como
+  antes (cliente anon, sin `.select()`); no crea fichas en `crm_contacts`.
+- **Mensajes del formulario:** marcar o desmarcar spam, borrar en lote con
+  deshacer, responder por email o por WhatsApp (wa.me). Sin "Crear
+  oportunidad" ni "Ver ficha".
+- **Panel:** la auditoría de accesibilidad (menú agrupado y usable en el
+  teléfono, saltar al contenido, contraste AA, avisos, modales), productos con
+  aviso de incompletos, cambios sin guardar y subida de archivos descargables,
+  y el dashboard con enlaces. Sin las tarjetas de Clientes y Oportunidades.
+- **Sitio:** pantalla de error con "Ir al inicio";
+  `/.well-known/change-password` lleva a Mi cuenta.
+
+Con esto, **lo único de `develop` que no está en `main` es el CRM**, congelado.
+
+Baja del CRM, el mismo día:
+- **Se apagó el cron de GitHub Actions** (`automations-cron.yml`, desactivado
+  desde la pestaña Actions). Cada 5 minutos llamaba a dev.forcom.tech para
+  correr automatizaciones, el enriquecimiento de prospectos (Serper y Places,
+  que se pagan) y el análisis de vendedores con IA.
+- **Los datos:** develop y producción comparten la base. Los leads de
+  producción viven en `contact_messages`, que el CRM nunca tocó salvo para
+  agregarle el enlace `contact_id`. Del CRM solo valía la pena guardar los 5
+  leads reales del formulario: se exportaron a
+  `C:\Apptivando\ForcomWEB\leads_formulario_reales_2026-10-26.csv`. Los otros
+  3 mensajes eran pruebas internas.
+- **Copia completa** de las 21 tablas del CRM (758 filas, sin claves
+  cifradas) en `C:\Apptivando\ForcomWEB\respaldo_crm_2026-10-26\`, fuera del
+  repo, antes de escribir la 022.
+- **La 022** borra esas tablas, sus funciones, `spanish_unaccent` y la columna
+  `contact_messages.contact_id`. No toca los mensajes, productos, hero,
+  empresa ni las cuentas del panel. Va en una transacción y sin CASCADE.
+  Después de correrla, las pantallas del CRM en dev.forcom.tech dejan de andar.
+  Es esperado: están congeladas.
+
+**Probado:** con el build de producción en local, el sitio carga, el
+formulario muestra teléfono y campo trampa, los envíos de bot se descartan sin
+escribir en la base (siguió en 8 mensajes) y el atajo de contraseña redirige.
+En forcom.tech, después del deploy, aparecen los dos campos nuevos y el atajo
+redirige.
+
+**Sin probar:** el panel con sesión iniciada (quedó disponible en local para
+revisarlo antes del OK, pero no hay registro de qué se miró) y un envío real
+del formulario en producción (guarda un mensaje y manda el mail a ventas).
+
+---
+
 ## 2026-10-17 — El catálogo de Publuu, embebido en el sitio
 
 **Rama:** develop `9d85b7e` · main `9f568bc` (cherry-pick) · **Producción: sí**
