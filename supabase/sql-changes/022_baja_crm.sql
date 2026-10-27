@@ -61,14 +61,7 @@ BEGIN
         'reserve_cold_message',
         'seller_stats',
         'upsert_prospect',
-        'upsert_prospects',
-        -- Las de los triggers (los triggers se van con sus tablas en el paso 3)
-        'touch_crm_conversation_updated_at',
-        'touch_pipeline_deal_updated_at',
-        'touch_outreach_template_updated_at',
-        'touch_wa_line_updated_at',
-        'freeze_crm_event_identity',
-        'log_pipeline_deal_event'
+        'upsert_prospects'
       )
   LOOP
     EXECUTE 'DROP FUNCTION ' || f.firma;
@@ -81,7 +74,8 @@ DROP INDEX IF EXISTS public.contact_messages_contact_id_idx;
 ALTER TABLE public.contact_messages DROP COLUMN IF EXISTS contact_id;
 
 -- 3. Las 21 tablas del CRM. En un solo DROP, para que Postgres resuelva las
---    referencias entre ellas sin necesitar CASCADE.
+--    referencias entre ellas sin necesitar CASCADE. Sus triggers se van con
+--    ellas.
 DROP TABLE IF EXISTS
   public.conversation_reviews,
   public.automation_logs,
@@ -105,12 +99,40 @@ DROP TABLE IF EXISTS
   public.wa_lines,
   public.crm_contacts;
 
--- 4. La configuración de búsqueda en español que armó el asistente de IA (004).
+-- 4. Las funciones de esos triggers. Van DESPUÉS de las tablas: mientras el
+--    trigger existe, Postgres no deja borrar su función. (La primera versión
+--    de este script las borraba en el paso 1 y cortó con 2BP01 en
+--    freeze_crm_event_identity; como todo va en una transacción, no se aplicó
+--    nada.)
+DO $$
+DECLARE
+  f record;
+BEGIN
+  FOR f IN
+    SELECT p.oid::regprocedure AS firma
+    FROM pg_proc p
+    JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public'
+      AND p.proname IN (
+        'touch_crm_conversation_updated_at',
+        'touch_pipeline_deal_updated_at',
+        'touch_outreach_template_updated_at',
+        'touch_wa_line_updated_at',
+        'freeze_crm_event_identity',
+        'log_pipeline_deal_event'
+      )
+  LOOP
+    EXECUTE 'DROP FUNCTION ' || f.firma;
+  END LOOP;
+END $$;
+
+-- 5. La configuración de búsqueda en español que armó el asistente de IA (004).
+--    También después de las tablas: la columna fts de ai_knowledge_chunks la usaba.
 DROP TEXT SEARCH CONFIGURATION IF EXISTS public.spanish_unaccent;
 
 COMMIT;
 
--- 5. Verificación
+-- 6. Verificación
 -- `tablas` tiene que listar exactamente: admin_invitations, admin_members,
 -- admin_password_resets, company_info, contact_messages, hero_content,
 -- hero_slides, products. `funciones` tiene que quedar en current_admin_role.
