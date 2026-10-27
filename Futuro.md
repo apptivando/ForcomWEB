@@ -152,7 +152,7 @@ Friday) y sugiere posteos alrededor de esas fechas aunque no se lo pidan.
 | 4 | Completar desde el admin el **RLS1100** (tiene publicado el texto "Completar specs desde catálogo") y el **5D Cash Drawer** (sin especificaciones) | **[vos]** |
 | 5 | Sacar un archivo de un producto no lo borra del storage. Las fotos funcionan igual | **[yo]** |
 | 6 | **6 errores de lint en `Navbar.tsx` y `Footer.tsx`, en las dos ramas y en producción.** Los introdujo `b0e93d5` (24/09) al pasar las anclas del menú a `/#cat-...`: quedaron como `<a>` en vez de `<Link>`. Funciona, pero cada click recarga la página entera en vez de navegar como SPA | **[yo]** |
-| 7 | `scripts/_tmp-fix-emilio.mjs` está sin commitear desde agosto. No es del repo; decidir si va o se borra | **[vos]** |
+| 7 | Que **Emilio Reula** entre al panel y se arme su propia contraseña con "Olvidé mi contraseña". Desde el 21/08 tiene una provisional que se le dictó por teléfono, y su cuenta no registra ningún ingreso propio (el único es la prueba del script que la creó, borrado el 26/10) | **[vos]** |
 | 8 | Mandar una invitación y un pedido de recuperación **reales** desde producción. El correo nunca se probó de punta a punta desde que Resend volvió a estar verificado | **[vos]** |
 
 ---
