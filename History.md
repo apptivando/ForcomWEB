@@ -33,8 +33,8 @@ Dos reglas que hacen que esto sirva:
 
 ## 2026-10-26 — Las mejoras que no eran del CRM llegan a producción, y el CRM se da de baja
 
-**Rama:** main `5a35562` (código) y `0032412` (SQL 022), armados a mano en la rama `pase-main-sin-crm` · **Producción: sí**
-**Base de datos:** migración 022 (`supabase/sql-changes/022_baja_crm.sql`, en `main`) escrita, **pendiente de correr** en el SQL Editor
+**Rama:** main `5a35562` (código) y `8d5cd8a` (SQL 022), armados a mano en la rama `pase-main-sin-crm` · **Producción: sí**
+**Base de datos:** migración 022 (`supabase/sql-changes/022_baja_crm.sql`, en `main`) **corrida el 26/10**. La primera versión cortó con 2BP01 porque borraba las funciones de los triggers antes que sus tablas; como iba en una transacción no se aplicó nada, y la versión corregida (`8d5cd8a`) pasó. Verificación: quedan las 8 tablas de producción, `current_admin_role` y los 8 mensajes del formulario.
 
 **Qué cambió:** `develop` había quedado muy adelante de `main` por el CRM, que
 se mudó a Apptivando CRM el 24/09. Debajo había mejoras que no eran del CRM y
@@ -74,8 +74,9 @@ Baja del CRM, el mismo día:
 - **La 022** borra esas tablas, sus funciones, `spanish_unaccent` y la columna
   `contact_messages.contact_id`. No toca los mensajes, productos, hero,
   empresa ni las cuentas del panel. Va en una transacción y sin CASCADE.
-  Después de correrla, las pantallas del CRM en dev.forcom.tech dejan de andar.
-  Es esperado: están congeladas.
+  **Desde que se corrió, las pantallas del CRM en dev.forcom.tech no andan.**
+  Es esperado: están congeladas. Si alguna vez hace falta algo de esos datos,
+  está en el respaldo.
 
 **Probado:** con el build de producción en local, el sitio carga, el
 formulario muestra teléfono y campo trampa, los envíos de bot se descartan sin
