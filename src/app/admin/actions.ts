@@ -25,7 +25,7 @@ import { validatePassword } from "@/lib/auth/password";
 import { sendEmail, EmailConfigError } from "@/lib/email/send";
 import { invitationEmail } from "@/lib/email/invitation";
 import { passwordResetEmail } from "@/lib/email/password-reset";
-import type { HeroContent, HeroSlide, Product, CompanyInfo } from "@/lib/types";
+import type { HeroContent, HeroSlide, Product, CompanyInfo, ContactMessage } from "@/lib/types";
 
 async function requireAuth() {
   const supabase = await createClient();
@@ -226,11 +226,11 @@ export async function toggleProductActive(id: string, active: boolean) {
   revalidatePath("/admin/productos");
 }
 
-// ─── CRM ─────────────────────────────────────────────────────────────────────
+// ─── Mensajes del formulario ─────────────────────────────────────────────────
 
 export async function updateMessageStatus(
   id: string,
-  status: "nuevo" | "leido" | "contactado"
+  status: ContactMessage["status"]
 ) {
   const supabase = await requireAuth();
   const { error } = await supabase
@@ -255,6 +255,51 @@ export async function updateMessageNotes(id: string, admin_notes: string) {
 export async function deleteMessage(id: string) {
   const supabase = await requireAuth();
   const { error } = await supabase.from("contact_messages").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+  revalidatePath("/admin/crm");
+  revalidatePath("/admin/dashboard");
+}
+
+/**
+ * Marca mensajes del formulario como spam, en lote.
+ *
+ * Marcar no es borrar: el registro queda, así se puede revisar si el filtro
+ * anti-bot se comió algo legítimo. Sale de la lista por defecto y de los
+ * contadores. El estado `spam` existe en la base desde la migración 017.
+ *
+ * En `develop` esta acción además borra la ficha que el formulario había
+ * creado en Clientes; eso es del CRM y no viaja a `main`.
+ */
+export async function markMessagesSpam(ids: string[]): Promise<void> {
+  if (ids.length === 0) return;
+  const supabase = await requireAuth();
+  const { error } = await supabase
+    .from("contact_messages")
+    .update({ status: "spam", updated_at: new Date().toISOString() })
+    .in("id", ids);
+  if (error) throw new Error(error.message);
+  revalidatePath("/admin/crm");
+  revalidatePath("/admin/dashboard");
+}
+
+/** Vuelve a poner en "nuevo" mensajes marcados como spam por error. */
+export async function unmarkMessagesSpam(ids: string[]): Promise<void> {
+  if (ids.length === 0) return;
+  const supabase = await requireAuth();
+  const { error } = await supabase
+    .from("contact_messages")
+    .update({ status: "nuevo", updated_at: new Date().toISOString() })
+    .in("id", ids);
+  if (error) throw new Error(error.message);
+  revalidatePath("/admin/crm");
+  revalidatePath("/admin/dashboard");
+}
+
+/** Borrado en lote. Antes había que expandir cada mensaje y borrarlo de a uno. */
+export async function deleteMessages(ids: string[]): Promise<void> {
+  if (ids.length === 0) return;
+  const supabase = await requireAuth();
+  const { error } = await supabase.from("contact_messages").delete().in("id", ids);
   if (error) throw new Error(error.message);
   revalidatePath("/admin/crm");
   revalidatePath("/admin/dashboard");

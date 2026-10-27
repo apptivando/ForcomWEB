@@ -1,6 +1,9 @@
+import { sectionTitle } from "@/lib/admin/sections";
 import { createClient } from "@/lib/supabase/server";
 import CompanyInfoEditor from "@/components/admin/CompanyInfoEditor";
 import type { CompanyInfo } from "@/lib/types";
+
+export const metadata = { title: sectionTitle("empresa") };
 
 const DEFAULT_INFO: CompanyInfo = {
   id: 1,
@@ -27,7 +30,7 @@ export default async function EmpresaPage() {
         <h1 className="font-display font-extrabold text-2xl text-white tracking-tight">
           Información de la empresa
         </h1>
-        <p className="text-sm text-[#8A8A8A] mt-1">
+        <p className="text-[15px] text-[#8A8A8A] mt-1 max-w-prose">
           Datos de contacto que aparecen en la sección de contacto del sitio y en el botón de WhatsApp.
         </p>
       </div>

@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { toWhatsappNumber } from "@/lib/phone";
+import { spamReason } from "@/lib/antispam";
 
 export async function POST(request: Request) {
   let body: unknown;
@@ -9,7 +11,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Payload inválido" }, { status: 400 });
   }
 
-  const { name, company, email, industry, message } = body as Record<string, string>;
+  const { name, company, email, phone, industry, message } = body as Record<string, string>;
+
+  // Descarte anti-bot ANTES de tocar la base: el spam no llega a
+  // `contact_messages`.
+  //
+  // Se responde `ok: true`, igual que un envío bueno, a propósito. Un mensaje
+  // de error sería exactamente la señal que el bot necesita para ajustar el
+  // ataque hasta pasar el filtro.
+  const rejected = spamReason(body as Record<string, unknown>);
+  if (rejected) {
+    console.warn(`contact spam descartado (${rejected}):`, { name, email });
+    return NextResponse.json({ ok: true });
+  }
 
   if (!name?.trim() || !email?.trim() || !message?.trim()) {
     return NextResponse.json({ error: "Faltan campos obligatorios" }, { status: 400 });
@@ -20,11 +34,24 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Email inválido" }, { status: 400 });
   }
 
+  // Solo dígitos, sin `+` (ver `toWhatsappNumber`). Un teléfono que no se
+  // puede normalizar no bloquea el envío: el lead se guarda igual, sin teléfono.
+  const normalizedPhone = phone?.trim() ? toWhatsappNumber(phone) : null;
+
+  // Insert con el cliente anon y SIN `.select()`. La policy de INSERT es
+  // pública (migración 018), pero la de SELECT es solo para autenticados, y
+  // Postgres aplica la de SELECT al RETURNING: pedir la fila de vuelta haría
+  // fallar el insert con 42501. Acá no hace falta el id para nada.
+  //
+  // En `develop` esta ruta además crea la ficha del cliente en `crm_contacts`
+  // (con la service key, y por eso sí pide el id). Eso es del CRM, que se mudó
+  // a Apptivando CRM, y no viaja a `main`.
   const supabase = await createClient();
   const { error } = await supabase.from("contact_messages").insert({
     name: name.trim(),
     company: company?.trim() || null,
     email: email.trim().toLowerCase(),
+    phone: normalizedPhone,
     industry: industry || null,
     message: message.trim(),
     status: "nuevo",
@@ -51,6 +78,7 @@ export async function POST(request: Request) {
           <p><strong>Nombre:</strong> ${name}</p>
           <p><strong>Empresa:</strong> ${company ?? "—"}</p>
           <p><strong>Email:</strong> ${email}</p>
+          <p><strong>Teléfono:</strong> ${normalizedPhone ?? "—"}</p>
           <p><strong>Industria:</strong> ${industry ?? "—"}</p>
           <hr/>
           <p>${message.replace(/\n/g, "<br/>")}</p>

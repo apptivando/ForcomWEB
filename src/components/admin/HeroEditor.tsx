@@ -22,13 +22,13 @@ function Field({
       <label className="block text-xs font-display font-semibold tracking-[0.15em] uppercase text-[#8A8A8A] mb-1.5">
         {label}
       </label>
-      {hint && <p className="text-xs text-[#8A8A8A]/70 mb-2">{hint}</p>}
+      {hint && <p className="text-[13px] text-[#8A8A8A]/70 mb-2">{hint}</p>}
       <input
         name={name}
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full bg-[#0D0D0F] border border-[#2A2A2E] rounded-sm px-4 py-3 text-white focus:border-[#E8231A] focus:outline-none transition-colors"
+        className="w-full bg-[#0D0D0F] border border-[#6A6A70] rounded-sm px-4 py-3 text-white focus:border-[#4A4A52] focus:ring-2 focus:ring-[#FF6A5C]/60 focus:ring-offset-1 focus:ring-offset-[#0D0D0F] focus:outline-none transition-colors"
       />
     </div>
   );
@@ -54,7 +54,7 @@ export default function HeroEditor({ initial }: { initial: HeroContent }) {
   }
 
   return (
-    <div className="max-w-2xl space-y-8">
+    <div className="max-w-form space-y-8">
       {/* Eyebrow */}
       <div className="bg-[#141416] border border-[#2A2A2E] rounded-sm p-6 space-y-5">
         <h2 className="font-display font-bold text-base text-white mb-1">Eyebrow / Badge</h2>
@@ -91,7 +91,7 @@ export default function HeroEditor({ initial }: { initial: HeroContent }) {
           value={form.subheadline}
           onChange={(e) => set("subheadline")(e.target.value)}
           rows={3}
-          className="w-full bg-[#0D0D0F] border border-[#2A2A2E] rounded-sm px-4 py-3 text-white focus:border-[#E8231A] focus:outline-none transition-colors resize-none"
+          className="w-full bg-[#0D0D0F] border border-[#6A6A70] rounded-sm px-4 py-3 text-white focus:border-[#4A4A52] focus:ring-2 focus:ring-[#FF6A5C]/60 focus:ring-offset-1 focus:ring-offset-[#0D0D0F] focus:outline-none transition-colors resize-none"
         />
       </div>
 
@@ -113,7 +113,7 @@ export default function HeroEditor({ initial }: { initial: HeroContent }) {
       {/* Imagen Hero */}
       <div className="bg-[#141416] border border-[#2A2A2E] rounded-sm p-6 space-y-4">
         <h2 className="font-display font-bold text-base text-white">Imagen del Hero</h2>
-        <p className="text-xs text-[#8A8A8A]">
+        <p className="text-[13px] text-[#8A8A8A]">
           Subí la imagen a <code className="bg-[#0D0D0F] px-1.5 py-0.5 rounded text-[#B0B0B0]">/public/images/</code> y pegá la ruta aquí. También podés usar una URL externa (https://...).
         </p>
         <Field
@@ -126,8 +126,8 @@ export default function HeroEditor({ initial }: { initial: HeroContent }) {
         {/* Preview */}
         {form.hero_image_url && (
           <div className="mt-3">
-            <p className="text-[10px] font-display font-semibold tracking-[0.15em] uppercase text-[#8A8A8A] mb-2">Preview</p>
-            <div className="w-48 h-36 bg-[#0D0D0F] border border-[#2A2A2E] rounded-sm overflow-hidden flex items-center justify-center">
+            <p className="text-[12px] font-semibold tracking-[0.15em] uppercase text-[#8A8A8A] mb-2">Preview</p>
+            <div className="w-48 h-36 bg-[#0D0D0F] border border-[#6A6A70] rounded-sm overflow-hidden flex items-center justify-center">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={form.hero_image_url}
@@ -138,7 +138,7 @@ export default function HeroEditor({ initial }: { initial: HeroContent }) {
                   (e.currentTarget.nextSibling as HTMLElement | null)?.removeAttribute("style");
                 }}
               />
-              <p className="text-xs text-[#8A8A8A] hidden" style={{ display: "none" }}>
+              <p className="text-[13px] text-[#8A8A8A] hidden" style={{ display: "none" }}>
                 No se puede cargar la imagen
               </p>
             </div>
@@ -151,12 +151,12 @@ export default function HeroEditor({ initial }: { initial: HeroContent }) {
         <button
           onClick={handleSave}
           disabled={saving}
-          className="px-8 py-3 bg-[#E8231A] text-white font-display font-bold text-sm tracking-widest uppercase rounded-sm hover:bg-[#C41D16] transition-colors disabled:opacity-50"
+          className="px-8 py-3 bg-[#C41D16] text-white font-display font-bold text-[15px] tracking-widest uppercase rounded-sm hover:bg-[#E8231A] transition-colors disabled:opacity-50"
         >
           {saving ? "Guardando..." : "Guardar cambios"}
         </button>
         {saved && (
-          <span className="text-green-400 text-sm font-display font-semibold flex items-center gap-2">
+          <span className="text-green-400 text-[15px] font-display font-semibold flex items-center gap-2">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
             </svg>

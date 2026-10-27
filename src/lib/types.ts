@@ -77,9 +77,13 @@ export interface ContactMessage {
   name: string;
   company: string | null;
   email: string;
+  /** Solo dígitos, sin `+` (ver `toWhatsappNumber`). Null si no lo dejó. */
+  phone: string | null;
   industry: string | null;
   message: string;
-  status: "nuevo" | "leido" | "contactado";
+  /** `spam` lo pone el panel a mano; no se borra, para poder revisar si el
+   *  filtro anti-bot se comió algo legítimo. Ver migración 017. */
+  status: "nuevo" | "leido" | "contactado" | "spam";
   admin_notes: string | null;
   created_at: string;
   updated_at: string;

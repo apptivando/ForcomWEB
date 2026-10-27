@@ -3,11 +3,8 @@
 import { useState, useTransition } from "react";
 import { updateCatalogUrl } from "@/app/admin/catalog-actions";
 import { parseCatalogUrl } from "@/lib/catalog";
-
-// En main no existen Field ni useFormGuard (llegan con el panel rediseñado de
-// develop): la etiqueta va a mano, como en CompanyInfoEditor de esta rama.
-const labelCls =
-  "block text-xs font-display font-semibold tracking-[0.15em] uppercase text-[#8A8A8A] mb-1.5";
+import { useFormGuard } from "@/lib/hooks/useUnsavedChanges";
+import Field from "./Field";
 
 export default function CatalogEditor({ url }: { url: string | null }) {
   const [, startTransition] = useTransition();
@@ -15,6 +12,8 @@ export default function CatalogEditor({ url }: { url: string | null }) {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
   const [value, setValue] = useState(url ?? "");
+
+  const { markSaved } = useFormGuard({ value }, "El link del catálogo tiene cambios sin guardar.");
 
   // La vista previa se arma con lo que está escrito, antes de guardar: así se
   // ve si es el catálogo correcto sin tener que publicarlo.
@@ -29,6 +28,7 @@ export default function CatalogEditor({ url }: { url: string | null }) {
       try {
         const stored = await updateCatalogUrl(value);
         setValue(stored ?? "");
+        markSaved({ value: stored ?? "" });
         setSaved(true);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Error al guardar.");
@@ -44,8 +44,21 @@ export default function CatalogEditor({ url }: { url: string | null }) {
   return (
     <form onSubmit={handleSubmit} className="max-w-3xl space-y-6">
       <div className="bg-[#141416] border border-[#2A2A2E] rounded-sm p-6">
-        <label className="block">
-          <span className={labelCls}>Link del catálogo en Publuu</span>
+        <Field
+          label="Link del catálogo en Publuu"
+          hint={
+            invalid ? (
+              <span className="text-[#FF6A5C]">
+                No se reconoce como un catálogo de Publuu. Tiene que contener publuu.com/flip-book/…
+              </span>
+            ) : (
+              <>
+                Pegá el link que da Publuu al compartir el catálogo (también sirve el código de
+                &quot;Embed&quot; entero). Si lo dejás vacío, el catálogo sale del sitio y del menú.
+              </>
+            )
+          }
+        >
           <input
             className={inputCls}
             value={value}
@@ -55,19 +68,7 @@ export default function CatalogEditor({ url }: { url: string | null }) {
             }}
             placeholder="https://publuu.com/flip-book/216706/1518341"
           />
-          <span className="block text-[13px] text-[#8A8A8A] mt-1.5">
-            {invalid ? (
-              <span className="text-[#FF6A5C]">
-                No se reconoce como un catálogo de Publuu. Tiene que contener publuu.com/flip-book/…
-              </span>
-            ) : (
-              <>
-                Pegá el link que da Publuu al compartir el catálogo (también sirve el código de
-                &quot;Embed&quot; entero). Si lo dejás vacío, el catálogo sale del sitio y del menú.
-              </>
-            )}
-          </span>
-        </label>
+        </Field>
       </div>
 
       <div className="bg-[#141416] border border-[#2A2A2E] rounded-sm p-6">

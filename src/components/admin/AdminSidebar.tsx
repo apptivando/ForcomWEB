@@ -1,108 +1,141 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import type { AdminRole } from "@/lib/auth/roles";
+import { sectionLabel } from "@/lib/admin/sections";
 
+// Sin `label`: el nombre de cada sección sale de SECTION_LABEL al renderizar.
+// Antes vivía acá y divergía del encabezado de la página ("Mensajes del
+// formulario" vs. "Mensajes / CRM", "Sección Hero" vs. "Carrusel Hero"), y
+// había que confirmar que uno había llegado a donde quería.
 const navItems = [
   {
     href: "/admin/dashboard",
-    label: "Dashboard",
     icon: (
-      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
       </svg>
     ),
   },
   {
     href: "/admin/hero",
-    label: "Sección Hero",
     icon: (
-      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
       </svg>
     ),
   },
   {
     href: "/admin/productos",
-    label: "Productos",
     icon: (
-      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
       </svg>
     ),
   },
   {
     href: "/admin/catalogo",
-    label: "Catálogo",
     icon: (
-      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
       </svg>
     ),
   },
   {
     href: "/admin/crm",
-    label: "Mensajes / CRM",
     icon: (
-      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
       </svg>
     ),
   },
   {
     href: "/admin/empresa",
-    label: "Info empresa",
     icon: (
-      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3.75h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008z" />
       </svg>
     ),
   },
 ];
 
+const membersNavItem = {
+  href: "/admin/miembros",
+  icon: (
+    <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+    </svg>
+  ),
+};
+
+
 /**
- * Secciones de la cuenta. Van separadas del resto del menú a propósito: no son
- * trabajo del día, son quién entra y con qué contraseña.
+ * El menú, agrupado. Los nombres salen de SECTION_LABEL; acá solo se define el
+ * orden y a qué bloque pertenece cada uno.
  *
- * `soloAdmin` esconde Miembros para un agente. Es cosmética —quien puede de
- * verdad lo deciden `requireRole` en las acciones y RLS en la base—, pero
- * mostrar un link que lleva a una redirección es peor que no mostrarlo.
+ * El Dashboard va suelto arriba, sin rótulo: es el punto de entrada, no una
+ * categoría. Miembros va al final y solo lo ven owner y admin.
+ *
+ * En `develop` este menú tiene además las secciones del CRM (clientes,
+ * pipeline, bandeja de WhatsApp…). No viajan a `main`: el CRM se mudó a
+ * Apptivando CRM el 24/09/2026.
  */
-const accountItems: Array<{ href: string; label: string; soloAdmin?: boolean; icon: React.ReactNode }> = [
-  {
-    href: "/admin/miembros",
-    label: "Miembros",
-    soloAdmin: true,
-    icon: (
-      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
-      </svg>
-    ),
-  },
-  {
-    href: "/admin/cuenta",
-    label: "Mi cuenta",
-    icon: (
-      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
-      </svg>
-    ),
-  },
+const GRUPOS: Array<{ label: string | null; hrefs: string[]; soloAdmin?: boolean }> = [
+  { label: null, hrefs: ["/admin/dashboard"] },
+  { label: "Sitio", hrefs: ["/admin/hero", "/admin/productos", "/admin/catalogo", "/admin/empresa"] },
+  { label: "Ventas", hrefs: ["/admin/crm"] },
+  { label: "Cuenta", hrefs: ["/admin/miembros"], soloAdmin: true },
 ];
+
+/** Dibujo de cada ítem, por ruta. Se arma una sola vez. */
+const ICONO_POR_RUTA: Record<string, React.ReactNode> = Object.fromEntries(
+  [...navItems, membersNavItem].map((item) => [item.href, item.icon])
+);
 
 export default function AdminSidebar({
   userEmail,
   role,
 }: {
   userEmail: string;
-  role: "owner" | "admin" | "agent";
+  role: AdminRole;
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const visibleAccountItems = accountItems.filter(
-    (item) => !item.soloAdmin || role === "owner" || role === "admin"
-  );
+  const esAdmin = role === "owner" || role === "admin";
+  // Cajón de navegación en pantallas chicas. En `lg` para arriba el menú es
+  // fijo al costado y este estado no se usa.
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  // Navegar cierra el cajón: si no, se elige una sección y el menú queda
+  // tapando la pantalla que se acaba de abrir.
+  //
+  // Ajuste durante el render y no en un efecto — mismo patrón que Drawer.tsx:
+  // es lo que recomienda React para reaccionar a un cambio de prop, y evita el
+  // commit desperdiciado de llamar a setState dentro de un efecto.
+  const [lastPath, setLastPath] = useState(pathname);
+  if (pathname !== lastPath) {
+    setLastPath(pathname);
+    setDrawerOpen(false);
+  }
+
+  // Con el cajón abierto, el fondo no scrollea y Escape cierra — mismas dos
+  // reglas que el resto de los overlays del panel (ver Modal.tsx).
+  useEffect(() => {
+    if (!drawerOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape" && !e.defaultPrevented) setDrawerOpen(false);
+    }
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [drawerOpen]);
 
   async function handleLogout() {
     const supabase = createClient();
@@ -112,74 +145,132 @@ export default function AdminSidebar({
   }
 
   return (
-    <aside className="w-56 shrink-0 bg-[#141416] border-r border-[#2A2A2E] flex flex-col">
-      {/* Logo */}
-      <div className="px-6 py-5 border-b border-[#2A2A2E]">
-        <Link href="/" target="_blank" className="flex items-center gap-2 group">
-          <div className="w-1.5 h-5 bg-[#E8231A]" />
-          <span className="font-display font-extrabold text-lg tracking-tight text-white group-hover:text-[#E8231A] transition-colors">
-            FORCOM
-          </span>
-        </Link>
-        <p className="text-[10px] text-[#8A8A8A] tracking-[0.15em] uppercase mt-0.5 pl-3.5">
-          Panel Admin
-        </p>
-      </div>
+    <>
+      {/* ── Barra superior, solo en pantallas chicas ─────────────────────────
+          El panel no se podía usar en el teléfono: el menú se llevaba 224 px
+          de los 375 y quedaban ~150 para el contenido, sin ningún botón para
+          plegarlo. Y una bandeja de WhatsApp es, por definición, algo que se
+          quiere mirar desde el teléfono. */}
+      <header className="lg:hidden fixed top-0 inset-x-0 z-40 h-14 flex items-center gap-3 px-4 bg-[#141416] border-b border-[#2A2A2E]">
+        <button
+          type="button"
+          onClick={() => setDrawerOpen(true)}
+          aria-label="Abrir menú"
+          aria-expanded={drawerOpen}
+          className="p-2 -ml-2 text-[#B0B0B0] hover:text-white transition-colors"
+        >
+          <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+          </svg>
+        </button>
+        <div className="min-w-0">
+          <p className="font-display font-extrabold text-[15px] tracking-tight text-white truncate">
+            {sectionLabel(pathname)}
+          </p>
+        </div>
+      </header>
+
+      {/* Velo del cajón. Solo existe en mobile, donde el menú tapa todo. */}
+      {drawerOpen && (
+        <div
+          onClick={() => setDrawerOpen(false)}
+          aria-hidden="true"
+          className="lg:hidden fixed inset-0 z-40 bg-black/60"
+        />
+      )}
+
+      <aside
+        className={`bg-[#141416] border-r border-[#2A2A2E] flex flex-col overflow-y-auto
+                    fixed inset-y-0 left-0 z-50 w-64 transition-transform duration-200 ease-out
+                    motion-reduce:transition-none
+                    ${drawerOpen ? "translate-x-0" : "-translate-x-full"}
+                    lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 lg:z-auto lg:w-56 lg:shrink-0`}
+      >
+        {/* Logo */}
+        <div className="px-6 py-5 border-b border-[#2A2A2E] flex items-center justify-between">
+          <div>
+            <Link href="/" target="_blank" className="flex items-center gap-2 group">
+              <div className="w-1.5 h-5 bg-[#E8231A]" />
+              <span className="font-display font-extrabold text-lg tracking-tight text-white group-hover:text-[#FF6A5C] transition-colors">
+                FORCOM
+              </span>
+            </Link>
+            <p className="text-[12px] text-[#8A8A8A] tracking-[0.15em] uppercase mt-0.5 pl-3.5">
+              Panel Admin
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setDrawerOpen(false)}
+            aria-label="Cerrar menú"
+            className="lg:hidden p-1 -mr-1 text-[#8A8A8A] hover:text-white transition-colors"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
 
       {/* Nav */}
-      <nav className="flex-1 px-3 py-4 space-y-0.5">
-        {navItems.map((item) => {
-          const active = pathname.startsWith(item.href);
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-sm text-sm font-display font-semibold transition-colors ${
-                active
-                  ? "bg-[#E8231A]/10 text-[#E8231A] border border-[#E8231A]/20"
-                  : "text-[#B0B0B0] hover:bg-[#1A1A1E] hover:text-white border border-transparent"
-              }`}
-            >
-              {item.icon}
-              {item.label}
-            </Link>
-          );
-        })}
-
-        <p className="text-[10px] text-[#8A8A8A] tracking-[0.15em] uppercase px-3 pt-5 pb-1">
-          Cuenta
-        </p>
-        {visibleAccountItems.map((item) => {
-          const active = pathname.startsWith(item.href);
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-sm text-sm font-display font-semibold transition-colors ${
-                active
-                  ? "bg-[#E8231A]/10 text-[#E8231A] border border-[#E8231A]/20"
-                  : "text-[#B0B0B0] hover:bg-[#1A1A1E] hover:text-white border border-transparent"
-              }`}
-            >
-              {item.icon}
-              {item.label}
-            </Link>
-          );
-        })}
+      <nav className="flex-1 px-3 py-4">
+        {GRUPOS.filter((g) => !g.soloAdmin || esAdmin).map((grupo, gi) => (
+          <div key={grupo.label ?? "inicio"} className={gi > 0 ? "mt-5" : ""}>
+            {grupo.label && (
+              <p className="px-4 mb-1.5 text-[12px] font-semibold tracking-[0.12em] uppercase text-[#6A6A70]">
+                {grupo.label}
+              </p>
+            )}
+            <div className="space-y-0.5">
+              {grupo.hrefs.map((href) => {
+                const active = pathname.startsWith(href);
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    aria-current={active ? "page" : undefined}
+                    // "Dónde estoy parado" no puede depender solo del matiz: la
+                    // barra roja de 3 px a la izquierda lo dice también por forma.
+                    // `min-h-11` = 44 px, el objetivo táctil de WCAG.
+                    className={`relative flex items-center gap-3 pl-4 pr-3 py-2.5 min-h-11 rounded-sm text-[15px] font-display font-semibold transition-colors ${
+                      active
+                        ? "bg-[#E8231A]/10 text-[#FF6A5C] border border-[#E8231A]/25 before:absolute before:left-0 before:top-1 before:bottom-1 before:w-[3px] before:bg-[#E8231A] before:rounded-sm"
+                        : "text-[#B0B0B0] hover:bg-[#1A1A1E] hover:text-white border border-transparent"
+                    }`}
+                  >
+                    {ICONO_POR_RUTA[href]}
+                    {sectionLabel(href)}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
-
       {/* User + logout */}
       <div className="px-3 py-4 border-t border-[#2A2A2E]">
         <div className="px-3 py-2 mb-1">
-          <p className="text-[10px] text-[#8A8A8A] tracking-[0.1em] uppercase truncate">
+          <p className="text-[12px] text-[#8A8A8A] tracking-[0.1em] uppercase truncate">
             {userEmail}
           </p>
         </div>
+        <Link
+          href="/admin/cuenta"
+          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-sm text-[15px] font-display font-semibold transition-colors ${
+            pathname.startsWith("/admin/cuenta")
+              ? "bg-[#E8231A]/10 text-[#FF6A5C]"
+              : "text-[#8A8A8A] hover:text-white hover:bg-[#1A1A1E]"
+          }`}
+        >
+          <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" />
+          </svg>
+          Mi cuenta
+        </Link>
         <button
           onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-sm text-sm font-display font-semibold text-[#8A8A8A] hover:text-[#E8231A] hover:bg-[#E8231A]/5 transition-colors"
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-sm text-[15px] font-display font-semibold text-[#8A8A8A] hover:text-[#FF6A5C] hover:bg-[#E8231A]/5 transition-colors"
         >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
           </svg>
           Cerrar sesión
@@ -187,14 +278,15 @@ export default function AdminSidebar({
         <Link
           href="/"
           target="_blank"
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-sm text-sm font-display font-semibold text-[#8A8A8A] hover:text-white hover:bg-[#1A1A1E] transition-colors"
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-sm text-[15px] font-display font-semibold text-[#8A8A8A] hover:text-white hover:bg-[#1A1A1E] transition-colors"
         >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
           </svg>
           Ver sitio
         </Link>
       </div>
     </aside>
+    </>
   );
 }
