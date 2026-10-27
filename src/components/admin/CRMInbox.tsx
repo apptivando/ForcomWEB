@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import {
   updateMessageStatus,
   updateMessageNotes,
@@ -9,7 +8,6 @@ import {
   deleteMessages,
   markMessagesSpam,
   unmarkMessagesSpam,
-  createDealFromMessage,
 } from "@/app/admin/actions";
 import type { ContactMessage } from "@/lib/types";
 import { useToast } from "@/components/admin/Toast";
@@ -80,7 +78,6 @@ export default function CRMInbox({
   const [, startTransition] = useTransition();
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const toast = useToast();
-  const router = useRouter();
   // Mensajes en la ventana de deshacer: se ocultan ya, se borran al expirar.
   const [borrandose, setBorrandose] = useState<Set<string>>(new Set());
   // Selección para las acciones en lote. Antes había que expandir cada mensaje
@@ -123,36 +120,15 @@ export default function CRMInbox({
     });
   }
 
-  /** Convierte la consulta en oportunidad y lleva al pipeline a verla. */
-  function handleCreateDeal(msg: ContactMessage) {
-    startTransition(async () => {
-      try {
-        await createDealFromMessage(msg.id);
-        toast.show("Oportunidad creada", {
-          detail: `${msg.company?.trim() || msg.name} — en la columna Nuevo.`,
-          action: { label: "Ver pipeline", onAction: () => router.push("/admin/pipelines") },
-          durationMs: 8000,
-        });
-      } catch (err) {
-        toast.show(err instanceof Error ? err.message : "No se pudo crear la oportunidad.", {
-          kind: "error",
-        });
-      }
-    });
-  }
-
   function handleMarkSpam() {
     const ids = [...selected];
     if (ids.length === 0) return;
     startTransition(async () => {
       try {
-        const { clientesLimpiados } = await markMessagesSpam(ids);
+        await markMessagesSpam(ids);
         setSelected(new Set());
         toast.show(`${ids.length} marcado(s) como spam`, {
-          detail:
-            clientesLimpiados > 0
-              ? `Se sacaron ${clientesLimpiados} de la base de Clientes.`
-              : "No había fichas del formulario que limpiar.",
+          detail: "Siguen guardados: se ven con «Ver spam».",
         });
       } catch (err) {
         toast.show(err instanceof Error ? err.message : "No se pudo marcar.", { kind: "error" });
@@ -259,7 +235,7 @@ export default function CRMInbox({
             ) : (
               <button
                 onClick={handleMarkSpam}
-                title="Marca como spam y saca la ficha de Clientes si la había creado el formulario"
+                title="Lo saca de la lista y del contador; no lo borra"
                 className="text-[13px] font-semibold text-[#B0B0B0] hover:text-white transition-colors"
               >
                 Marcar como spam
@@ -368,12 +344,12 @@ export default function CRMInbox({
                   <p className="text-[#B0B0B0] leading-relaxed whitespace-pre-wrap">{msg.message}</p>
                 </div>
 
-                {/* ── Las tres salidas del lead ──────────────────────────────
+                {/* ── Responder el lead ───────────────────────────────────────
                     Sin esto el panel es un visor: se leía la consulta acá, se
-                    abría el cliente de correo, se copiaba el mail a mano, se
-                    respondía afuera y se volvía a marcar "Contactado". Y el
-                    Pipeline quedaba en cero, no por falta de oportunidades sino
-                    porque nada las creaba. */}
+                    abría el cliente de correo, se copiaba el mail a mano y se
+                    respondía afuera. En `develop` hay además "Crear
+                    oportunidad" y el enlace a la ficha: son del CRM, que se
+                    mudó a Apptivando CRM, y no viajan a `main`. */}
                 <div className="flex flex-wrap items-center gap-2">
                   <a
                     href={replyMailto(msg)}
@@ -391,25 +367,12 @@ export default function CRMInbox({
                       Responder por WhatsApp
                     </a>
                   )}
-                  <button
-                    onClick={() => handleCreateDeal(msg)}
-                    title="Crea la oportunidad en la columna Nuevo, con la consulta en las notas, y marca el mensaje como contactado"
-                    className="px-4 py-2 text-xs font-display font-bold tracking-wider uppercase rounded-sm bg-[#C41D16] text-white hover:bg-[#E8231A] transition-colors"
-                  >
-                    Crear oportunidad
-                  </button>
                 </div>
 
-                {/* Esta pantalla guarda el TEXTO del mensaje, que no vive en
-                    ningún otro lado. La ficha del cliente (teléfono, WhatsApp,
-                    historial de otros canales) vive en /admin/clientes. */}
-                {msg.contact_id && (
-                  <a
-                    href={`/admin/clientes?q=${encodeURIComponent(msg.email)}`}
-                    className="inline-block text-[13px] font-semibold text-[#B0B0B0] hover:text-white underline underline-offset-4"
-                  >
-                    Ver ficha del cliente →
-                  </a>
+                {msg.phone && (
+                  <p className="text-[13px] text-[#8A8A8A]">
+                    Teléfono: <span className="text-[#B0B0B0]">+{msg.phone}</span>
+                  </p>
                 )}
 
                 {/* Status change */}

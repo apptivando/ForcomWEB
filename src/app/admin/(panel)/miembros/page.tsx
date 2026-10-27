@@ -47,9 +47,17 @@ export default async function MiembrosPage() {
         </p>
       </div>
 
-      {/* El subtítulo prometía explicar qué puede hacer cada rol y después no
-          lo explicaba en ningún lado. Esta tabla sale de lo que efectivamente
-          exige el código (`requireRole`), no de una descripción aspiracional. */}
+      {/* Esta tabla sale de lo que efectivamente exige el código
+          (`requireRole`) sobre las secciones que existen en ESTE panel, no de
+          una descripción aspiracional.
+
+          En `develop` el mismo texto enumera bandeja de WhatsApp, clientes,
+          pipeline, asistente de IA y plantillas de contacto en frío. Nada de
+          eso vive acá: el CRM se mudó a Apptivando CRM (24/09/2026) y esas
+          secciones quedaron congeladas en `develop`. Si alguna vuelve —o si se
+          embebe el CRM nuevo—, este bloque se actualiza con ella; mientras
+          tanto describir permisos sobre pantallas que no se ven es peor que no
+          explicar nada. */}
       <div className="bg-[#141416] border border-[#2A2A2E] rounded-sm p-5 mb-8 max-w-3xl">
         <p className="text-xs font-display font-semibold tracking-[0.15em] uppercase text-[#8A8A8A] mb-3">
           Qué puede hacer cada rol
@@ -58,17 +66,15 @@ export default async function MiembrosPage() {
           <div className="grid grid-cols-[88px_1fr] gap-3">
             <dt className="font-display font-bold text-white">Agente</dt>
             <dd className="text-[#B0B0B0]">
-              Todo el trabajo del día: bandeja de WhatsApp, clientes, pipeline,
-              productos, hero, automatizaciones y mensajes del formulario.
+              Todo el contenido del sitio: productos, Sección Hero e Info
+              empresa, más los mensajes que llegan por el formulario.
             </dd>
           </div>
           <div className="grid grid-cols-[88px_1fr] gap-3">
             <dt className="font-display font-bold text-white">Admin</dt>
             <dd className="text-[#B0B0B0]">
-              Lo del agente, más lo que no tiene vuelta atrás o compromete a la
-              empresa: invitar y quitar miembros, borrar clientes, configurar el
-              asistente de IA y reindexar su base, y crear, editar o mandar
-              plantillas de contacto en frío.
+              Lo del agente, más esta pantalla: invitar gente, cambiarle el rol
+              y quitarla. Es lo único que un agente no puede hacer.
             </dd>
           </div>
           <div className="grid grid-cols-[88px_1fr] gap-3">

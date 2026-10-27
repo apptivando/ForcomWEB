@@ -12,93 +12,37 @@ Sitio web B2B de presentación y generación de leads para FORCOM, fabricante de
 **Fuentes:** Barlow Condensed (display/headings) + DM Sans (body)  
 **Dominio:** forcom.tech (en producción)
 
-## CRM (cerrado acá el 24/09/2026 — se mudó a Apptivando CRM)
+## CRM: no vive en este repo
 
-> ## 🛑 LEER ESTO ANTES QUE LO DE ABAJO — TERCER Y ÚLTIMO CAMBIO DE RUMBO (24/09/2026)
->
-> **El CRM dejó de ser parte de este repo. Es un producto: Apptivando CRM**
-> (`c:\Apptivando\ApptivandoCRM`, `crm.apptivando.com`), un SaaS
-> multi-organización que nace de unificar los CRM de FORCOM y de OnConcilia.
-> FORCOM pasa a ser una organización cliente de ese producto y recibe las
-> mejoras automáticamente.
->
-> **No se desarrolla más CRM dentro de este repo.** Si aparece un pedido de CRM
-> —clientes, prospección, pipeline, bandeja, plantillas, análisis de
-> conversaciones—, va a `ApptivandoCRM`, no acá. Leer su `CLAUDE.md` primero.
->
-> **Qué queda congelado en `develop`:** los grupos **Ventas** (`/admin/clientes`,
-> `/admin/pipelines`) y **WhatsApp** (`/admin/inbox`, `/admin/lineas`,
-> `/admin/plantillas`, `/admin/agente`, `/admin/vendedores`,
-> `/admin/automatizaciones`), más todo `src/lib/prospects/` y las migraciones
-> 010 a 014. **No se borra nada**: sigue compilando y funcionando, pero no
-> recibe trabajo hasta que se enganche con el proyecto nuevo (está previsto
-> embeberlo en un iframe desde un subdominio propio, con la marca de FORCOM).
->
-> **Qué NO se congela:** `/admin/crm` — "Mensajes del formulario". Está en el
-> grupo Ventas del menú, pero es la bandeja de leads del sitio y ya vive en
-> producción. Si se apaga, las consultas del formulario no las ve nadie.
->
-> **Lo que sí sigue vivo acá** es el sitio público y el panel de contenido:
-> Hero, Productos, Info empresa, los mensajes del formulario, y —desde el
-> 24/09— **Cuentas y Miembros**, que es lo único del panel rediseñado que se
-> llevó a producción. El detalle de roles de `/admin/miembros` está escrito
-> distinto en cada rama a propósito: en `develop` enumera las secciones del CRM,
-> en `main` solo las que existen en producción. Si alguna vuelve, se actualiza
-> el de `main`.
+**El CRM es un producto aparte: Apptivando CRM** (`c:ApptivandoApptivandoCRM`,
+`crm.apptivando.com`), con su propia base. FORCOM es una organización cliente
+de ese producto. Si aparece un pedido de CRM —clientes, prospección, pipeline,
+WhatsApp, plantillas, campañas, llamadas—, va ahí, no acá. Leer su `CLAUDE.md`
+primero.
 
-> ## ⚠️ CAMBIO DE RUMBO (06/08/2026): el fork de wacrm se discontinúa
->
-> **El CRM de WhatsApp se construye dentro de este repo (Track E), no como app separada.** Motivo: unificación — un solo deploy, una sola base, un solo login. El fork de wacrm (`apptivando/ForcomCRM`, proyecto de Vercel `forcom-crm`) **no se migra a la cuenta nueva de Vercel y se apaga**.
->
-> Lo que sigue vigente de esta sección es el contexto histórico y las lecciones (sobre todo `normalizeArgentinePhone`). Lo que **ya no** aplica: el proxy `/admin/crm/*`, las variables `WACRM_*`, y el dominio `crm-dev.forcom.tech`.
->
-> ## ⚠️ SEGUNDO CAMBIO DE RUMBO (25/08/2026): el WhatsApp se congela
->
-> **El Track E deja de recibir trabajo.** No se borra ni se desarma: la Bandeja,
-> las plantillas, la ventana de 24 h, las líneas de vendedores y el análisis de
-> conversaciones siguen funcionando exactamente como están. Las `EVOLUTION_*`
-> siguen sin cablear en Vercel y eso **ya no es urgente**. La verificación
-> pendiente (conectar una línea real y confirmar que sus mensajes van a la ficha
-> y no a la Bandeja) queda sin hacer, por tiempo indefinido.
->
-> **La prioridad pasa a la prospección**: sacarle más vías de contacto a los
-> comercios que trae Google, y contactarlos **por teléfono y por correo**. El
-> WhatsApp deja de ser el canal de salida.
->
-> Lo que se hizo primero: **encender el nivel 3 con Serper y medir si sirve**
-> (`scripts/compare-level3.mjs`). Ver `docs/PROSPECTOS.md` → "Nivel 3", y sobre
-> todo la sección de las tres pruebas de identidad: la primera medición trajo
-> correos de otras empresas y eso reescribió el diseño del nivel 3.
->
-> Planificado y **sin empezar**: derivar a los vendedores los prospectos que
-> quedan solo con teléfono (con el Registro Nacional "No Llame" de por medio,
-> que es obligación legal) y las campañas de correo con EnvíaloSimple de DonWeb.
->
-> **Estado del Track E (21/08/2026):** cerrado. Fase 1 roles · 2 tablas CRM + webhook · 3 bandeja · 4 asistente IA · 5 pipelines · 6 automatizaciones · 7 el formulario entra al CRM · 8 clientes unificados + buscador de prospectos · 9 ficha de cliente con línea de tiempo · 10 líneas de vendedores y análisis de conversaciones. Migraciones 010 a 014 corridas en Supabase. Falta cablear las `EVOLUTION_*` en Vercel.
->
-> **Documentación**: `docs/PROSPECTOS.md` (buscador de prospectos, enriquecimiento, contacto en frío, ficha de cliente) , `docs/WHATSAPP.md` (las dos líneas, captura desde el celular, análisis de vendedores) y `docs/ACCESOS.md` (invitaciones al panel y contraseñas).
->
-> **Verificación**: `node scripts/verify-prospects.mjs` chequea las migraciones 010-014 y el estado de los datos. Con `--live` además prueba las APIs de Google y el trigger del Pipeline.
->
-> **Espejar una migración nueva en `schema.sql`**: `node scripts/sync-schema.mjs`, después de agregarla al array `MIRRORED` de ese script. No copiar a mano ni con un script de un solo uso — el anterior truncaba desde su propio marcador y se llevó puestas dos migraciones.
->
-> **`crm_contacts` ya no son "los contactos de WhatsApp": es la tabla única de clientes.** Desde la migración `010` también entran ahí los prospectos del scraper de Google Places y los leads del formulario web, diferenciados por la columna `origin`. Dos consecuencias que rompen código si se ignoran: (a) `phone` es **nullable**; (b) la columna `name` se renombró a **`contact_name`** (la persona) y se agregó **`business_name`** (la razón social) — las escriben fuentes distintas y no se pisan; (c) `contact_tier` es **GENERATED, de solo lectura**: mandarla en un insert/update revienta, así que nada de `select('*')` → `upsert(row)` sobre esa tabla.
->
-> **Conexión a WhatsApp: Evolution API self-hosted** (WSL, detrás de Cloudflare Tunnel), no Baileys ni Meta directo.
->
-> **Checklist del apagado y de la migración de Vercel:** `../MIGRACION_VERCEL.md`, Track 1A.
+Lo que queda acá es el sitio público y el panel de contenido: Hero, Productos,
+Catálogo, Info empresa, **Mensajes del formulario** (`/admin/crm`, la bandeja de
+leads del sitio: no es parte del CRM y no se apaga) y Cuentas/Miembros.
 
-Contexto histórico: FORCOM iba a reemplazar el CRM interno (`contact_messages` + `/admin/crm` + `CRMInbox.tsx`, ver abajo) por un fork de [wacrm](https://github.com/ArnasDon/wacrm), desplegado como app independiente y accedido desde `forcom.tech/admin/crm` vía reverse proxy — no vive en este repo.
+Historia corta, por si hace falta:
+- 30/07–06/08/2026: se probó un fork de wacrm detrás de un proxy en
+  `/admin/crm/*`. Se discontinuó.
+- 06/08–24/09/2026: se construyó un CRM propio dentro de este repo (Track E):
+  bandeja de WhatsApp con Evolution API, asistente de IA, pipeline,
+  automatizaciones, buscador y enriquecedor de prospectos, análisis de
+  vendedores.
+- 24/09/2026: se mudó a Apptivando CRM y quedó congelado en `develop`.
+- 26/10/2026: se dio de baja del todo. Las mejoras que no eran del CRM pasaron
+  a `main`, las 21 tablas se borraron de la base (migración 022) y `develop`
+  quedó igual a `main`. **El código completo del CRM está en la etiqueta
+  `crm-congelado-2026-10-26`** (`git show crm-congelado-2026-10-26:<ruta>`),
+  con sus docs `docs/PROSPECTOS.md` y `docs/WHATSAPP.md`. Los datos están
+  respaldados fuera del repo en `../respaldo_crm_2026-10-26/`.
 
-- **Plan maestro** (todas las tracks, checklist): `C:\Users\guill\.claude\plans\puedes-investigar-este-repositorio-peaceful-whistle.md`
-- **Repo y contexto técnico del CRM:** `c:\Apptivando\wacrm` (repo `apptivando/ForcomCRM`), ver su `CLAUDE.md`
-- **Estado:** el CRM ya está desplegado y probado de punta a punta con un canal de WhatsApp de pruebas (no el oficial de Meta todavía).
-  - ✅ **Proxy `/admin/crm/*` → el deploy del CRM**, en `next.config.ts` (`rewrites()`, fase `beforeFiles` — tiene que ganarle a la página propia `/admin/crm` que todavía existe). URL del deploy configurable por `WACRM_DEPLOYMENT_URL` (default `https://forcom-crm.vercel.app`).
-  - ✅ **De paso se corrigió un bug de seguridad no relacionado**: el auth gate de `/admin/*` vivía en un archivo (`middleware-proxy.ts`) que nunca se ejecutaba — ver "Gotchas críticos". Sin corregirlo, el proxy nuevo hubiera quedado sin protección de login.
-  - ✅ **Teléfono opcional en `Contact.tsx`** + columna `contact_messages.phone` (migración corrida en Supabase) + `/api/contact/route.ts` normaliza a E.164 argentino (`+549<área><número>`, `normalizeArgentinePhone`) y avisa a wacrm con `POST /api/v1/contacts` + `POST /api/v1/messages` cuando hay teléfono válido, con logging de errores reales (no silencioso). Probado de punta a punta: contacto + mensaje aparecen en wacrm. **Ojo:** wacrm guarda los teléfonos SIN el `+` inicial (ej. `5491122339988`) aunque se los mandemos con `+` — no filtrar por igualdad exacta con `+` incluido al consultar `contacts.phone` directo en Supabase.
-  - **Lección sobre `normalizeArgentinePhone`**: la primera versión intentaba detectar y sacar el viejo prefijo local "15" (ej. `011 15-1234-5678`) — se sacó por completo, porque en la costumbre argentina actual (área + número directo, sin 0 ni 15, ej. `3515181882`) el "15" aparece tan seguido *por coincidencia* en el borde entre área y número (ej. área `351` + número que arranca en `5` arma un "15" ahí) que rompía números reales más seguido de lo que arreglaba los pocos casos viejo-estilo. La versión actual es más simple (solo saca `+54`/`54`, `9`, `0` iniciales) y ante cualquier duda devuelve `null` (falla segura) en vez de mandar un número corrompido.
-  - ⬜ Retirar `CRMInbox.tsx` y la ruta `/admin/crm` actual (el `page.tsx` propio) una vez confirmado que el proxy anda bien en producción.
-  - **Nuevas variables en `.env.local` (faltan en Vercel todavía):** `WACRM_API_URL` (`https://forcom-crm.vercel.app/admin/crm`), `WACRM_API_KEY` (key con scopes `contacts:write`+`messages:send`, generada directo en la tabla `api_keys` de wacrm — ver `c:\Apptivando\wacrm\CLAUDE.md` si hay que generar otra).
+Lección que sigue valiendo, del teléfono argentino (`src/lib/phone.ts`): no
+intentar detectar el viejo prefijo local "15". Con la costumbre actual (área +
+número, sin 0 ni 15) el "15" aparece por coincidencia en el borde entre área y
+número y rompía números reales. Ante la duda, `null`: falla segura.
 
 ## Reglas de trabajo
 
@@ -132,7 +76,6 @@ Se comenzó con un plan en WordPress (ver `../PLANCMS.md`) pero se migró a Next
 --red:         #E8231A   (acento primario, superficies grandes, logo)
 --red-dark:    #C41D16   (fondo de botón sólido — ver abajo)
 --red-text:    #FF6A5C   (texto rojo chico sobre oscuro — ver abajo)
---chip-off:    #6E6E76   (estado "no tiene" en los chips de contacto)
 --gray:        #8A8A8A   (texto secundario)
 --gray-light:  #B0B0B0   (texto links nav, subtítulos)
 ```
@@ -163,7 +106,6 @@ usar el que ya está**:
 | Componente | Para qué | Por qué existe |
 |---|---|---|
 | `admin/Modal.tsx` | Diálogo modal | Los overlays a mano no cerraban con Escape, no tenían `role="dialog"` y el fondo scrolleaba. Trae Escape, trampa de foco, bloqueo de scroll y retorno del foco. |
-| `admin/Drawer.tsx` | Panel lateral con el fondo **usable** | El hermano del anterior, para el caso opuesto. Su cabecera explica por qué declara `aria-modal="false"`. |
 | `admin/Toast.tsx` | Avisos de "esto pasó" + **Deshacer** | Crear y borrar no confirmaban nada. El deshacer **pospone** la acción en vez de revertirla: el borrado sale al servidor cuando expira el aviso. |
 | `admin/Toggle.tsx` | Interruptor on/off | Estaba copiado en cinco lugares. **Encendido va en verde**: el rojo queda para lo destructivo. |
 | `admin/Field.tsx` | Campo con etiqueta asociada | Había 37 `<label>` y ninguno asociado. Envuelve el control, así no hay que inventar ids. |
@@ -182,13 +124,16 @@ src/
 │   ├── page.tsx              — composición de secciones (server component)
 │   ├── globals.css           — variables CSS, animaciones, clases utilitarias
 │   └── admin/
-│       ├── actions.ts        — server actions: hero, productos, CRM
+│       ├── actions.ts        — server actions: hero, productos, mensajes, miembros
 │       └── (panel)/          — rutas protegidas del admin
 │           ├── dashboard/    — stats
 │           ├── hero/         — editor de slides del hero carousel
 │           ├── productos/    — CRUD de productos
 │           ├── empresa/      — datos de contacto (WhatsApp, email, etc.)
-│           └── crm/          — bandeja de mensajes de contacto
+│           ├── catalogo/     — link del catálogo de Publuu
+│           ├── miembros/     — invitar, roles, quitar (solo owner/admin)
+│           ├── cuenta/       — cambiar la propia contraseña
+│           └── crm/          — mensajes del formulario (spam, borrar en lote, responder)
 ├── components/
 │   ├── Navbar.tsx            — nav fijo, scroll effect, menú mobile
 │   ├── HeroCarousel.tsx      — carousel hero con slides dinámicos desde DB
@@ -231,7 +176,11 @@ src/
 
 **`company_info`** — fila única (id=1): `whatsapp`, `email`, `phone`, `schedule` — fuente de verdad para datos de contacto
 
-**`contact_messages`** — CRM: mensajes del formulario de contacto
+**`contact_messages`** — mensajes del formulario de contacto. `phone` (solo dígitos, opcional) y `status` en `nuevo | leido | contactado | spam` (017). Insert público para anon sin `.select()` (ver Gotchas).
+
+**`admin_members`, `admin_invitations`, `admin_password_resets`** — cuentas del panel (migraciones 001, 015, 016). Ver `docs/ACCESOS.md`.
+
+Los cambios a la base desde agosto están en `supabase/sql-changes/`, numerados. `schema.sql` no está al día con ellos. Las 002 a 014, 019 y 020 eran del CRM y la 022 las deshizo.
 
 ### Tablas nuevas: `GRANT` explícito
 
@@ -265,27 +214,22 @@ npm run dev
 
 - **Repo:** github.com/apptivando/ForcomWEB
 - **Ramas:** `main` (producción) · `develop` (previews)
-  - **`develop` está muy adelante de `main` mientras dure el Track E** (CRM propio + Evolution API, a medio terminar y con variables `EVOLUTION_*` sin cablear en Vercel). Si hay que llevar un arreglo puntual a producción, **cherry-pick a `main`, no merge de `develop` entero** — un merge desplegaría el Track E incompleto. Así se hizo con el copy de fabricante el 06/08/2026 (`b225b73` en develop → `9567183` en main). Cuando el Track E cierre, las ramas se reconcilian con un merge normal.
+  - **`develop` y `main` quedaron iguales el 26/10/2026.** Lo normal es trabajar en `develop` y pasar a `main` con cherry-pick desde un worktree (ver la skill de prácticas). Si algún día vuelven a separarse mucho, no hacer merge de `develop` entero sin revisar qué arrastra.
 - **Vercel:** proyecto `forcom-web` bajo equipo `apptivando`
   - ⚠️ **Se perdió el acceso a esa cuenta de Vercel (06/08/2026).** Todo se está recreando en el scope nuevo `apptivando1`. Checklist: `../MIGRACION_VERCEL.md`. Hasta que se complete, el proyecto viejo sigue sirviendo `forcom.tech` y sigue buildeando en cada push (la GitHub App es una sola para las dos cuentas).
 - **Dominios:** `www.forcom.tech` → main · `dev.forcom.tech` → develop
 - **DNS:** gestionado en Donweb. Registros de mail (mx1, mail, autoconfig, autodiscover) son de correo externo — no tocar.
   - **Ojo: la zona DNS que muestra Vercel para `forcom.tech` es decorativa.** Los nameservers reales son de Donweb (`ns1/ns2.donweb.com`), así que el comodín `*` que aparece en `vercel dns ls` **no se aplica** — cada subdominio nuevo necesita su registro creado a mano en Donweb.
-- **Variables en Vercel:** `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `RESEND_API_KEY`, `RESEND_FROM_EMAIL` (`noreply@forcom.tech`), `RESEND_TO_EMAIL` (`ventas@forcom.tech`), `NEXT_PUBLIC_GA_ID`. Las `WACRM_*` quedan obsoletas al apagar el fork de wacrm (06/08/2026).
-- **`SUPABASE_SERVICE_KEY` ahora SÍ va a Vercel.** Cambió con el Track E: la usan `admin/actions.ts`, `/admin/miembros` y el webhook de Evolution (`src/lib/supabase/admin.ts` → `createAdminClient()`). Cargarla como *sensitive*. Lo que sigue valiendo es que **nunca** se expone al cliente (nada de prefijo `NEXT_PUBLIC_`).
-- **`WACRM_DEPLOYMENT_URL` está partida por entorno (31/07/2026)**, para que el `dev` de la web consuma el `dev` del CRM y no el de producción:
-  - **Production** → `https://forcom-crm.vercel.app` (rama `main` del CRM). Es de tipo *sensitive*, o sea que Vercel no la deja leer de vuelta ni por `env pull` — si hay que verificarla, se reescribe con el valor conocido, no se intenta leer.
-  - **Preview, acotada a la rama `develop`** → `https://crm-dev.forcom.tech` (rama `develop` del CRM). Cualquier otra rama de preview se queda sin la variable y cae al default hardcodeado de `next.config.ts`, que apunta a producción del CRM.
-  - **Se lee en `next.config.ts`, o sea en tiempo de build:** cambiarla en Vercel no hace nada hasta que se redespliega. Si tocás esta variable, redesplegá.
-- **`crm-dev.forcom.tech` es del proyecto `forcom-crm`, no de este.** Está asignado a la rama `develop` de ese repo. Funciona como destino del proxy porque la protección de deploys del CRM está en `all_except_custom_domains`: un dominio propio queda fuera del login SSO de Vercel, mientras que el alias `forcom-crm-git-develop-*.vercel.app` sí está protegido y **no** sirve como destino del proxy.
+- **Variables en Vercel:** `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `RESEND_API_KEY`, `RESEND_FROM_EMAIL` (`noreply@forcom.tech`), `RESEND_TO_EMAIL` (`ventas@forcom.tech`), `NEXT_PUBLIC_GA_ID`, `SUPABASE_SERVICE_KEY`. Si quedan `WACRM_*`, `EVOLUTION_*`, `SERPER_*`, `GOOGLE_PLACES_*` o `GOOGLE_CSE_*` cargadas, son del CRM y se pueden borrar.
+- **`SUPABASE_SERVICE_KEY` va a Vercel, como *sensitive*.** La usan las acciones de miembros, invitaciones y contraseñas (`src/lib/supabase/admin.ts` → `createAdminClient()`). **Nunca** se expone al cliente (nada de prefijo `NEXT_PUBLIC_`).
 
 ### Gotchas críticos
 
-- **Un `.insert().select()` con la clave anon necesita policy de SELECT, y da el mismo error que si faltara la de INSERT.** Postgres aplica la policy de SELECT a la cláusula `RETURNING`, y PostgREST usa `RETURNING` para devolver la fila insertada. Con policy de INSERT pública y SELECT solo para autenticados —justo lo que tiene `contact_messages`— el insert anon entra si no se pide nada de vuelta y falla con `42501: new row violates row-level security policy` si se le pide el id. **Es el mismo código y casi el mismo mensaje que el bug de la migración 018, con otra causa: en la 018 la policy de INSERT no estaba; acá está y sobra.** Verificado contra la base real el 23/09/2026 (los dos inserts, uno al lado del otro). Por eso `/api/contact` guarda el mensaje con la service key: abrir el SELECT al rol anon dejaría leer el buzón entero desde cualquier navegador. Si aparece un 42501 en una tabla con envío público, mirar primero si el insert pide datos de vuelta.
-- **Los cron de GitHub Actions solo se disparan desde `main`.** Un workflow con `schedule` corre **únicamente** desde la rama por defecto, sin importar en cuál lo estés editando. El paso que enriquece prospectos se agregó solo en `develop` y por eso **nunca corrió**: 240 prospectos quedaron cuatro días sin tocar y el síntoma parecía ser del enriquecedor. Corregido el 25/08/2026 llevando `.github/workflows/automations-cron.yml` a `main` con cherry-pick. **Cada vez que se toque ese archivo hay que repetirlo.** Tenerlo en `main` no despliega nada: las URL apuntan a `dev.forcom.tech`, o sea al deploy de `develop`.
+- **Un `.insert().select()` con la clave anon necesita policy de SELECT, y da el mismo error que si faltara la de INSERT.** Postgres aplica la policy de SELECT a la cláusula `RETURNING`, y PostgREST usa `RETURNING` para devolver la fila insertada. Con policy de INSERT pública y SELECT solo para autenticados —justo lo que tiene `contact_messages`— el insert anon entra si no se pide nada de vuelta y falla con `42501: new row violates row-level security policy` si se le pide el id. **Es el mismo código y casi el mismo mensaje que el bug de la migración 018, con otra causa: en la 018 la policy de INSERT no estaba; acá está y sobra.** Verificado contra la base real el 23/09/2026 (los dos inserts, uno al lado del otro). Por eso `/api/contact` inserta con el cliente anon y **sin** `.select()`: no necesita el id. Abrir el SELECT al rol anon dejaría leer el buzón entero desde cualquier navegador. Si aparece un 42501 en una tabla con envío público, mirar primero si el insert pide datos de vuelta.
+- **Los cron de GitHub Actions solo se disparan desde `main`.** Un workflow con `schedule` corre **únicamente** desde la rama por defecto, sin importar en cuál lo estés editando. Hoy no hay ninguno: el que había (`automations-cron.yml`) era del CRM y se borró el 26/10/2026.
 - **Framework Preset en Vercel** debe ser "Next.js" (no "Other") — si queda en Other, 404 en todas las rutas.
 - **`src/lib/supabase/server.ts`** tiene try-catch en `setAll` — requerido porque App Router no permite setear cookies desde Server Components; sin él falla en producción.
-- **El "middleware" de Next.js se llama "Proxy" desde la v16, y el archivo TIENE que llamarse `proxy.ts` en la raíz de `src/`** (`src/proxy.ts`) — es la única ubicación que reconoce el framework. Antes vivía en `src/lib/supabase/middleware-proxy.ts`, que **nunca se ejecutaba** (código muerto, nada lo importaba) — `/admin/*` solo estaba protegido por el chequeo de sesión en `admin/(panel)/layout.tsx`, que no corre para rutas reescritas con `rewrites()` (ver más abajo, el proxy del CRM de WhatsApp). Corregido el 30/07/2026. Si se agrega lógica nueva de auth/redirects a nivel de toda la app, va acá, no en un archivo con otro nombre.
+- **El "middleware" de Next.js se llama "Proxy" desde la v16, y el archivo TIENE que llamarse `proxy.ts` en la raíz de `src/`** (`src/proxy.ts`) — es la única ubicación que reconoce el framework. Antes vivía en `src/lib/supabase/middleware-proxy.ts`, que **nunca se ejecutaba** (código muerto, nada lo importaba) — `/admin/*` solo estaba protegido por el chequeo de sesión en `admin/(panel)/layout.tsx`. Corregido el 30/07/2026. Si se agrega lógica nueva de auth/redirects a nivel de toda la app, va acá, no en un archivo con otro nombre.
 - **Logo** usa `next/image` con PNG (`/images/brand/forcom-logo.png`). No volver a SVG con texto — el ® desaparecía y perdía calidad.
 - **HeroCarousel usa `h-screen` (no `min-h-screen`)** — con `min-h-screen` la sección se alargaba en algunos slides y la navegación quedaba fuera del viewport. La navegación está posicionada `absolute bottom-6` para que siempre sea visible. No volver a flujo normal ni a `min-h-screen`.
 - **Hero mobile layout (30/06/2026)** — `section` usa `items-start md:items-center`: en mobile el contenido arranca justo bajo la navbar (elimina el dead space superior), en desktop queda centrado verticalmente. Imagen: `w-80 h-80` fijo en mobile, `md:w-full md:h-auto md:aspect-square` en desktop. Las decoraciones (esquinas rojas, borde rotado, badge de producto) son visibles en todos los tamaños — no agregar `hidden md:block` a esos elementos. Trust badges: `flex justify-center sm:justify-start text-xs sm:text-sm` (visibles en mobile, centrados). Scroll indicator `sm:hidden` al fondo del texto. Título: `text-center sm:text-left`.
@@ -304,7 +248,7 @@ npm run dev
 - Páginas de producto individuales con URL propia (20/07/2026): `/productos/[slug]` (server component) con metadata (title/description/OG), JSON-LD `Product`, breadcrumb, CTA WhatsApp con mensaje precargado y "Productos relacionados". El contenido de specs (carrusel de imágenes, descripción, tabla de specs vía parser de markdown, videos, archivos descargables) vive en `ProductDetails.tsx`, compartido — reemplaza al antiguo modal `ProductSpecsModal.tsx` (eliminado). El slug se genera automáticamente desde el modelo en `upsertProduct` (`admin/actions.ts`), con sufijo `-2`, `-3`... si hay choque. **Pendiente:** correr en Supabase la migración de la columna `slug` (al final de `supabase/schema.sql`) antes de que estas páginas sirvan datos reales — sin eso, `products.slug` no existe todavía en la DB de producción.
 - Upload de imágenes al admin: `ImageGalleryEditor` sube a Supabase Storage, galería visual con drag-to-reorder, hasta 5 fotos por producto
 - Formulario admin de producto con galería, videos, descripción, specs completas y archivos descargables
-- Formulario de contacto activo: guarda en CRM + notificación interna + auto-reply al cliente vía Resend
+- Formulario de contacto activo: guarda en `contact_messages` + notificación interna + auto-reply al cliente vía Resend. Anti-spam con campo trampa y tiempo mínimo (`src/lib/antispam`).
 - `description` y `full_specs` de los 18 productos cargados desde `../FORCOM_Catalogo_1Q_2026.md` vía script de migración
 - Deploy en Vercel funcionando en forcom.tech
 - **Copy de fabricante (06/08/2026):** el subtítulo de "Por qué FORCOM" (`WhyForcom.tsx`) y la `description` del JSON-LD `Organization` (`layout.tsx`) decían "revendedor genérico" / "Distribuidor de hardware POS". Reemplazados por el texto de fábrica (ver "Posicionamiento" arriba). También actualizado en `../FORCOM_preview.html`, que está fuera del repo y por lo tanto no versionado.
@@ -341,27 +285,8 @@ scripts/
 │                             Escribe .preview-email.html (ignorado por git). --resent muestra
 │                             la invitación reenviada y --reset el correo de recuperación
 │                             de contraseña. Ver docs/ACCESOS.md.
-├── compare-level3.mjs      — ¿cuánto aporta el nivel 3? Saca la foto del antes, enriquece
-│                             SOLO ese grupo (no la cola global, para que el costo medido
-│                             sea el de ese grupo) y muestra cuántos salieron de "solo
-│                             teléfono", cuántas consultas costó y cuánto tardó cada uno.
-│                             Escribe en la base de verdad; con --dry solo mira.
-│                             node scripts/compare-level3.mjs --rubro "ferreterías" --limit 20
-├── audit-level3.mjs        — revisa lo que guardó el enriquecedor contra los criterios de
-│                             coherencia y separa lo que SE BORRA (área inexistente,
-│                             WhatsApp de otra provincia, número repetido en dos comercios,
-│                             dominio extranjero, ficha de guía comercial) de lo que solo
-│                             SE REVISA a mano. Existe porque la primera corrida con Serper
-│                             guardó correos de otras empresas.
-│                             node scripts/audit-level3.mjs [--limpiar]
-├── test-extract.mjs        — banco de pruebas del extractor de contactos del scraper de
-│                             prospectos. Sin API key ni base de datos.
-│                             Casos fijos:   node scripts/test-extract.mjs
-│                             Un sitio real: node scripts/test-extract.mjs https://sitio.com.ar
-│                             Varios:        node scripts/test-extract.mjs --file urls.txt
-│                             Los casos viven en scripts/fixtures/extract-cases.mjs.
-│                             ts-resolve-hook.mjs le enseña a node a resolver los imports
-│                             del proyecto (extensión implícita y alias `@/`).
+├── ts-resolve-hook.mjs     — le enseña a node a resolver los imports del proyecto
+│                             (extensión implícita y alias `@/`). Lo usa preview-email.
 └── bulk-upload-images.js   — carga masiva de fotos: lee carpetas en `../FORCOM 800x600/<carpeta>`,
                               mapea carpeta→producto por un diccionario FOLDER_TO_MODEL hardcodeado
                               en el script, sube hasta 5 fotos (primeras en orden alfabético) a Storage
@@ -379,7 +304,7 @@ scripts/
                               Si llegan carpetas nuevas de fotos, agregar sus entradas a FOLDER_TO_MODEL.
 ```
 
-La `SUPABASE_SERVICE_KEY` la usan estos scripts y, desde el Track E, también el server de la app (ver "Deploy e infraestructura"). Nunca se expone al cliente.
+La `SUPABASE_SERVICE_KEY` la usan estos scripts y también el server de la app (ver "Deploy e infraestructura"). Nunca se expone al cliente.
 
 ## Artefactos generados
 

@@ -18,8 +18,12 @@ export default async function PanelLayout({
 
   if (!user) redirect("/admin/login");
 
+  // Tener sesión de Supabase no alcanza: hay que estar en admin_members. Un
+  // usuario de Auth sin fila acá no es miembro del panel. `proxy.ts` ya lo
+  // frena antes, pero esto también resuelve el rol, que el menú necesita para
+  // saber si mostrar Miembros.
   const role = await getCurrentRole(supabase);
-  if (!role) redirect("/admin/login");
+  if (!role) redirect("/admin/login?error=no-autorizado");
 
   return (
     <ToastProvider>
@@ -38,8 +42,8 @@ export default async function PanelLayout({
         <AdminSidebar userEmail={user.email ?? ""} role={role} />
         {/*
           `min-w-0` NO es opcional: sin él, un ítem flex resuelve `min-width:auto`
-          al ancho intrínseco de su contenido, así que la tabla de Clientes
-          (~1200 px) estira el main, la fila flex se hace más ancha que la
+          al ancho intrínseco de su contenido, así que una tabla ancha
+          estira el main, la fila flex se hace más ancha que la
           ventana y el contenido termina pasando por debajo del menú fijo.
           Antes lo tapaba `overflow-auto` —un overflow distinto de `visible`
           hace que ese mínimo valga 0— pero eso era un efecto secundario, no

@@ -31,6 +31,41 @@ Dos reglas que hacen que esto sirva:
 
 ---
 
+## 2026-10-26 — `develop` queda igual a `main`: se sacan las pantallas del CRM
+
+**Rama:** develop (merge de `main`) y `main` por fast-forward al mismo commit · **Producción: sí** (solo documentación y el workflow borrado; el código de producción no cambia)
+**Base de datos:** ninguna
+
+**Qué cambió:** con la base ya sin tablas del CRM, sus pantallas en
+dev.forcom.tech daban error. Se sacaron de `develop`, que quedó con el mismo
+código que `main`, y desde ahora las dos ramas apuntan al mismo commit.
+
+- **Antes de borrar:** etiqueta `crm-congelado-2026-10-26` con el último
+  `develop` que tenía el CRM (`c2634a2`). Apptivando CRM usa ese código como
+  referencia: se lee con `git show crm-congelado-2026-10-26:<ruta>`.
+- **Se fueron:** las 59 rutas y componentes del CRM en `src/`, los scripts del
+  enriquecedor, `docs/PROSPECTOS.md`, `docs/WHATSAPP.md` y el workflow
+  `automations-cron.yml` (ya estaba desactivado; sus tres pasos eran del CRM).
+- **Se quedaron**, y ahora también están en `main`: `History.md`, `Futuro.md`,
+  `docs/ACCESOS.md`, `scripts/preview-email.mjs`, todas las migraciones de
+  `supabase/sql-changes/` con su README (que ahora dice cuáles siguen vigentes
+  y cuáles deshizo la 022).
+- **`CLAUDE.md`:** las 90 líneas de historia del CRM pasan a ser un aviso corto
+  con la etiqueta, se corrigieron las notas que ya no eran ciertas (la ruta del
+  formulario no usa la service key, no hay cron, no hay variables del CRM) y se
+  sacaron los scripts del CRM.
+- **`Futuro.md`:** se sacaron los planes del CRM (cola de llamadas, campañas,
+  paso B del nivel 3; están en el backlog de Apptivando CRM y enteros en la
+  etiqueta) y las decisiones que ya se resolvieron.
+- **`.gitignore`:** `.compare/` (mediciones viejas del enriquecedor con datos de
+  prospectos, que quedaron en la carpeta local) para que no se suban por error.
+
+**Probado:** build limpio con las mismas 20 rutas que producción; el código de
+`src/` es idéntico al de `main` (diff vacío); `scripts/preview-email.mjs` sigue
+generando la vista previa.
+
+---
+
 ## 2026-10-26 — Las mejoras que no eran del CRM llegan a producción, y el CRM se da de baja
 
 **Rama:** main `5a35562` (código) y `8d5cd8a` (SQL 022), armados a mano en la rama `pase-main-sin-crm` · **Producción: sí**

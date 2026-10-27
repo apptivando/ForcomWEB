@@ -11,19 +11,11 @@ export default async function DashboardPage() {
     { count: totalProducts },
     { count: newMessages },
     { count: totalMessages },
-    { count: totalClients },
-    { count: whatsappClients },
-    { count: openDeals },
   ] = await Promise.all([
     supabase.from("products").select("*", { count: "exact", head: true }).eq("active", true),
     supabase.from("contact_messages").select("*", { count: "exact", head: true }).eq("status", "nuevo"),
     // El spam no cuenta: era justo lo que inflaba este número.
     supabase.from("contact_messages").select("*", { count: "exact", head: true }).neq("status", "spam"),
-    supabase.from("crm_contacts").select("id", { count: "exact", head: true }),
-    // contact_tier = 1 significa WhatsApp confirmado con evidencia, no
-    // "el número parece un celular".
-    supabase.from("crm_contacts").select("id", { count: "exact", head: true }).eq("contact_tier", 1),
-    supabase.from("pipeline_deals").select("id", { count: "exact", head: true }),
   ]);
 
   const { data: recentMessages } = await supabase
@@ -46,7 +38,7 @@ export default async function DashboardPage() {
     spam: "bg-[#2A2A2E] text-[#8A8A8A] border-[#2A2A2E]",
   };
 
-  // Las cuatro tarjetas son enlaces. Antes solo una lo era: el dashboard
+  // Las tarjetas son enlaces. Antes solo una lo era: el dashboard
   // informaba pero no dejaba actuar, que es lo contrario de lo que se espera
   // de la pantalla de inicio.
   const cardCls =
@@ -60,15 +52,7 @@ export default async function DashboardPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
-        <Link href="/admin/clientes?tier=1" className={cardCls}>
-          <p className="text-[13px] font-medium text-[#A8A8A8] mb-2">
-            Clientes con WhatsApp
-          </p>
-          <p className="font-display font-extrabold text-4xl text-green-400">{whatsappClients ?? 0}</p>
-          <p className="text-[13px] text-[#8A8A8A] mt-1">de {totalClients ?? 0} en total</p>
-        </Link>
-
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-10 max-w-3xl">
         <Link href="/admin/productos" className={cardCls}>
           <p className="text-[13px] font-medium text-[#A8A8A8] mb-2">
             Productos activos
@@ -91,17 +75,6 @@ export default async function DashboardPage() {
           <p className="text-[13px] text-[#8A8A8A] mt-1">de {totalMessages ?? 0} recibidos</p>
         </Link>
 
-        {/* Reemplaza a "Total mensajes", que repetía un número que ya está en la
-            tarjeta de al lado. El pipeline es lo que falta saber a la mañana. */}
-        <Link href="/admin/pipelines" className={cardCls}>
-          <p className="text-[13px] font-medium text-[#A8A8A8] mb-2">
-            Oportunidades
-          </p>
-          <p className="font-display font-extrabold text-4xl text-white">{openDeals ?? 0}</p>
-          <p className="text-[13px] text-[#8A8A8A] mt-1">
-            {(openDeals ?? 0) === 0 ? "Convertí un mensaje en oportunidad" : "En el pipeline"}
-          </p>
-        </Link>
       </div>
 
       {/* Recent messages */}

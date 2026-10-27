@@ -12,17 +12,9 @@ export const SECTION_LABEL: Record<string, string> = {
   hero: "Sección Hero",
   productos: "Productos",
   catalogo: "Catálogo",
-  clientes: "Clientes",
-  inbox: "Bandeja de WhatsApp",
-  lineas: "Líneas de WhatsApp",
-  plantillas: "Plantillas",
-  agente: "Asistente de IA",
-  pipelines: "Pipeline de ventas",
-  automatizaciones: "Automatizaciones",
   crm: "Mensajes del formulario",
   empresa: "Info empresa",
   miembros: "Miembros",
-  vendedores: "Vendedores",
   cuenta: "Mi cuenta",
 };
 
