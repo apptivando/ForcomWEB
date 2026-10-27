@@ -14,7 +14,7 @@ Sitio web B2B de presentación y generación de leads para FORCOM, fabricante de
 
 ## CRM: no vive en este repo
 
-**El CRM es un producto aparte: Apptivando CRM** (`c:ApptivandoApptivandoCRM`,
+**El CRM es un producto aparte: Apptivando CRM** (`c:\Apptivando\ApptivandoCRM`,
 `crm.apptivando.com`), con su propia base. FORCOM es una organización cliente
 de ese producto. Si aparece un pedido de CRM —clientes, prospección, pipeline,
 WhatsApp, plantillas, campañas, llamadas—, va ahí, no acá. Leer su `CLAUDE.md`

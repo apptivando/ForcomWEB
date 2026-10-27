@@ -17,7 +17,7 @@ empezaron, decisiones pendientes y deuda chica. Lo que ya se hizo va en
 
 > ## El CRM ya no está en este repo (26/10/2026)
 >
-> Se mudó a Apptivando CRM (`c:ApptivandoApptivandoCRM`) el 24/09 y el
+> Se mudó a Apptivando CRM (`c:\Apptivando\ApptivandoCRM`) el 24/09 y el
 > 26/10 se sacó del todo: de `develop`, de la base y del menú. Los planes que
 > eran del CRM —cola de llamadas, campañas de correo con EnvíaloSimple, el paso B
 > del nivel 3 del enriquecedor— ya figuran en el backlog de Apptivando CRM como
@@ -170,29 +170,23 @@ Del listado completo en `../TAREAS_PENDIENTES.md`:
 - **[vos]** **80 tareas de carga de contenido**: fotos, descripción,
   especificaciones completas y documentos para cada uno de los 20 productos. Las
   specs están en `../FORCOM_Catalogo_1Q_2026.md`.
-- **[vos]** Fichas técnicas en PDF — dependen de que FORCOM las entregue. Hoy
-  ningún producto tiene archivos descargables.
-- **[vos]** Actualizar el número de WhatsApp real en `/admin/empresa` si sigue el
-  placeholder.
-- **[vos]** Validar el DNS de `dev.forcom.tech` en Vercel.
+- **[vos]** Fichas técnicas en PDF — dependen de que FORCOM las entregue. Desde
+  el 26/10 se suben desde el admin del producto.
 
 ---
 
 # 5. Infraestructura — migración a la cuenta nueva de Vercel
 
-> Checklist maestro y orden obligatorio: `../MIGRACION_VERCEL.md`. Quedan **34
-> ítems sin tildar**, casi todos tuyos. Los más importantes:
+> Checklist maestro y orden obligatorio: `../MIGRACION_VERCEL.md` (cubre también
+> OnConcilia y Apptivando ML). El proyecto de FORCOM ya está andando en la
+> cuenta nueva y wacrm ya se apagó (06/08). Lo que queda de FORCOM:
 
 - **[vos]** Guardar los recovery codes de 2FA de la cuenta nueva en un lugar
   seguro. Se perdió el acceso a la cuenta vieja por 2FA irrecuperable.
-- **[vos]** ⚠️ **Cargar `SUPABASE_SERVICE_KEY` en el proyecto nuevo de Vercel.**
-  La usan las invitaciones, los miembros y la recuperación de contraseña.
-- **[vos]** Apagar wacrm: parar los procesos de PM2 del bridge en la notebook,
-  borrar el DNS de `crm-dev.forcom.tech`, archivar el repo `apptivando/ForcomCRM`.
-  **Antes de borrar su base: desde el 30/07/2026 tiene leads reales del
-  formulario de contacto.**
 - **[vos]** Rotar la API key de **Resend** de FORCOM.
 - **[vos]** Habilitar los repos en la instalación nueva de la GitHub App.
+- **[vos]** Probar en la cuenta nueva: home, una ficha de producto y el login
+  del admin (último ítem sin tildar del Track 1B).
 - **[vos]** Elegir el dominio definitivo.
 
 > **Por qué importa más allá del panel:** los proyectos viejos **no se pueden
