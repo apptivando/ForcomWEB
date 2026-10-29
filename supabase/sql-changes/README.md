@@ -19,3 +19,5 @@ Todas las migraciones de esta carpeta están corridas en la base de FORCOM.
 `schema.sql` quedó atrás de esta carpeta: no tiene las cuentas del panel ni los
 cambios del formulario. Para saber cómo está la base hoy, la referencia es esta
 carpeta, leída con la lista de arriba.
+
+- **023 (29/10/2026, sin correr todavía):** escritura del sitio y lectura del panel solo para miembros de FORCOM (`current_admin_role()`), no para cualquier usuario logueado — Latin Office comparte el proyecto de Supabase y sus usuarios. Cubre products, hero_content, hero_slides, company_info, contact_messages y los buckets `product-images` y `hero-slides`. Correr primero el paso 0 solo y guardar el listado.

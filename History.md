@@ -31,6 +31,29 @@ Dos reglas que hacen que esto sirva:
 
 ---
 
+## 2026-10-29 — SQL 023: solo los miembros del panel escriben en las tablas del sitio
+
+**Rama:** develop · **Producción:** no (solo SQL; el código no cambia)
+**Base de datos:** migración 023 escrita, **falta correrla** [vos]
+
+**Qué cambió:** Latin Office (repo LatinOfficeWEB) pasa a usar este mismo
+proyecto de Supabase, con tablas `lo_*` y su propia lista de miembros. Los
+usuarios de Auth quedan compartidos, y las policies de FORCOM dejaban escribir a
+cualquier usuario logueado (`auth.uid() IS NOT NULL`): un miembro que fuera solo
+de Latin Office podía editar productos, hero, datos de la empresa, leer el buzón
+o tocar los buckets `product-images` y `hero-slides` con la clave anon. La 023
+cambia todo eso a `current_admin_role() IS NOT NULL`. Se encontró además el
+bucket `hero-slides`, que no figuraba en `schema.sql` ni en CLAUDE.md.
+
+**Cómo correrla:** primero el paso 0 solo (guardar el listado de policies), y
+después el archivo entero. Tiene que correr **antes** de invitar a nadie al panel
+de Latin Office.
+
+**Sin probar:** todo. Después de correrla: entrar al panel de FORCOM, editar un
+producto y una slide, y mandar un mensaje desde el formulario del sitio.
+
+---
+
 ## 2026-10-26 — `develop` queda igual a `main`: se sacan las pantallas del CRM
 
 **Rama:** develop (merge de `main`) y `main` por fast-forward al mismo commit · **Producción: sí** (solo documentación y el workflow borrado; el código de producción no cambia)
