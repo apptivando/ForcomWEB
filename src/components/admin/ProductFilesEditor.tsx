@@ -24,7 +24,20 @@ function guessType(fileName: string): ProductFile["type"] {
   return "otro";
 }
 
+// Los subidos viven en nuestro Storage; el resto son links pegados a mano.
+function isUploaded(url: string) {
+  return url.includes("/storage/v1/object/public/");
+}
+
 function fileLabel(url: string) {
+  // En un link de Drive el último tramo es "view": sirve más ver de dónde es.
+  if (!isUploaded(url)) {
+    try {
+      return `Link externo · ${new URL(url).hostname.replace(/^www\./, "")}`;
+    } catch {
+      return url;
+    }
+  }
   const last = decodeURIComponent(url.split("?")[0].split("/").pop() ?? url);
   // Los subidos llevan `{timestamp}-` adelante: no le sirve a nadie verlo.
   return last.replace(/^\d{10,}-/, "");
@@ -34,13 +47,43 @@ export default function ProductFilesEditor({ files, onChange }: Props) {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [linkUrl, setLinkUrl] = useState("");
+  const [linkName, setLinkName] = useState("");
+  const [linkError, setLinkError] = useState("");
+
+  // Para lo que pasa del tope de Storage (drivers de 100 MB): el archivo queda
+  // en Drive, Dropbox o la web del fabricante y acá solo se guarda el link.
+  function addLink() {
+    const url = linkUrl.trim();
+    const name = linkName.trim();
+    let parsed: URL;
+    try {
+      parsed = new URL(url);
+    } catch {
+      setLinkError("Pegá el link completo, empezando con https://");
+      return;
+    }
+    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+      setLinkError("El link tiene que empezar con https://");
+      return;
+    }
+    // Sin nombre la ficha pública no lo muestra, y del link no se puede sacar.
+    if (!name) {
+      setLinkError("Poné el nombre que va a ver el cliente.");
+      return;
+    }
+    onChange([...files, { name, url, type: guessType(`${name} ${parsed.pathname}`) }]);
+    setLinkUrl("");
+    setLinkName("");
+    setLinkError("");
+  }
 
   async function handleFiles(list: FileList) {
     const selected = Array.from(list);
     const tooBig = selected.filter((f) => f.size > MAX_MB * 1024 * 1024);
     if (tooBig.length) {
       setUploadError(
-        `${tooBig.map((f) => f.name).join(", ")} pesa más de ${MAX_MB} MB. Comprimilo o subilo a otro lado (Drive, web del fabricante) y pedí que se cargue el link.`
+        `${tooBig.map((f) => f.name).join(", ")} pesa más de ${MAX_MB} MB. Subilo a Drive, Dropbox o la web del fabricante y pegá el link abajo, en "Agregar un link".`
       );
       if (fileInputRef.current) fileInputRef.current.value = "";
       return;
@@ -182,6 +225,62 @@ export default function ProductFilesEditor({ files, onChange }: Props) {
           {uploadError}
         </p>
       )}
+
+      <div className="border border-[#2A2A2E] rounded-sm p-4 space-y-3">
+        <div>
+          <p className="text-[15px] font-display font-semibold text-white">Agregar un link</p>
+          <p className="text-[13px] text-[#8A8A8A]">
+            Para archivos de más de {MAX_MB} MB. Si es de Drive, compartilo como &quot;Cualquier persona con el enlace&quot;.
+          </p>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label htmlFor="archivo-link-url" className={labelCls}>Link</label>
+            <input
+              id="archivo-link-url"
+              type="url"
+              inputMode="url"
+              className={inputCls}
+              value={linkUrl}
+              onChange={(e) => setLinkUrl(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  addLink();
+                }
+              }}
+              placeholder="https://drive.google.com/…"
+            />
+          </div>
+          <div>
+            <label htmlFor="archivo-link-nombre" className={labelCls}>Nombre que ve el cliente</label>
+            <input
+              id="archivo-link-nombre"
+              className={inputCls}
+              value={linkName}
+              onChange={(e) => setLinkName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  addLink();
+                }
+              }}
+              placeholder="Driver Windows 10"
+            />
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={addLink}
+          disabled={!linkUrl.trim()}
+          className="px-4 py-2.5 bg-[#C41D16] hover:bg-[#E8231A] text-white text-[13px] font-display font-semibold tracking-[0.1em] uppercase rounded-sm transition-colors disabled:opacity-50 disabled:hover:bg-[#C41D16]"
+        >
+          Agregar link
+        </button>
+        {linkError && (
+          <p className="text-[13px] text-[#FF6A5C]">{linkError}</p>
+        )}
+      </div>
 
       <input
         ref={fileInputRef}
