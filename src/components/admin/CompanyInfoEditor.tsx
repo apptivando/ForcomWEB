@@ -5,7 +5,14 @@ import { updateCompanyInfo } from "@/app/admin/actions";
 import type { CompanyInfo } from "@/lib/types";
 import { useFormGuard } from "@/lib/hooks/useUnsavedChanges";
 
-export default function CompanyInfoEditor({ info }: { info: CompanyInfo }) {
+export default function CompanyInfoEditor({
+  info,
+  withSocial = false,
+}: {
+  info: CompanyInfo;
+  /** Facebook e Instagram existen desde la migración 024. */
+  withSocial?: boolean;
+}) {
   const [, startTransition] = useTransition();
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -16,6 +23,8 @@ export default function CompanyInfoEditor({ info }: { info: CompanyInfo }) {
     email: info.email,
     phone: info.phone,
     schedule: info.schedule,
+    facebook: info.facebook ?? "",
+    instagram: info.instagram ?? "",
   });
 
   const { markSaved } = useFormGuard(form, "Los datos de contacto tienen cambios sin guardar.");
@@ -31,7 +40,11 @@ export default function CompanyInfoEditor({ info }: { info: CompanyInfo }) {
     setSaving(true);
     startTransition(async () => {
       try {
-        await updateCompanyInfo(form);
+        const { facebook, instagram, ...base } = form;
+        // Vacío se guarda como null: así el sitio no muestra el botón.
+        await updateCompanyInfo(
+          withSocial ? { ...base, facebook: facebook.trim() || null, instagram: instagram.trim() || null } : base
+        );
         markSaved();
         setSaved(true);
       } catch (err) {
@@ -97,6 +110,32 @@ export default function CompanyInfoEditor({ info }: { info: CompanyInfo }) {
             placeholder="Lun — Vie, 9:00 a 18:00"
           />
         </div>
+
+        {withSocial && (
+          <div className="grid sm:grid-cols-2 gap-5">
+            <div>
+              <label htmlFor="facebook" className={labelCls}>Facebook</label>
+              <input id="facebook"
+                className={inputCls}
+                value={form.facebook}
+                onChange={(e) => setField("facebook", e.target.value)}
+                placeholder="https://www.facebook.com/forcom"
+              />
+            </div>
+            <div>
+              <label htmlFor="instagram" className={labelCls}>Instagram</label>
+              <input id="instagram"
+                className={inputCls}
+                value={form.instagram}
+                onChange={(e) => setField("instagram", e.target.value)}
+                placeholder="@forcom"
+              />
+            </div>
+            <p className="sm:col-span-2 text-[13px] text-[#8A8A8A] -mt-2">
+              La dirección completa o el usuario. Lo que quede vacío no se muestra en el sitio.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Preview */}

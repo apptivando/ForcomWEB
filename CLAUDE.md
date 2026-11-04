@@ -20,9 +20,48 @@ de ese producto. Si aparece un pedido de CRM —clientes, prospección, pipeline
 WhatsApp, plantillas, campañas, llamadas—, va ahí, no acá. Leer su `CLAUDE.md`
 primero.
 
-Lo que queda acá es el sitio público y el panel de contenido: Hero, Productos,
-Catálogo, Info empresa, **Mensajes del formulario** (`/admin/crm`, la bandeja de
-leads del sitio: no es parte del CRM y no se apaga) y Cuentas/Miembros.
+Lo que queda acá es el sitio público y el panel de contenido: Portada, Franja de
+datos, Productos, Catálogo, Info empresa, **Garantías**, **Revendedores**,
+**Mensajes de contacto** (`/admin/mensajes`, antes `/admin/crm`: la bandeja del
+formulario propio, no es parte de ningún CRM) y Miembros.
+
+## Panel a la par de Latin Office (04/11/2026)
+
+LatinOfficeWEB (`C:\Apptivando\LatinOfficeWEB`) es del mismo dueño, nació como
+copia de este panel y usa **el mismo proyecto de Supabase** (sus tablas llevan
+`lo_`). Los dos paneles tienen las mismas secciones, con las mismas rutas y el
+mismo menú (Formularios / Sitio / Cuenta). **Al cambiar una pieza compartida
+(garantías, revendedores, franja, formulario del CRM, `requireMember`), avisar
+que conviene hacer lo mismo en el otro repo.** Cada repo se trabaja por
+separado. Las rutas viejas `/admin/hero` y `/admin/crm` redirigen
+(`next.config.ts`).
+
+- **Formulario de Contacto = el del CRM del cliente** (`crm.ventaweb.ar`,
+  `CrmForm.tsx`). `embed.js` crea un iframe al lado de su propia etiqueta
+  `<script>`, por eso se inserta a mano dentro del contenedor y no con
+  `next/script`. Lo que se carga ahí va solo al CRM: no hay forma de quedarse
+  con una copia. El formulario propio (`Contact.tsx`) es el respaldo: se prende
+  en Info empresa (`company_info.own_contact_form`, migración 024) y entonces
+  las consultas vuelven a Mensajes.
+- **Garantías** (`/api/garantia`, `Warranty.tsx`, `WarrantiesTable.tsx`):
+  12 meses desde la factura, todos los productos activos. Compra directa →
+  `activa`; compra en un comercio → `pendiente` y factura obligatoria. Código
+  `FC-AAAA-XXXXXX`. La factura va al bucket **privado** `warranty-invoices`
+  (hasta 4 MB: Vercel corta a 4,5) y el panel la ve con un link firmado de 10
+  minutos. Va con service role. Al cliente le llegan el comprobante y la
+  decisión; los avisos internos van a `RESEND_TO_EMAIL` (ventas@forcom.tech).
+- **Revendedores** (`/api/revendedores`, `Resellers.tsx`, `ResellersInbox.tsx`):
+  insert anon sin `.select()`, igual que contacto. El rubro es la lista de
+  industrias de FORCOM (`RESELLER_TYPES` en `lib/site-forms.ts`). Los textos
+  hablan de la red de la fábrica: FORCOM no es la revendedora (ver
+  Posicionamiento).
+- **Franja de datos** (`facts`, `FactsStrip.tsx`): arranca vacía y, vacía, no se
+  muestra. Aparece sola cuando alguien carga un dato en el panel.
+- Correos de los formularios: best-effort dentro de `after()`
+  (`lib/email/notifications.ts`).
+- Todas las server actions exigen ser miembro de FORCOM (`requireMember` en
+  `admin/actions.ts`), no solo tener sesión: los usuarios de Auth son
+  compartidos con Latin Office.
 
 Historia corta, por si hace falta:
 - 30/07–06/08/2026: se probó un fork de wacrm detrás de un proxy en
@@ -127,13 +166,16 @@ src/
 │       ├── actions.ts        — server actions: hero, productos, mensajes, miembros
 │       └── (panel)/          — rutas protegidas del admin
 │           ├── dashboard/    — stats
-│           ├── hero/         — editor de slides del hero carousel
+│           ├── portada/      — editor de slides del carrusel (antes hero/)
+│           ├── datos/        — franja de datos (vacía = no se muestra)
+│           ├── garantias/    — validar, rechazar, ver factura
+│           ├── revendedores/ — pedidos de alta
 │           ├── productos/    — CRUD de productos
 │           ├── empresa/      — datos de contacto (WhatsApp, email, etc.)
 │           ├── catalogo/     — link del catálogo de Publuu
 │           ├── miembros/     — invitar, roles, quitar (solo owner/admin)
 │           ├── cuenta/       — cambiar la propia contraseña
-│           └── crm/          — mensajes del formulario (spam, borrar en lote, responder)
+│           └── mensajes/     — formulario propio de contacto (antes crm/)
 ├── components/
 │   ├── Navbar.tsx            — nav fijo, scroll effect, menú mobile
 │   ├── HeroCarousel.tsx      — carousel hero con slides dinámicos desde DB
@@ -142,7 +184,10 @@ src/
 │   ├── ProductDetails.tsx    — carrusel, specs (parser markdown), videos, archivos — usado en /productos/[slug]
 │   ├── WhyForcom.tsx         — 6 diferenciadores en grid 3x2
 │   ├── Industries.tsx        — 6 industrias verticales
-│   ├── Contact.tsx           — formulario con validación (datos desde company_info)
+│   ├── Contact.tsx           — formulario del CRM (CrmForm) o el propio, según company_info.own_contact_form
+│   ├── Warranty.tsx          — "Activar garantía" (/#garantia)
+│   ├── Resellers.tsx         — "Sume FORCOM a su comercio" (/#revendedores)
+│   ├── FactsStrip.tsx        — franja de datos bajo el carrusel
 │   ├── WhatsAppFAB.tsx       — botón flotante WhatsApp (número desde DB)
 │   ├── Footer.tsx            — links, copyright dinámico
 │   ├── ForcomLogo.tsx        — logo PNG via next/image (NO volver a SVG — el ® desaparecía)
@@ -179,6 +224,8 @@ src/
 **`contact_messages`** — mensajes del formulario de contacto. `phone` (solo dígitos, opcional) y `status` en `nuevo | leido | contactado | spam` (017). Insert público para anon sin `.select()` (ver Gotchas).
 
 **`admin_members`, `admin_invitations`, `admin_password_resets`** — cuentas del panel (migraciones 001, 015, 016). Ver `docs/ACCESOS.md`.
+
+**`warranties`, `reseller_requests`, `facts`** (024) — garantías, pedidos de revendedores y franja de datos. `company_info` suma `own_contact_form`, `facebook`, `instagram`. Bucket privado `warranty-invoices`. Ver "Panel a la par de Latin Office" arriba.
 
 Los cambios a la base desde agosto están en `supabase/sql-changes/`, numerados. `schema.sql` no está al día con ellos. Las 002 a 014, 019 y 020 eran del CRM y la 022 las deshizo.
 

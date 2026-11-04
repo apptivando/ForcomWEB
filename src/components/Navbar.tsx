@@ -18,6 +18,8 @@ const productCategories = [
 const navLinks = [
   { label: "Por qué FORCOM", href: "/#por-que" },
   { label: "Industrias", href: "/#industrias" },
+  { label: "Revendedores", href: "/#revendedores" },
+  { label: "Garantía", href: "/#garantia" },
   { label: "Contacto", href: "/#contacto" },
 ];
 
@@ -77,7 +79,7 @@ export default function Navbar({
         </a>
 
         {/* Desktop nav */}
-        <div className="hidden lg:flex items-center gap-8">
+        <div className="hidden xl:flex items-center gap-8">
           {/* Productos dropdown */}
           <div
             ref={dropdownRef}
@@ -179,7 +181,7 @@ export default function Navbar({
 
         {/* Mobile toggle */}
         <button
-          className="lg:hidden flex flex-col gap-1.5 p-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-forcom-red rounded-sm"
+          className="xl:hidden flex flex-col gap-1.5 p-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-forcom-red rounded-sm"
           onClick={() => setMobileOpen(!mobileOpen)}
           aria-label={mobileOpen ? "Cerrar menú" : "Abrir menú"}
           aria-expanded={mobileOpen}
@@ -204,7 +206,7 @@ export default function Navbar({
 
       {/* Mobile menu */}
       {mobileOpen && (
-        <div className="lg:hidden bg-forcom-dark border-t border-forcom-border">
+        <div className="xl:hidden bg-forcom-dark border-t border-forcom-border">
           <div className="px-6 py-6 flex flex-col">
             {/* Products accordion */}
             <div className="border-b border-forcom-border/50">

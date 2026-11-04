@@ -313,3 +313,19 @@ body {
     min-height: 88px;
   }
 }
+
+/* Formulario del CRM (crm.ventaweb.ar, ver CrmForm.tsx). embed.js crea un
+   iframe de 520 x 760 con estilos en línea: el contenedor reserva el alto para
+   que la página no salte cuando carga, y el iframe ocupa el ancho disponible
+   en el teléfono. */
+.crm-embed {
+  width: 100%;
+  max-width: 520px;
+  min-height: 760px;
+  border-radius: 2px;
+  overflow: hidden;
+}
+.crm-embed iframe {
+  display: block;
+  width: 100%;
+}

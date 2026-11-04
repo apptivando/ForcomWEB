@@ -36,6 +36,12 @@ export interface EmailLayoutOptions {
   button?: { label: string; url: string };
   /** Texto chico bajo la línea del pie. */
   footerHtml?: string;
+  /**
+   * "panel" (invitaciones, avisos internos) o "cliente" (comprobantes de
+   * garantía). Cambia la línea del pie: al cliente no se le dice "panel de
+   * administración" ni "no hace falta responderlo" (sí puede responder).
+   */
+  audience?: "panel" | "cliente";
 }
 
 /** Párrafo del cuerpo. */
@@ -76,7 +82,13 @@ export function emailLayout({
   bodyHtml,
   button,
   footerHtml,
+  audience = "panel",
 }: EmailLayoutOptions): string {
+  const footerLine =
+    audience === "panel"
+      ? `Panel de administración de FORCOM · <a href="https://forcom.tech" style="color:${GRAY};text-decoration:underline;">forcom.tech</a><br />
+                Correo automático — no hace falta responderlo.`
+      : `FORCOM · Hardware para punto de venta · <a href="https://forcom.tech" style="color:${GRAY};text-decoration:underline;">forcom.tech</a>`;
   // El botón es una tabla con bgcolor (no un <a> con background-color): Outlook
   // en Windows renderiza con el motor de Word y descarta el fondo del <a>.
   const buttonHtml = button
@@ -155,8 +167,7 @@ export function emailLayout({
                   : ""
               }
               <p style="margin:0;font-family:${BODY};font-size:12px;line-height:1.6;color:${GRAY};">
-                Panel de administración de FORCOM · <a href="https://forcom.tech" style="color:${GRAY};text-decoration:underline;">forcom.tech</a><br />
-                Correo automático — no hace falta responderlo.
+                ${footerLine}
               </p>
             </td>
           </tr>

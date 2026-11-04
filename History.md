@@ -58,6 +58,53 @@ enlace").
 
 ---
 
+## 2026-11-04 — Panel a la par de Latin Office: garantías, revendedores, franja y formulario del CRM
+
+**Rama:** develop · **Producción:** no
+**Base de datos:** migración 024 escrita, **falta correrla** [vos]. La 023 ya
+estaba corrida (29/10, desde la sesión de Latin Office: por eso no figuraba acá).
+
+**Qué cambió:** el cliente quiere que FORCOM y Latin Office (mismo dueño, misma
+base) tengan el mismo panel. Lo que Latin Office tenía y FORCOM no, se portó:
+- **Activar garantía** (`/#garantia`): 12 meses desde la factura, todos los
+  productos. Compra directa → activa al instante; compra en un comercio →
+  pendiente, con factura obligatoria, hasta que se valida en el panel. Código
+  `FC-AAAA-XXXXXX`, comprobante por correo al cliente y aviso con la factura
+  adjunta a ventas@forcom.tech. Panel → Garantías: validar, rechazar (le avisa
+  al cliente), ver la factura, notas, borrar (solo admin).
+- **Revendedores** (`/#revendedores`, "Sume FORCOM a su comercio"): formulario y
+  bandeja con estados. El rubro es la lista de industrias de FORCOM. Textos
+  desde la fábrica: FORCOM arma la red, no es revendedora.
+- **Franja de datos** bajo el carrusel: nace vacía y no se ve hasta que alguien
+  carga un dato en Panel → Franja de datos.
+- **Formulario del CRM** (`crm.ventaweb.ar/embed.js`) en Contacto. El propio
+  queda de respaldo: interruptor en Info empresa. Con el del CRM las consultas
+  no entran a Mensajes (no hay forma de quedarse con una copia, lo confirmó el
+  cliente); Mensajes lo avisa.
+- Info empresa suma Facebook e Instagram (se ven en Contacto si están cargados).
+- Menú del panel igual al de Latin Office (Formularios / Sitio / Cuenta).
+  `/admin/hero` pasó a `/admin/portada` y `/admin/crm` a `/admin/mensajes`; las
+  viejas redirigen. Dashboard con una tarjeta por bandeja y los últimos ingresos
+  de los tres formularios.
+- **Seguridad:** las server actions pedían solo sesión; ahora exigen ser
+  miembro de FORCOM (`requireMember`), igual que Latin Office.
+- 404 propio en español con menú, y `/api/health`.
+- Menú del sitio: suma Revendedores y Garantía. Como ya no entraba en 1024 px
+  (medido: necesita ~1175), el menú completo se ve desde 1280 px; por debajo,
+  el menú hamburguesa.
+
+**Probado** (en `next start`, contra la base real, sin la 024): la home muestra
+las secciones de revendedores y garantía; el formulario del CRM carga en
+Contacto (iframe de 520 px); sin datos la franja no aparece; `/no-existe` da el
+404 nuevo; `/admin/hero` redirige a `/admin/portada`; un envío de bot a
+`/api/revendedores` recibe "ok" y no se guarda; `/api/health` responde.
+
+**Sin probar:** todo el panel (hace falta sesión); un alta real de garantía y
+de revendedor (necesitan la 024); los correos de garantía; el interruptor del
+formulario propio; el menú hamburguesa entre 1024 y 1280 px.
+
+---
+
 ## 2026-10-29 — SQL 023: solo los miembros del panel escriben en las tablas del sitio
 
 **Rama:** develop · **Producción:** no (solo SQL; el código no cambia)

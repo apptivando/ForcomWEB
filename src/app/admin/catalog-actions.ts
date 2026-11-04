@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { parseCatalogUrl } from "@/lib/catalog";
+import { requireRole } from "@/lib/auth/roles";
 
 // Archivo propio y no dentro de actions.ts: ese archivo es muy distinto entre
 // develop y main, y esto tiene que poder llegar a producción con un
@@ -19,6 +20,8 @@ export async function updateCatalogUrl(raw: string): Promise<string | null> {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) throw new Error("No autorizado");
+  // Miembro de FORCOM, no cualquier sesión (ver requireMember en actions.ts).
+  await requireRole(supabase, "agent");
 
   const trimmed = raw.trim();
   const catalog = trimmed ? parseCatalogUrl(trimmed) : null;

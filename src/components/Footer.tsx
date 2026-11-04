@@ -67,7 +67,8 @@ export default function Footer() {
                 { label: "Sobre nosotros", href: "/#por-que" },
                 { label: "Contacto", href: "/#contacto" },
                 { label: "Soporte técnico", href: "/#contacto" },
-                { label: "Garantía", href: "/#contacto" },
+                { label: "Activar garantía", href: "/#garantia" },
+                { label: "Revendedores", href: "/#revendedores" },
               ].map((item) => (
                 <li key={item.label}>
                   <a

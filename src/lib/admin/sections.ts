@@ -6,14 +6,21 @@
  * de la pestaña ("Mensajes del formulario" en el menú vs. "Mensajes / CRM" en
  * la página, "Sección Hero" vs. "Carrusel Hero", etc.). Un solo nombre por
  * sección, y de acá lo toman todos.
+ *
+ * Las rutas son las mismas que en LatinOfficeWEB (04/11/2026): portada, datos,
+ * mensajes, garantias, revendedores. Forcom tiene un solo catálogo
+ * (`catalogo`); Latin Office tiene dos (`catalogos`).
  */
 export const SECTION_LABEL: Record<string, string> = {
   dashboard: "Dashboard",
-  hero: "Sección Hero",
+  portada: "Portada",
+  datos: "Franja de datos",
   productos: "Productos",
   catalogo: "Catálogo",
-  crm: "Mensajes del formulario",
   empresa: "Info empresa",
+  mensajes: "Mensajes de contacto",
+  garantias: "Garantías",
+  revendedores: "Revendedores",
   miembros: "Miembros",
   cuenta: "Mi cuenta",
 };

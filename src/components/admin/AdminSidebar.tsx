@@ -21,7 +21,31 @@ const navItems = [
     ),
   },
   {
-    href: "/admin/hero",
+    href: "/admin/datos",
+    icon: (
+      <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 12h16.5M3.75 12V8.25A2.25 2.25 0 016 6h12a2.25 2.25 0 012.25 2.25V12m-16.5 0v3.75A2.25 2.25 0 006 18h12a2.25 2.25 0 002.25-2.25V12M9 6v12m6-12v12" />
+      </svg>
+    ),
+  },
+  {
+    href: "/admin/garantias",
+    icon: (
+      <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+      </svg>
+    ),
+  },
+  {
+    href: "/admin/revendedores",
+    icon: (
+      <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 21v-7.5a.75.75 0 01.75-.75h3a.75.75 0 01.75.75V21m-4.5 0H2.36m11.14 0H18m0 0h3.64m-1.39 0V9.349m-16.5 11.65V9.35m0 0a3.001 3.001 0 003.75-.615A2.993 2.993 0 009.75 9.75c.896 0 1.7-.393 2.25-1.016a2.993 2.993 0 002.25 1.016c.896 0 1.7-.393 2.25-1.016a3.001 3.001 0 003.75.614m-16.5 0a3.004 3.004 0 01-.621-4.72L4.318 3.44A1.5 1.5 0 015.378 3h13.243a1.5 1.5 0 011.06.44l1.19 1.189a3 3 0 01-.621 4.72m-13.5 8.65h3.75a.75.75 0 00.75-.75V13.5a.75.75 0 00-.75-.75H6.75a.75.75 0 00-.75.75v3.75c0 .415.336.75.75.75z" />
+      </svg>
+    ),
+  },
+  {
+    href: "/admin/portada",
     icon: (
       <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
@@ -45,7 +69,7 @@ const navItems = [
     ),
   },
   {
-    href: "/admin/crm",
+    href: "/admin/mensajes",
     icon: (
       <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
@@ -79,14 +103,16 @@ const membersNavItem = {
  * El Dashboard va suelto arriba, sin rótulo: es el punto de entrada, no una
  * categoría. Miembros va al final y solo lo ven owner y admin.
  *
- * En `develop` este menú tiene además las secciones del CRM (clientes,
- * pipeline, bandeja de WhatsApp…). No viajan a `main`: el CRM se mudó a
- * Apptivando CRM el 24/09/2026.
+ * Mismos grupos y orden que el panel de LatinOfficeWEB (04/11/2026), para que
+ * quien use los dos paneles encuentre todo en el mismo lugar.
  */
 const GRUPOS: Array<{ label: string | null; hrefs: string[]; soloAdmin?: boolean }> = [
   { label: null, hrefs: ["/admin/dashboard"] },
-  { label: "Sitio", hrefs: ["/admin/hero", "/admin/productos", "/admin/catalogo", "/admin/empresa"] },
-  { label: "Ventas", hrefs: ["/admin/crm"] },
+  { label: "Formularios", hrefs: ["/admin/garantias", "/admin/mensajes", "/admin/revendedores"] },
+  {
+    label: "Sitio",
+    hrefs: ["/admin/portada", "/admin/datos", "/admin/productos", "/admin/catalogo", "/admin/empresa"],
+  },
   { label: "Cuenta", hrefs: ["/admin/miembros"], soloAdmin: true },
 ];
 

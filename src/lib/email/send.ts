@@ -38,6 +38,8 @@ export interface SendEmailOptions {
   text: string;
   /** Casilla real a la que puede contestar quien recibe, si la hay. */
   replyTo?: string;
+  /** Adjuntos (la factura en el aviso interno de una garantía). */
+  attachments?: { filename: string; content: Buffer }[];
 }
 
 export async function sendEmail({
@@ -46,6 +48,7 @@ export async function sendEmail({
   html,
   text,
   replyTo,
+  attachments,
 }: SendEmailOptions): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
@@ -67,6 +70,7 @@ export async function sendEmail({
     html,
     text,
     ...(replyTo ? { replyTo } : {}),
+    ...(attachments?.length ? { attachments } : {}),
   });
 
   // El SDK de Resend no tira: devuelve { data, error }. Si no se mira, un

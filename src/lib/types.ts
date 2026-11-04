@@ -69,6 +69,69 @@ export interface CompanyInfo {
   schedule: string;
   /** Flipbook de Publuu. Opcional: no existe hasta correr la migración 021. */
   catalog_url?: string | null;
+  /**
+   * Formulario de Contacto: false = el del CRM del cliente (crm.ventaweb.ar),
+   * true = el propio, que es el respaldo si el CRM se cae. Migración 024.
+   */
+  own_contact_form?: boolean;
+  /** Redes. Opcionales: no existen hasta correr la migración 024. */
+  facebook?: string | null;
+  instagram?: string | null;
+  updated_at: string;
+}
+
+/** Un dato de la franja de debajo del carrusel (`facts`, migración 024). */
+export interface Fact {
+  id: string;
+  title: string;
+  text: string;
+  order_index: number;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Pedido de alta de revendedor (`reseller_requests`, migración 024). */
+export interface ResellerRequest {
+  id: string;
+  name: string;
+  company: string;
+  province: string;
+  /** Solo dígitos, sin `+` (ver `toWhatsappNumber`). */
+  phone: string;
+  business_type: string | null;
+  message: string | null;
+  status: "nuevo" | "contactado" | "alta" | "descartado" | "spam";
+  admin_notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Garantía registrada desde el sitio (`warranties`, migración 024). */
+export interface Warranty {
+  id: string;
+  /** FC-AAAA-XXXXXX. */
+  code: string;
+  status: "activa" | "pendiente" | "rechazada";
+  customer_name: string;
+  customer_doc: string;
+  email: string;
+  phone: string;
+  province: string;
+  city: string;
+  purchase_channel: "directo" | "comercio";
+  store_name: string | null;
+  product_name: string;
+  product_id: string | null;
+  quantity: number;
+  /** "AAAA-MM-DD". */
+  invoice_number: string;
+  invoice_date: string;
+  expires_on: string;
+  invoice_path: string | null;
+  admin_notes: string | null;
+  reviewed_at: string | null;
+  reviewed_by: string | null;
+  created_at: string;
   updated_at: string;
 }
 

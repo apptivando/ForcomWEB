@@ -1,6 +1,7 @@
 import { sectionTitle } from "@/lib/admin/sections";
 import { createClient } from "@/lib/supabase/server";
 import CompanyInfoEditor from "@/components/admin/CompanyInfoEditor";
+import ContactFormSwitch from "@/components/admin/ContactFormSwitch";
 import type { CompanyInfo } from "@/lib/types";
 
 export const metadata = { title: sectionTitle("empresa") };
@@ -23,9 +24,12 @@ export default async function EmpresaPage() {
     .single();
 
   const info: CompanyInfo = data ?? DEFAULT_INFO;
+  // Sin la migración 024 no existen las columnas nuevas: el interruptor avisa
+  // y el editor no muestra (ni manda) Facebook e Instagram.
+  const has024 = data != null && "own_contact_form" in data;
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-8">
       <div className="mb-8">
         <h1 className="font-display font-extrabold text-2xl text-white tracking-tight">
           Información de la empresa
@@ -34,7 +38,8 @@ export default async function EmpresaPage() {
           Datos de contacto que aparecen en la sección de contacto del sitio y en el botón de WhatsApp.
         </p>
       </div>
-      <CompanyInfoEditor info={info} />
+      <ContactFormSwitch initial={info.own_contact_form === true} available={has024} />
+      <CompanyInfoEditor info={info} withSocial={has024} />
     </div>
   );
 }

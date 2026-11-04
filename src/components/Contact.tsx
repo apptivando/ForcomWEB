@@ -2,17 +2,38 @@
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { HONEYPOT_FIELD } from "@/lib/antispam";
+import CrmForm from "./CrmForm";
 
 interface ContactInfo {
   email: string;
   phone: string;
   schedule: string;
+  whatsapp?: string;
+  own_contact_form?: boolean;
+  facebook?: string | null;
+  instagram?: string | null;
 }
 
+/** Lo que se carga en el panel puede ser la URL o el usuario a secas. */
+function socialHref(value: string, base: string) {
+  const v = value.trim();
+  if (/^https:\/\//i.test(v)) return v;
+  return `${base}${v.replace(/^@/, "")}`;
+}
+
+/**
+ * Sección Contacto. Por defecto muestra el formulario del CRM del cliente
+ * (crm.ventaweb.ar) y las consultas van ahí. El formulario propio queda armado
+ * como respaldo: se prende desde el panel (Info empresa) si el CRM se cae, y
+ * entonces las consultas vuelven a entrar a Mensajes. Sin la migración 024
+ * `own_contact_form` no existe y se ve el del CRM.
+ */
 export default function Contact({ info }: { info?: ContactInfo }) {
   const email = info?.email ?? "ventas@forcom.tech";
   const phone = info?.phone ?? "+54 11 xxxx-xxxx";
   const schedule = info?.schedule ?? "Lun — Vie, 9:00 a 18:00";
+  const ownForm = info?.own_contact_form === true;
+  const wa = info?.whatsapp ? `https://wa.me/${info.whatsapp}` : null;
   const [status, setStatus] = useState<"idle" | "sending" | "success" | "error">("idle");
   // Marca de cuándo se pintó el formulario. Un bot postea en milisegundos; una
   // persona no. Ver `src/lib/antispam`.
@@ -115,10 +136,56 @@ export default function Contact({ info }: { info?: ContactInfo }) {
                   <p className="text-white">{schedule}</p>
                 </div>
               </div>
+              {(info?.facebook || info?.instagram) && (
+                <div className="flex flex-wrap gap-3 pt-2">
+                  {info?.facebook && (
+                    <a
+                      href={socialHref(info.facebook, "https://www.facebook.com/")}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-4 py-2 bg-forcom-card border border-forcom-border rounded-sm font-display font-semibold text-xs tracking-[0.15em] uppercase text-forcom-gray-light hover:text-white hover:border-forcom-red transition-colors"
+                    >
+                      Facebook
+                    </a>
+                  )}
+                  {info?.instagram && (
+                    <a
+                      href={socialHref(info.instagram, "https://www.instagram.com/")}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-4 py-2 bg-forcom-card border border-forcom-border rounded-sm font-display font-semibold text-xs tracking-[0.15em] uppercase text-forcom-gray-light hover:text-white hover:border-forcom-red transition-colors"
+                    >
+                      Instagram
+                    </a>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
           {/* Right: Form */}
+          {!ownForm ? (
+            <div className="reveal flex flex-col items-center lg:items-start gap-4">
+              <CrmForm />
+              <p className="text-sm text-forcom-gray">
+                ¿No ves el formulario? Escribinos
+                {wa && (
+                  <>
+                    {" "}por{" "}
+                    <a href={wa} target="_blank" rel="noopener noreferrer" className="text-forcom-red-text font-semibold hover:underline">
+                      WhatsApp
+                    </a>{" "}
+                    o
+                  </>
+                )}{" "}
+                a{" "}
+                <a href={`mailto:${email}`} className="text-forcom-red-text font-semibold hover:underline">
+                  {email}
+                </a>
+                .
+              </p>
+            </div>
+          ) : (
           <div className="reveal">
             <div className="bg-forcom-card border border-forcom-border rounded-sm p-8 lg:p-10">
               {status === "success" ? (
@@ -229,6 +296,7 @@ export default function Contact({ info }: { info?: ContactInfo }) {
               )}
             </div>
           </div>
+          )}
         </div>
       </div>
     </section>

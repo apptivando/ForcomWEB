@@ -25,16 +25,40 @@ import { validatePassword } from "@/lib/auth/password";
 import { sendEmail, EmailConfigError } from "@/lib/email/send";
 import { invitationEmail } from "@/lib/email/invitation";
 import { passwordResetEmail } from "@/lib/email/password-reset";
-import type { HeroContent, HeroSlide, Product, CompanyInfo, ContactMessage } from "@/lib/types";
+import { sendWarrantyDecision } from "@/lib/email/notifications";
+import { MAX_FACTS } from "@/lib/site-forms";
+import type {
+  HeroContent,
+  HeroSlide,
+  Product,
+  CompanyInfo,
+  ContactMessage,
+  Fact,
+  ResellerRequest,
+  Warranty,
+} from "@/lib/types";
 
-async function requireAuth() {
+/**
+ * Sesión + ser miembro del panel de FORCOM (fila en `admin_members`).
+ *
+ * Hasta el 04/11/2026 esto pedía solo sesión. Alcanzaba mientras el único
+ * panel en este proyecto de Supabase era el de FORCOM, pero Latin Office
+ * comparte los usuarios: alguien que solo es miembro de Latin Office tiene
+ * sesión válida y podía llamar estas acciones. La migración 023 ya lo frenaba
+ * en la base; esto da el error antes y deja las dos barreras, igual que en
+ * LatinOfficeWEB (`requireMember`).
+ */
+async function requireMember(min: AdminRole = "agent") {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) throw new Error("No autorizado");
+  await requireRole(supabase, min);
   return supabase;
 }
+
+const now = () => new Date().toISOString();
 
 async function siteOrigin() {
   const h = await headers();
@@ -46,7 +70,7 @@ async function siteOrigin() {
 // ─── Hero ────────────────────────────────────────────────────────────────────
 
 export async function updateHeroContent(data: HeroContent) {
-  const supabase = await requireAuth();
+  const supabase = await requireMember();
   const { error } = await supabase
     .from("hero_content")
     .update({
@@ -66,7 +90,7 @@ export async function updateHeroContent(data: HeroContent) {
     .eq("id", 1);
   if (error) throw new Error(error.message);
   revalidatePath("/");
-  revalidatePath("/admin/hero");
+  revalidatePath("/admin/portada");
 }
 
 // ─── Hero Slides ─────────────────────────────────────────────────────────────
@@ -74,7 +98,7 @@ export async function updateHeroContent(data: HeroContent) {
 type SlidePayload = Omit<HeroSlide, "id" | "created_at" | "updated_at">;
 
 export async function createHeroSlide(data: SlidePayload): Promise<HeroSlide> {
-  const supabase = await requireAuth();
+  const supabase = await requireMember();
   const { data: slide, error } = await supabase
     .from("hero_slides")
     .insert({ ...data, updated_at: new Date().toISOString() })
@@ -82,12 +106,12 @@ export async function createHeroSlide(data: SlidePayload): Promise<HeroSlide> {
     .single();
   if (error) throw new Error(error.message);
   revalidatePath("/");
-  revalidatePath("/admin/hero");
+  revalidatePath("/admin/portada");
   return slide as HeroSlide;
 }
 
 export async function updateHeroSlide(id: string, data: Partial<SlidePayload>): Promise<HeroSlide> {
-  const supabase = await requireAuth();
+  const supabase = await requireMember();
   const { data: slide, error } = await supabase
     .from("hero_slides")
     .update({ ...data, updated_at: new Date().toISOString() })
@@ -96,31 +120,31 @@ export async function updateHeroSlide(id: string, data: Partial<SlidePayload>): 
     .single();
   if (error) throw new Error(error.message);
   revalidatePath("/");
-  revalidatePath("/admin/hero");
+  revalidatePath("/admin/portada");
   return slide as HeroSlide;
 }
 
 export async function deleteHeroSlide(id: string): Promise<void> {
-  const supabase = await requireAuth();
+  const supabase = await requireMember();
   const { error } = await supabase.from("hero_slides").delete().eq("id", id);
   if (error) throw new Error(error.message);
   revalidatePath("/");
-  revalidatePath("/admin/hero");
+  revalidatePath("/admin/portada");
 }
 
 export async function toggleHeroSlideActive(id: string, active: boolean): Promise<void> {
-  const supabase = await requireAuth();
+  const supabase = await requireMember();
   const { error } = await supabase
     .from("hero_slides")
     .update({ active, updated_at: new Date().toISOString() })
     .eq("id", id);
   if (error) throw new Error(error.message);
   revalidatePath("/");
-  revalidatePath("/admin/hero");
+  revalidatePath("/admin/portada");
 }
 
 export async function reorderHeroSlides(items: Array<{ id: string; order_index: number }>): Promise<void> {
-  const supabase = await requireAuth();
+  const supabase = await requireMember();
   await Promise.all(
     items.map(({ id, order_index }) =>
       supabase
@@ -130,7 +154,7 @@ export async function reorderHeroSlides(items: Array<{ id: string; order_index: 
     )
   );
   revalidatePath("/");
-  revalidatePath("/admin/hero");
+  revalidatePath("/admin/portada");
 }
 
 // ─── Productos ───────────────────────────────────────────────────────────────
@@ -156,7 +180,7 @@ function slugify(text: string): string {
  * `excludeId` evita que un producto choque consigo mismo al editarlo.
  */
 async function uniqueSlug(
-  supabase: Awaited<ReturnType<typeof requireAuth>>,
+  supabase: Awaited<ReturnType<typeof requireMember>>,
   model: string,
   excludeId?: string
 ): Promise<string> {
@@ -174,7 +198,7 @@ async function uniqueSlug(
 }
 
 export async function upsertProduct(data: Partial<Product> & { model: string }) {
-  const supabase = await requireAuth();
+  const supabase = await requireMember();
   const slug = await uniqueSlug(supabase, data.model, data.id);
   const payload = {
     model: data.model,
@@ -208,7 +232,7 @@ export async function upsertProduct(data: Partial<Product> & { model: string }) 
 }
 
 export async function deleteProduct(id: string) {
-  const supabase = await requireAuth();
+  const supabase = await requireMember();
   const { error } = await supabase.from("products").delete().eq("id", id);
   if (error) throw new Error(error.message);
   revalidatePath("/");
@@ -216,7 +240,7 @@ export async function deleteProduct(id: string) {
 }
 
 export async function toggleProductActive(id: string, active: boolean) {
-  const supabase = await requireAuth();
+  const supabase = await requireMember();
   const { error } = await supabase
     .from("products")
     .update({ active, updated_at: new Date().toISOString() })
@@ -232,31 +256,31 @@ export async function updateMessageStatus(
   id: string,
   status: ContactMessage["status"]
 ) {
-  const supabase = await requireAuth();
+  const supabase = await requireMember();
   const { error } = await supabase
     .from("contact_messages")
     .update({ status, updated_at: new Date().toISOString() })
     .eq("id", id);
   if (error) throw new Error(error.message);
-  revalidatePath("/admin/crm");
+  revalidatePath("/admin/mensajes");
   revalidatePath("/admin/dashboard");
 }
 
 export async function updateMessageNotes(id: string, admin_notes: string) {
-  const supabase = await requireAuth();
+  const supabase = await requireMember();
   const { error } = await supabase
     .from("contact_messages")
     .update({ admin_notes, updated_at: new Date().toISOString() })
     .eq("id", id);
   if (error) throw new Error(error.message);
-  revalidatePath("/admin/crm");
+  revalidatePath("/admin/mensajes");
 }
 
 export async function deleteMessage(id: string) {
-  const supabase = await requireAuth();
+  const supabase = await requireMember();
   const { error } = await supabase.from("contact_messages").delete().eq("id", id);
   if (error) throw new Error(error.message);
-  revalidatePath("/admin/crm");
+  revalidatePath("/admin/mensajes");
   revalidatePath("/admin/dashboard");
 }
 
@@ -272,43 +296,43 @@ export async function deleteMessage(id: string) {
  */
 export async function markMessagesSpam(ids: string[]): Promise<void> {
   if (ids.length === 0) return;
-  const supabase = await requireAuth();
+  const supabase = await requireMember();
   const { error } = await supabase
     .from("contact_messages")
     .update({ status: "spam", updated_at: new Date().toISOString() })
     .in("id", ids);
   if (error) throw new Error(error.message);
-  revalidatePath("/admin/crm");
+  revalidatePath("/admin/mensajes");
   revalidatePath("/admin/dashboard");
 }
 
 /** Vuelve a poner en "nuevo" mensajes marcados como spam por error. */
 export async function unmarkMessagesSpam(ids: string[]): Promise<void> {
   if (ids.length === 0) return;
-  const supabase = await requireAuth();
+  const supabase = await requireMember();
   const { error } = await supabase
     .from("contact_messages")
     .update({ status: "nuevo", updated_at: new Date().toISOString() })
     .in("id", ids);
   if (error) throw new Error(error.message);
-  revalidatePath("/admin/crm");
+  revalidatePath("/admin/mensajes");
   revalidatePath("/admin/dashboard");
 }
 
 /** Borrado en lote. Antes había que expandir cada mensaje y borrarlo de a uno. */
 export async function deleteMessages(ids: string[]): Promise<void> {
   if (ids.length === 0) return;
-  const supabase = await requireAuth();
+  const supabase = await requireMember();
   const { error } = await supabase.from("contact_messages").delete().in("id", ids);
   if (error) throw new Error(error.message);
-  revalidatePath("/admin/crm");
+  revalidatePath("/admin/mensajes");
   revalidatePath("/admin/dashboard");
 }
 
 // ─── Company Info ─────────────────────────────────────────────────────────────
 
 export async function updateCompanyInfo(data: Omit<CompanyInfo, "id" | "updated_at">) {
-  const supabase = await requireAuth();
+  const supabase = await requireMember();
   const { error } = await supabase
     .from("company_info")
     .update({ ...data, updated_at: new Date().toISOString() })
@@ -316,6 +340,170 @@ export async function updateCompanyInfo(data: Omit<CompanyInfo, "id" | "updated_
   if (error) throw new Error(error.message);
   revalidatePath("/");
   revalidatePath("/admin/empresa");
+}
+
+/**
+ * Formulario de Contacto: el del CRM del cliente (false) o el propio (true),
+ * que es el respaldo si el CRM se cae. Devuelve el error en vez de tirarlo:
+ * es lo que se usa en un apuro y el mensaje tiene que llegar (Next borra el
+ * texto de lo que se tira en producción). Igual que en LatinOfficeWEB.
+ */
+export async function setOwnContactForm(on: boolean): Promise<{ ok: true } | { ok: false; error: string }> {
+  const supabase = await requireMember();
+  const { error } = await supabase
+    .from("company_info")
+    .update({ own_contact_form: on, updated_at: now() })
+    .eq("id", 1);
+  if (error) {
+    return {
+      ok: false,
+      error: /own_contact_form/.test(error.message)
+        ? "Falta correr la migración 024 en Supabase."
+        : `No se pudo cambiar: ${error.message}`,
+    };
+  }
+  revalidatePath("/");
+  revalidatePath("/admin/empresa");
+  return { ok: true };
+}
+
+// ─── Franja de datos ─────────────────────────────────────────────────────────
+
+/**
+ * Guarda la franja entera de una vez, en el orden en que llega: actualiza las
+ * que ya existían, crea las nuevas (sin id) y borra las que se sacaron.
+ * Vacía = la franja no se muestra en el sitio.
+ */
+export async function saveFacts(
+  items: Array<{ id?: string; title: string; text: string }>
+): Promise<{ ok: true; facts: Fact[] } | { ok: false; error: string }> {
+  const supabase = await requireMember();
+  const rows = items
+    .map((f) => ({ id: f.id, title: f.title.trim(), text: f.text.trim() }))
+    .filter((f) => f.title || f.text);
+  if (rows.some((f) => !f.title)) return { ok: false, error: "Cada dato necesita un título (la parte grande)." };
+  if (rows.length > MAX_FACTS) return { ok: false, error: `Entran hasta ${MAX_FACTS} datos.` };
+
+  const { data: existing, error: readErr } = await supabase.from("facts").select("id");
+  if (readErr) return { ok: false, error: `No se pudo leer la franja: ${readErr.message}` };
+  const keep = new Set(rows.map((r) => r.id).filter(Boolean));
+  const toDelete = (existing ?? []).map((r) => r.id as string).filter((id) => !keep.has(id));
+
+  if (toDelete.length > 0) {
+    const { error } = await supabase.from("facts").delete().in("id", toDelete);
+    if (error) return { ok: false, error: `No se pudo guardar: ${error.message}` };
+  }
+  for (const [i, r] of rows.entries()) {
+    const values = { title: r.title, text: r.text, order_index: i, updated_at: now() };
+    const { error } = r.id
+      ? await supabase.from("facts").update(values).eq("id", r.id)
+      : await supabase.from("facts").insert(values);
+    if (error) return { ok: false, error: `No se pudo guardar: ${error.message}` };
+  }
+
+  const { data: facts, error } = await supabase.from("facts").select("*").order("order_index");
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/");
+  revalidatePath("/admin/datos");
+  return { ok: true, facts: (facts ?? []) as Fact[] };
+}
+
+// ─── Revendedores ────────────────────────────────────────────────────────────
+
+function revalidateResellers() {
+  revalidatePath("/admin/revendedores");
+  revalidatePath("/admin/dashboard");
+}
+
+export async function updateResellerStatus(id: string, status: ResellerRequest["status"]) {
+  const supabase = await requireMember();
+  const { error } = await supabase.from("reseller_requests").update({ status, updated_at: now() }).eq("id", id);
+  if (error) throw new Error(error.message);
+  revalidateResellers();
+}
+
+export async function updateResellerNotes(id: string, admin_notes: string) {
+  const supabase = await requireMember();
+  const { error } = await supabase.from("reseller_requests").update({ admin_notes, updated_at: now() }).eq("id", id);
+  if (error) throw new Error(error.message);
+  revalidatePath("/admin/revendedores");
+}
+
+export async function deleteResellers(ids: string[]): Promise<void> {
+  if (ids.length === 0) return;
+  const supabase = await requireMember();
+  const { error } = await supabase.from("reseller_requests").delete().in("id", ids);
+  if (error) throw new Error(error.message);
+  revalidateResellers();
+}
+
+// ─── Garantías ───────────────────────────────────────────────────────────────
+
+const INVOICE_BUCKET = "warranty-invoices";
+
+function revalidateWarranties() {
+  revalidatePath("/admin/garantias");
+  revalidatePath("/admin/dashboard");
+}
+
+/**
+ * Validar o rechazar una garantía. Al cliente le llega un correo con la
+ * decisión (si el correo está configurado; si no, queda solo en el panel).
+ */
+export async function setWarrantyStatus(
+  id: string,
+  status: Warranty["status"],
+  motivo?: string
+): Promise<void> {
+  const supabase = await requireMember();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const { data, error } = await supabase
+    .from("warranties")
+    .update({ status, reviewed_at: now(), reviewed_by: user?.id ?? null, updated_at: now() })
+    .eq("id", id)
+    .select("*")
+    .single();
+  if (error) throw new Error(error.message);
+  revalidateWarranties();
+
+  if (status !== "pendiente") {
+    await sendWarrantyDecision(data as Warranty, motivo?.trim() || null);
+  }
+}
+
+export async function updateWarrantyNotes(id: string, admin_notes: string) {
+  const supabase = await requireMember();
+  const { error } = await supabase.from("warranties").update({ admin_notes, updated_at: now() }).eq("id", id);
+  if (error) throw new Error(error.message);
+  revalidatePath("/admin/garantias");
+}
+
+/**
+ * Link firmado a la factura, válido 10 minutos. El bucket es privado: la
+ * factura tiene datos personales y no puede quedar en una URL pública.
+ */
+export async function getInvoiceUrl(id: string): Promise<string | null> {
+  const supabase = await requireMember();
+  const { data } = await supabase.from("warranties").select("invoice_path").eq("id", id).maybeSingle();
+  if (!data?.invoice_path) return null;
+  const { data: signed, error } = await supabase.storage
+    .from(INVOICE_BUCKET)
+    .createSignedUrl(data.invoice_path, 600);
+  if (error) throw new Error(error.message);
+  return signed.signedUrl;
+}
+
+/** Borrar una garantía (y su factura). Solo owner/admin: es un registro legal. */
+export async function deleteWarranty(id: string): Promise<void> {
+  await requireMember("admin");
+  const admin = createAdminClient();
+  const { data } = await admin.from("warranties").select("invoice_path").eq("id", id).maybeSingle();
+  const { error } = await admin.from("warranties").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+  if (data?.invoice_path) await admin.storage.from(INVOICE_BUCKET).remove([data.invoice_path]);
+  revalidateWarranties();
 }
 
 // ─── Miembros del admin (Track E, fase 1) ─────────────────────────────────────
@@ -354,7 +542,7 @@ async function issueInvitationEmail(opts: {
 }
 
 export async function inviteMember(email: string, role: AdminRole) {
-  const supabase = await requireAuth();
+  const supabase = await requireMember();
   const { data: { user } } = await supabase.auth.getUser();
   await requireRole(supabase, "admin");
 
@@ -413,7 +601,7 @@ export async function inviteMember(email: string, role: AdminRole) {
  * link venció, se perdió en spam o el filtro de la casilla se lo comió.
  */
 export async function resendInvitation(id: string) {
-  const supabase = await requireAuth();
+  const supabase = await requireMember();
   const { data: { user } } = await supabase.auth.getUser();
   await requireRole(supabase, "admin");
 
@@ -439,7 +627,7 @@ export async function resendInvitation(id: string) {
 }
 
 export async function cancelInvitation(id: string) {
-  const supabase = await requireAuth();
+  const supabase = await requireMember();
   await requireRole(supabase, "admin");
   const { error } = await supabase.from("admin_invitations").delete().eq("id", id);
   if (error) throw new Error(error.message);
@@ -477,7 +665,7 @@ async function assertNotLastOwner(
 }
 
 export async function updateMemberRole(userId: string, role: AdminRole) {
-  const supabase = await requireAuth();
+  const supabase = await requireMember();
   await requireRole(supabase, "admin");
   if (role !== "owner") await assertNotLastOwner(supabase, userId);
   const { error } = await supabase
@@ -489,7 +677,7 @@ export async function updateMemberRole(userId: string, role: AdminRole) {
 }
 
 export async function removeMember(userId: string) {
-  const supabase = await requireAuth();
+  const supabase = await requireMember();
   const { data: { user } } = await supabase.auth.getUser();
   await requireRole(supabase, "admin");
   if (user!.id === userId) throw new Error("No podés quitarte a vos mismo.");
@@ -747,7 +935,7 @@ export async function changeOwnPassword(
   currentPassword: string,
   newPassword: string
 ): Promise<PasswordActionResult> {
-  const supabase = await requireAuth();
+  const supabase = await requireMember();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user?.email) throw new Error("No autorizado");
 
