@@ -31,6 +31,33 @@ Dos reglas que hacen que esto sirva:
 
 ---
 
+## 2026-11-04 — Archivos del producto: se puede pegar un link
+
+**Rama:** develop `4eb236a` · **Producción:** no
+**Base de datos:** ninguna
+
+**Qué cambió:** el cliente tiene drivers de 100 MB y el tope por archivo del
+Storage de Supabase en el plan gratis es 50 MB. Debajo del subidor de
+"Archivos descargables" hay ahora un recuadro "Agregar un link" (link + nombre
+que ve el cliente): el archivo queda en Drive, Dropbox o la web del fabricante y
+en la ficha se guarda solo el link. El tipo se adivina igual que con los
+subidos. En la lista del admin, los links se ven como "Link externo · dominio".
+El mensaje que aparece cuando un archivo pasa de 50 MB ya decía "pedí que se
+cargue el link", pero desde el 21/09 no había dónde pegarlo; ahora manda a ese
+recuadro.
+
+Se descartaron por ahora pasar Supabase a Pro (USD 25/mes) y guardar los
+drivers en Cloudflare R2. Ojo: aparte del tope por archivo, el plan gratis
+incluye 5 GB de descarga por mes, y con drivers de 100 MB alojados acá se
+gastarían en unas 50 descargas. Con links externos ese problema no existe.
+
+**Sin probar:** nadie agregó un link desde el navegador ni miró cómo se ve en la
+ficha pública. Falta probar con un link de Drive que el cliente descargue sin
+pedir acceso (tiene que estar compartido como "Cualquier persona con el
+enlace").
+
+---
+
 ## 2026-10-29 — SQL 023: solo los miembros del panel escriben en las tablas del sitio
 
 **Rama:** develop · **Producción:** no (solo SQL; el código no cambia)
