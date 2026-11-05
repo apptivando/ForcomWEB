@@ -46,7 +46,9 @@ existen y están vacías, el bucket `warranty-invoices` es privado, la clave ano
 no puede leer `warranties` ni `reseller_requests`, y `own_contact_form` = false
 (Contacto muestra el CRM).
 
-**Sin probar:** el sitio en producción después del deploy; el link externo de
+**Probado en forcom.tech después del deploy** (`/api/health` = e64fb39): la home tiene las secciones de garantía y revendedores y el formulario del CRM; `/no-existe` da 404; `/admin/hero` y `/admin/crm` redirigen a portada y mensajes; un envío de bot a revendedores no se guarda.
+
+**Sin probar:** el link externo de
 un archivo de producto desde el navegador.
 
 ---
