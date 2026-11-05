@@ -31,9 +31,29 @@ Dos reglas que hacen que esto sirva:
 
 ---
 
+## 2026-11-05 — A producción: panel a la par de Latin Office y links externos
+
+**Rama:** main por fast-forward hasta develop (sin commits propios en main) · **Producción:** sí
+**Base de datos:** ninguna nueva (la 024 ya estaba corrida)
+
+**Qué cambió:** llegan a forcom.tech las dos entradas del 04/11 de abajo
+(garantías, revendedores, franja, formulario del CRM, menú del panel,
+`requireMember`) y la de los links externos en archivos de producto.
+
+**Probado:** el cliente probó en `develop` los formularios y el panel y quedó
+conforme (lo informó el usuario el 05/11). En la base: las tres tablas de la 024
+existen y están vacías, el bucket `warranty-invoices` es privado, la clave anon
+no puede leer `warranties` ni `reseller_requests`, y `own_contact_form` = false
+(Contacto muestra el CRM).
+
+**Sin probar:** el sitio en producción después del deploy; el link externo de
+un archivo de producto desde el navegador.
+
+---
+
 ## 2026-11-04 — Archivos del producto: se puede pegar un link
 
-**Rama:** develop `4eb236a` · **Producción:** no
+**Rama:** develop `4eb236a` · main por fast-forward (05/11) · **Producción:** sí
 **Base de datos:** ninguna
 
 **Qué cambió:** el cliente tiene drivers de 100 MB y el tope por archivo del
@@ -60,8 +80,8 @@ enlace").
 
 ## 2026-11-04 — Panel a la par de Latin Office: garantías, revendedores, franja y formulario del CRM
 
-**Rama:** develop · **Producción:** no
-**Base de datos:** migración 024 escrita, **falta correrla** [vos]. La 023 ya
+**Rama:** develop `554db55` · main por fast-forward (05/11) · **Producción:** sí
+**Base de datos:** migración 024 **corrida** (verificada el 05/11: tablas vacías, bucket privado, anon sin acceso a garantías ni revendedores). La 023 ya
 estaba corrida (29/10, desde la sesión de Latin Office: por eso no figuraba acá).
 
 **Qué cambió:** el cliente quiere que FORCOM y Latin Office (mismo dueño, misma

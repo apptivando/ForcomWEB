@@ -22,7 +22,7 @@ carpeta, leída con la lista de arriba.
 
 - **023 (29/10/2026, corrida el 29/10/2026 desde la sesión de LatinOfficeWEB** —
   por eso no quedó anotada acá en su momento; confirmado por el usuario el 04/11): escritura del sitio y lectura del panel solo para miembros de FORCOM (`current_admin_role()`), no para cualquier usuario logueado — Latin Office comparte el proyecto de Supabase y sus usuarios. Cubre products, hero_content, hero_slides, company_info, contact_messages y los buckets `product-images` y `hero-slides`. Correr primero el paso 0 solo y guardar el listado.
-- **024 (04/11/2026, sin correr todavía):** garantías (`warranties` + bucket
+- **024 (04/11/2026, corrida y verificada el 05/11):** garantías (`warranties` + bucket
   privado `warranty-invoices`), revendedores (`reseller_requests`), franja de
   datos (`facts`, nace vacía) y en `company_info` el interruptor
   `own_contact_form` (formulario del CRM o el propio) más `facebook` e
